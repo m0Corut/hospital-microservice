@@ -27,6 +27,13 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Entities.Appoin
         builder.HasIndex(a => new { a.DoctorId, a.AppointmentDate });
         builder.HasIndex(a => a.PatientId);
 
+        // Son savunma: aynı doktorun aynı dakikada iki AKTİF randevusu olamaz. Filtre, iptal edilmiş satırları
+        // indeksin dışında bırakır; iptal edilen slot yeniden alınabilir. Servis kontrolü iki isteğin aynı anda
+        // geçtiği yarış durumunda yetmez, bu indeks ikincisini reddeder.
+        builder.HasIndex(a => new { a.DoctorId, a.AppointmentDate }, "UX_Appointments_Doctor_Slot_Active")
+            .IsUnique()
+            .HasFilter("[Status] <> N'Cancelled'");
+
         // Bire-bir: bir randevunun en çok bir detayı olur; randevu silinince detay da silinir (cascade).
         builder.HasOne(a => a.Detail)
             .WithOne(d => d.Appointment)

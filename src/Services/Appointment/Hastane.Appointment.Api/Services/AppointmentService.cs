@@ -2,6 +2,7 @@ using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
 using MapsterMapper;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using AppointmentEntity = Hastane.Appointment.Api.Entities.Appointment;
 
@@ -53,18 +54,45 @@ public class AppointmentService : IAppointmentService
         return entity is null ? null : _mapper.Map<GetByIdAppointmentDto>(entity);
     }
 
-    public async Task<ResultAppointmentDto> CreateAsync(CreateAppointmentDto dto, CancellationToken ct)
+    private const string SlotTakenMessage = "Bu doktorun bu saatte başka bir randevusu var.";
+
+    // SQL Server: 2601 = tekil indeks ihlali, 2627 = tekil kısıt ihlali.
+    private static bool IsUniqueViolation(DbUpdateException ex)
+        => ex.InnerException is SqlException { Number: 2601 or 2627 };
+
+    // Cancelled slotu işgal etmez. excludeId: yeniden planlamada randevunun kendisi sahte çakışma vermesin.
+    private async Task<bool> IsSlotTakenAsync(string doctorId, DateTime slot, Guid? excludeId, CancellationToken ct)
+    {
+        var query = _db.Appointments.Where(a =>
+            a.DoctorId == doctorId && a.AppointmentDate == slot && a.Status != AppointmentStatus.Cancelled);
+        if (excludeId is { } self) query = query.Where(a => a.Id != self);
+        return await query.AnyAsync(ct);
+    }
+
+    public async Task<OperationResult<ResultAppointmentDto>> CreateAsync(CreateAppointmentDto dto, CancellationToken ct)
     {
         var entity = _mapper.Map<AppointmentEntity>(dto);
         // Sunucunun atadığı alanlar: istemci bunları gönderemez.
         entity.Id = Guid.CreateVersion7();
         entity.Status = AppointmentStatus.Pending;
         entity.CreatedAt = DateTime.UtcNow;
-        entity.AppointmentDate = UtcDateTimeConverter.Normalize(entity.AppointmentDate);
+        entity.AppointmentDate = UtcDateTimeConverter.NormalizeToMinute(entity.AppointmentDate);
+
+        // Katman 1: güzel hata mesajı için önce bak.
+        if (await IsSlotTakenAsync(entity.DoctorId, entity.AppointmentDate, null, ct))
+            return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
 
         _db.Appointments.Add(entity);
-        await _db.SaveChangesAsync(ct);
-        return _mapper.Map<ResultAppointmentDto>(entity);
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            // Katman 2: iki istek kontrolü aynı anda geçtiyse tekil indeks ikincisini reddetti.
+            return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
+        }
+        return OperationResult<ResultAppointmentDto>.Created(_mapper.Map<ResultAppointmentDto>(entity));
     }
 
     public async Task<OperationResult<ResultAppointmentDto>> RescheduleAsync(UpdateAppointmentDto dto, CancellationToken ct)
@@ -77,9 +105,20 @@ public class AppointmentService : IAppointmentService
                 $"{entity.Status} durumundaki randevu yeniden planlanamaz.");
 
         // Yalnız iki alan değişir; DoctorId, PatientId, Status, CreatedAt'e dokunulmaz.
+        var slot = UtcDateTimeConverter.NormalizeToMinute(dto.AppointmentDate);
+        if (await IsSlotTakenAsync(entity.DoctorId, slot, entity.Id, ct))
+            return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
+
         entity.BranchId = dto.BranchId;
-        entity.AppointmentDate = UtcDateTimeConverter.Normalize(dto.AppointmentDate);
-        await _db.SaveChangesAsync(ct);
+        entity.AppointmentDate = slot;
+        try
+        {
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        {
+            return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
+        }
         return OperationResult<ResultAppointmentDto>.Ok(_mapper.Map<ResultAppointmentDto>(entity));
     }
 

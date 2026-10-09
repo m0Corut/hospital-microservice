@@ -34,6 +34,14 @@ public class AppointmentsApiTests : IClassFixture<AppointmentApiFactory>
 
     private static DateTime Future(int days = 5) => DateTime.UtcNow.AddDays(days);
 
+    // Dakika sınırına oturan sabit bir gelecek slot (taban: 40 gün sonra). offsetMinutes ile komşu slotlar.
+    private static readonly DateTime SlotBase = TruncateToMinute(DateTime.UtcNow.AddDays(40));
+
+    private static DateTime TruncateToMinute(DateTime value)
+        => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMinute, DateTimeKind.Utc);
+
+    private static DateTime Slot(int offsetMinutes) => SlotBase.AddMinutes(offsetMinutes);
+
     private static CreateAppointmentDto NewAppointment(string? doctorId = null, string? patientId = null, DateTime? date = null) => new()
     {
         DoctorId = doctorId ?? Unique("doc"),
@@ -149,8 +157,9 @@ public class AppointmentsApiTests : IClassFixture<AppointmentApiFactory>
         var doctor = Unique("doc");
         var patientA = Unique("pat");
         var patientB = Unique("pat");
-        var pendingA = await CreateAsync(NewAppointment(doctor, patientA));
-        var confirmedB = await CreateInStatusAsync(AppointmentStatus.Confirmed, NewAppointment(doctor, patientB));
+        // Aynı doktor: farklı dakikalar (aynı doktor + aynı dakika artık 409).
+        var pendingA = await CreateAsync(NewAppointment(doctor, patientA, Slot(0)));
+        var confirmedB = await CreateInStatusAsync(AppointmentStatus.Confirmed, NewAppointment(doctor, patientB, Slot(1)));
         await CreateAsync(NewAppointment(Unique("doc"), patientA)); // başka doktor, aynı hasta
 
         var byDoctor = await ListAsync($"doctorId={doctor}");
@@ -207,7 +216,8 @@ public class AppointmentsApiTests : IClassFixture<AppointmentApiFactory>
 
         var fetched = (await _client.GetFromJsonAsync<GetByIdAppointmentDto>($"/api/appointments/{created.Id}", Json, Ct))!;
         Assert.Equal("branch-2", fetched.BranchId);
-        Assert.InRange(fetched.AppointmentDate, newDate.AddSeconds(-1), newDate.AddSeconds(1));
+        // Dakika hassasiyeti: saniye ve altı sunucuda sıfırlanır.
+        Assert.Equal(TruncateToMinute(newDate), fetched.AppointmentDate);
         Assert.Equal(created.DoctorId, fetched.DoctorId);
         Assert.Equal(created.PatientId, fetched.PatientId);
         Assert.Equal(created.CreatedAt, fetched.CreatedAt);
@@ -261,6 +271,146 @@ public class AppointmentsApiTests : IClassFixture<AppointmentApiFactory>
         var response = await _client.PutAsJsonAsync($"/api/appointments/{created.Id}",
             new UpdateAppointmentDto { Id = created.Id, BranchId = "b", AppointmentDate = Future(30) }, Json, Ct);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    // --- Doktor slot çakışması ---
+
+    private Task<HttpResponseMessage> PostAsync(CreateAppointmentDto dto)
+        => _client.PostAsJsonAsync("/api/appointments", dto, Json, Ct);
+
+    private Task<HttpResponseMessage> RescheduleRawAsync(Guid id, DateTime date)
+        => _client.PutAsJsonAsync($"/api/appointments/{id}",
+            new UpdateAppointmentDto { Id = id, BranchId = "branch-1", AppointmentDate = date }, Json, Ct);
+
+    private static async Task AssertSlotConflictAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>(Json, Ct);
+        Assert.Equal("Bu doktorun bu saatte başka bir randevusu var.", problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task Create_SameDoctorSameSlot_Returns409WithMessage()
+    {
+        var doctor = Unique("doc");
+        await CreateAsync(NewAppointment(doctor, date: Slot(10)));
+        await AssertSlotConflictAsync(await PostAsync(NewAppointment(doctor, date: Slot(10))));
+    }
+
+    [Fact]
+    public async Task Create_DifferentDoctorSameSlot_Returns201()
+    {
+        await CreateAsync(NewAppointment(Unique("doc"), date: Slot(11)));
+        await CreateAsync(NewAppointment(Unique("doc"), date: Slot(11)));
+    }
+
+    [Fact]
+    public async Task Create_SameDoctorDifferentSlot_Returns201()
+    {
+        var doctor = Unique("doc");
+        await CreateAsync(NewAppointment(doctor, date: Slot(12)));
+        await CreateAsync(NewAppointment(doctor, date: Slot(13)));
+    }
+
+    [Fact]
+    public async Task Create_SlotOfCancelledAppointment_CanBeTakenAgain()
+    {
+        var doctor = Unique("doc");
+        await CreateInStatusAsync(AppointmentStatus.Cancelled, NewAppointment(doctor, date: Slot(14)));
+        await CreateAsync(NewAppointment(doctor, date: Slot(14)));
+    }
+
+    [Theory]
+    [InlineData(AppointmentStatus.Pending)]
+    [InlineData(AppointmentStatus.Confirmed)]
+    [InlineData(AppointmentStatus.Completed)]
+    public async Task Create_SlotHeldByActiveStatus_Returns409(AppointmentStatus status)
+    {
+        var doctor = Unique("doc");
+        await CreateInStatusAsync(status, NewAppointment(doctor, date: Slot(15)));
+        await AssertSlotConflictAsync(await PostAsync(NewAppointment(doctor, date: Slot(15))));
+    }
+
+    [Fact]
+    public async Task Create_SecondsAreTruncated_SoTenOClockAndTenOClockThirtyCollide()
+    {
+        var doctor = Unique("doc");
+        var first = await CreateAsync(NewAppointment(doctor, date: Slot(16)));
+        Assert.Equal(Slot(16), first.AppointmentDate); // cevapta dakika hassasiyetli tarih
+
+        await AssertSlotConflictAsync(await PostAsync(NewAppointment(doctor, date: Slot(16).AddSeconds(30).AddMilliseconds(123))));
+    }
+
+    [Fact]
+    public async Task Reschedule_ToTakenSlot_Returns409()
+    {
+        var doctor = Unique("doc");
+        await CreateAsync(NewAppointment(doctor, date: Slot(17)));
+        var other = await CreateAsync(NewAppointment(doctor, date: Slot(18)));
+        await AssertSlotConflictAsync(await RescheduleRawAsync(other.Id, Slot(17)));
+
+        var fetched = await _client.GetFromJsonAsync<ResultAppointmentDto>($"/api/appointments/{other.Id}", Json, Ct);
+        Assert.Equal(Slot(18), fetched!.AppointmentDate); // reddedilen taşıma tarihi değiştirmez
+    }
+
+    [Fact]
+    public async Task Reschedule_ToOwnCurrentSlot_IsNotAFalseConflict()
+    {
+        var created = await CreateAsync(NewAppointment(Unique("doc"), date: Slot(19)));
+        Assert.Equal(HttpStatusCode.OK, (await RescheduleRawAsync(created.Id, Slot(19))).StatusCode);
+        // Aynı dakikanın içinde saniyeli tarih de kendi slotudur.
+        Assert.Equal(HttpStatusCode.OK, (await RescheduleRawAsync(created.Id, Slot(19).AddSeconds(45))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Reschedule_ToSlotOfCancelledAppointment_IsAllowed()
+    {
+        var doctor = Unique("doc");
+        await CreateInStatusAsync(AppointmentStatus.Cancelled, NewAppointment(doctor, date: Slot(20)));
+        var other = await CreateAsync(NewAppointment(doctor, date: Slot(21)));
+        Assert.Equal(HttpStatusCode.OK, (await RescheduleRawAsync(other.Id, Slot(20))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_ConcurrentRequestsForSameSlot_ExactlyOneWins()
+    {
+        var doctor = Unique("doc");
+        const int parallel = 8;
+        var responses = await Task.WhenAll(Enumerable.Range(0, parallel)
+            .Select(_ => Task.Run(() => PostAsync(NewAppointment(doctor, date: Slot(22))), Ct)));
+
+        Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
+        Assert.Equal(parallel - 1, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppointmentDbContext>();
+        Assert.Equal(1, await db.Appointments.CountAsync(a => a.DoctorId == doctor, Ct));
+    }
+
+    [Fact]
+    public async Task Database_RejectsSecondActiveAppointmentInSameSlot_ButAllowsCancelledOne()
+    {
+        var doctor = Unique("doc");
+        await CreateAsync(NewAppointment(doctor, date: Slot(23)));
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppointmentDbContext>();
+        Hastane.Appointment.Api.Entities.Appointment Make(AppointmentStatus status) => new()
+        {
+            Id = Guid.CreateVersion7(),
+            DoctorId = doctor,
+            PatientId = "p",
+            BranchId = "b",
+            AppointmentDate = Slot(23),
+            Status = status,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        db.Appointments.Add(Make(AppointmentStatus.Cancelled)); // filtre dışı: kabul
+        await db.SaveChangesAsync(Ct);
+
+        db.Appointments.Add(Make(AppointmentStatus.Confirmed)); // aktif: indeks reddeder
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync(Ct));
     }
 
     // --- Durum geçişleri ---

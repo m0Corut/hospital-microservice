@@ -59,6 +59,10 @@ namespace Hastane.Appointment.Api.Migrations
 
                     b.HasIndex("DoctorId", "AppointmentDate");
 
+                    b.HasIndex(new[] { "DoctorId", "AppointmentDate" }, "UX_Appointments_Doctor_Slot_Active")
+                        .IsUnique()
+                        .HasFilter("[Status] <> N'Cancelled'");
+
                     b.ToTable("Appointments", (string)null);
                 });
 

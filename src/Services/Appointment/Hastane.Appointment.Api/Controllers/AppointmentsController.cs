@@ -36,8 +36,10 @@ public class AppointmentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ResultAppointmentDto>> Create(CreateAppointmentDto dto, CancellationToken ct)
     {
-        var created = await _service.CreateAsync(dto, ct);
-        return CreatedAtAction(nameof(GetById), new { id = created.Id }, created);
+        var result = await _service.CreateAsync(dto, ct);
+        return result.Status == OperationStatus.Created
+            ? CreatedAtAction(nameof(GetById), new { id = result.Value!.Id }, result.Value)
+            : ToActionResult(result);
     }
 
     // Yeniden planlama: yalnız şube ve tarih.
