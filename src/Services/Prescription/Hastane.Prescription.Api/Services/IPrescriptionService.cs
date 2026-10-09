@@ -9,5 +9,6 @@ public interface IPrescriptionService
     Task<GetByIdPrescriptionDto?> GetByIdAsync(Guid id, CancellationToken ct);
     Task<OperationResult<GetByIdPrescriptionDto>> CreateAsync(CreatePrescriptionDto dto, CancellationToken ct);
     Task<OperationResult<GetByIdPrescriptionDto>> UpdateAsync(UpdatePrescriptionDto dto, CancellationToken ct);
-    Task<bool> DeleteAsync(Guid id, CancellationToken ct);
+    // Ok / NotFound / Forbidden
+    Task<OperationStatus> DeleteAsync(Guid id, CancellationToken ct);
 }

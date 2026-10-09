@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Mapping;
 using Hastane.Appointment.Api.Services;
+using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,11 @@ builder.Services.AddMapster();
 builder.Services.AddDbContext<AppointmentDbContext>((sp, options) =>
     options.UseSqlServer(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")));
 
+// Kimlik doğrulama (token geçerli mi?) + yetkilendirme (politikalar) + "token'daki kullanıcı kim?" (ICurrentUser).
+builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
+builder.Services.AddHastaneAuthorization();
+builder.Services.AddHastaneCurrentUser();
+
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentDetailService, AppointmentDetailService>();
 
@@ -34,6 +40,10 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppointmentDbContext>().Database.Migrate();
 }
+
+// Sıra önemli: önce kimlik (token okunur), sonra yetki (politika uygulanır), en son uç.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

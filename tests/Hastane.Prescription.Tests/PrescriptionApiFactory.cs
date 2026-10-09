@@ -1,3 +1,4 @@
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.MsSql;
@@ -13,7 +14,11 @@ public class PrescriptionApiFactory : WebApplicationFactory<Program>, IAsyncLife
     public async ValueTask InitializeAsync() => await _sql.StartAsync();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
-        => builder.UseSetting("ConnectionStrings:DefaultConnection", _sql.GetConnectionString());
+    {
+        builder.UseSetting("ConnectionStrings:DefaultConnection", _sql.GetConnectionString());
+        // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar geçer.
+        builder.UseTestJwt();
+    }
 
     public override async ValueTask DisposeAsync()
     {

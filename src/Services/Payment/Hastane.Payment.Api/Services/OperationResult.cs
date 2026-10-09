@@ -9,6 +9,7 @@ public enum OperationStatus
     Validation,
     PaymentRequired,
     BadGateway,
+    Forbidden,
 }
 
 // Servis HTTP bilmez; sonucu bu zarfla bildirir, hangi koda çevrileceğine controller karar verir.
@@ -20,6 +21,7 @@ public record OperationResult<T>(OperationStatus Status, T? Value = default, str
     public static OperationResult<T> NotFound() => new(OperationStatus.NotFound);
     public static OperationResult<T> Validation(string error) => new(OperationStatus.Validation, default, error);
     public static OperationResult<T> Conflict(string error) => new(OperationStatus.Conflict, default, error);
+    public static OperationResult<T> Forbidden() => new(OperationStatus.Forbidden);
     public static OperationResult<T> BadGateway(string error) => new(OperationStatus.BadGateway, default, error);
     public static OperationResult<T> PaymentRequired(T value, string? reason) => new(OperationStatus.PaymentRequired, value, reason);
 }

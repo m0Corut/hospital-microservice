@@ -8,8 +8,10 @@ public class CreateAppointmentDto
 {
     [Required, StringLength(64)]
     public string DoctorId { get; set; } = string.Empty;
-    [Required, StringLength(64)]
-    public string PatientId { get; set; } = string.Empty;
+    // Hasta (Patient rolü) için YOK SAYILIR: PatientId token'daki sub'dan gelir. Yalnız Admin başkası adına
+    // randevu açarken doldurur (controller'da zorunlu tutulur).
+    [StringLength(64)]
+    public string? PatientId { get; set; }
     [Required, StringLength(64)]
     public string BranchId { get; set; } = string.Empty;
     [FutureDate]

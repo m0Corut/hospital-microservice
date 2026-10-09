@@ -4,6 +4,8 @@ using System.Text.Json;
 using Hastane.Prescription.Api.Data;
 using Hastane.Prescription.Api.Dtos;
 using Hastane.Prescription.Api.Services;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,7 +21,9 @@ public class PrescriptionsApiTests : IClassFixture<PrescriptionApiFactory>
     public PrescriptionsApiTests(PrescriptionApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        // Mevcut testler "herkes adına yazabilen" Admin ile çalışır: gövdedeki DoctorId/PatientId ile senaryo kurmaya
+        // devam eder ve her reçeteyi görür/değiştirir. Yetki kuralları PrescriptionAuthorizationTests'te.
+        _client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
@@ -170,7 +174,11 @@ public class PrescriptionsApiTests : IClassFixture<PrescriptionApiFactory>
         dto.Items[1].MedicineName = new string('x', 201);
 
         using var scope = _factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IPrescriptionService>();
+        // HTTP dışı çağrıda HttpContext yok; "kullanıcı" olarak Admin verilir (doğrulamayı değil veritabanı reddini sınıyoruz).
+        var service = new PrescriptionService(
+            scope.ServiceProvider.GetRequiredService<PrescriptionDbContext>(),
+            scope.ServiceProvider.GetRequiredService<MapsterMapper.IMapper>(),
+            new StubAdminUser());
 
         await Assert.ThrowsAsync<DbUpdateException>(() => service.CreateAsync(dto, Ct));
 
@@ -435,4 +443,16 @@ public class PrescriptionsApiTests : IClassFixture<PrescriptionApiFactory>
         Assert.Equal(OperationStatus.Validation, update.Status);
         Assert.Equal((1, 2), await CountRowsAsync(existing.Id));
     }
+}
+
+// Servisi HTTP dışında doğrudan çağıran testler için sabit Admin kullanıcı.
+internal sealed class StubAdminUser : ICurrentUser
+{
+    public bool IsAuthenticated => true;
+    public string? UserId => "admin-stub";
+    public string? Email => null;
+    public string? DoctorId => null;
+    public IReadOnlyList<string> Roles => [HastaneRoles.Admin];
+    public bool IsAdmin => true;
+    public bool IsInRole(string role) => role == HastaneRoles.Admin;
 }

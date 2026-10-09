@@ -37,7 +37,8 @@ public class PrescriptionMappingConfigTests
 
         Assert.Equal(Guid.Empty, entity.Id);
         Assert.Equal(default, entity.IssuedAt);
-        Assert.Equal("d1", entity.DoctorId);
+        // DoctorId eşlenmez: token'daki doctor_id'den serviste atanır (gövdedeki değer güvenilmez).
+        Assert.Null(entity.DoctorId);
         var item = Assert.Single(entity.Items);
         Assert.Equal(Guid.Empty, item.Id);
         Assert.Equal(Guid.Empty, item.PrescriptionId);

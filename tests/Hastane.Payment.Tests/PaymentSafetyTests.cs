@@ -248,7 +248,7 @@ public class PaymentSafetyTests : PaymentTestBase
         var dto = NewPayment();
         var key = Unique("cancel");
         using var scope = Factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+        var service = CreateServiceAsAdmin<PaymentService>(scope.ServiceProvider);
         using var cts = new CancellationTokenSource();
         try
         {
@@ -274,7 +274,7 @@ public class PaymentSafetyTests : PaymentTestBase
     {
         var paid = await PayOkAsync();
         using var scope = Factory.Services.CreateScope();
-        var service = scope.ServiceProvider.GetRequiredService<IPaymentService>();
+        var service = CreateServiceAsAdmin<PaymentService>(scope.ServiceProvider);
         using var cts = new CancellationTokenSource();
         try
         {
@@ -305,7 +305,7 @@ public class PaymentSafetyTests : PaymentTestBase
             {
                 Id = Guid.CreateVersion7(),
                 AppointmentId = dto.AppointmentId,
-                PatientId = dto.PatientId,
+                PatientId = dto.PatientId!,
                 DoctorId = dto.DoctorId,
                 Amount = dto.Amount,
                 Currency = dto.Currency,

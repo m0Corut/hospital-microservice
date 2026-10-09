@@ -1,5 +1,6 @@
 using Hastane.Payment.Api.Data;
 using Hastane.Payment.Api.Dtos;
+using Hastane.Shared.Security;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,11 +10,13 @@ public class InvoiceService : IInvoiceService
 {
     private readonly PaymentDbContext _db;
     private readonly IMapper _mapper;
+    private readonly ICurrentUser _user;
 
-    public InvoiceService(PaymentDbContext db, IMapper mapper)
+    public InvoiceService(PaymentDbContext db, IMapper mapper, ICurrentUser user)
     {
         _db = db;
         _mapper = mapper;
+        _user = user;
     }
 
     public async Task<OperationResult<PagedResult<ResultInvoiceDto>>> GetAllAsync(InvoiceListQuery query, CancellationToken ct)
@@ -22,8 +25,30 @@ public class InvoiceService : IInvoiceService
             return OperationResult<PagedResult<ResultInvoiceDto>>.Validation("page >= 1 ve pageSize 1-50 arasında olmalı.");
 
         var invoices = _db.Invoices.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(query.PatientId)) invoices = invoices.Where(i => i.PatientId == query.PatientId);
-        if (!string.IsNullOrWhiteSpace(query.DoctorId)) invoices = invoices.Where(i => i.DoctorId == query.DoctorId);
+
+        // Liste filtresi ZORLAMA (IDOR savunması): Admin dışında kapsamı istemci değil token belirler.
+        var scope = PaymentAccess.ScopeOf(_user);
+        var me = _user.UserId;
+        var myDoctor = _user.DoctorId;
+        var patientFilter = query.PatientId;
+        var doctorFilter = query.DoctorId;
+        switch (scope)
+        {
+            case AccessScope.None:
+                return OperationResult<PagedResult<ResultInvoiceDto>>.Ok(new PagedResult<ResultInvoiceDto>
+                {
+                    Items = [],
+                    TotalCount = 0,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                });
+            case AccessScope.Patient: patientFilter = me; break;
+            case AccessScope.Doctor: doctorFilter = myDoctor; break;
+            case AccessScope.Either: invoices = invoices.Where(i => i.PatientId == me || i.DoctorId == myDoctor); break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(patientFilter)) invoices = invoices.Where(i => i.PatientId == patientFilter);
+        if (!string.IsNullOrWhiteSpace(doctorFilter)) invoices = invoices.Where(i => i.DoctorId == doctorFilter);
 
         var total = await invoices.CountAsync(ct);
         var items = await invoices
@@ -45,6 +70,8 @@ public class InvoiceService : IInvoiceService
         var invoice = await _db.Invoices.AsNoTracking()
             .Include(i => i.Lines.OrderBy(l => l.Id))
             .FirstOrDefaultAsync(i => i.Id == id, ct);
-        return invoice is null ? null : _mapper.Map<GetByIdInvoiceDto>(invoice);
+        // Sahibi olmayan için "yok" ile aynı cevap (null -> 404).
+        return invoice is null || !PaymentAccess.CanView(_user, invoice.PatientId, invoice.DoctorId)
+            ? null : _mapper.Map<GetByIdInvoiceDto>(invoice);
     }
 }

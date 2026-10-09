@@ -16,6 +16,7 @@ public class AppointmentMappingConfig : IRegister
         // Id, Status ve CreatedAt sunucu işi (serviste atanır); Create DTO'sunda zaten yoklar.
         config.NewConfig<CreateAppointmentDto, AppointmentEntity>()
             .Ignore(a => a.Id)
+            .Ignore(a => a.PatientId) // token'dan atanır
             .Ignore(a => a.Status)
             .Ignore(a => a.CreatedAt)
             .Ignore(a => a.Detail!);

@@ -4,6 +4,8 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Hastane.Payment.Api.Data;
 using Hastane.Payment.Api.Dtos;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Hastane.Payment.Tests;
@@ -25,8 +27,25 @@ public abstract class PaymentTestBase
     protected PaymentTestBase(PaymentApiFactory factory)
     {
         Factory = factory;
-        Client = factory.CreateClient();
+        // Mevcut testler "herkes adına işlem yapabilen" Admin ile çalışır: gövdedeki PatientId ile senaryo kurmaya devam eder,
+        // her ödemeyi görür ve iade eder. Yetki kuralları PaymentAuthorizationTests'te.
+        Client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
     }
+
+    // Belirli bir kimliğin token'ıyla yeni istemci (yetki testleri için).
+    protected HttpClient ClientFor(string? token = null)
+    {
+        var client = Factory.CreateClient();
+        return token is null ? client : client.WithBearer(token);
+    }
+
+    protected static string PatientToken(string sub) => TestJwt.Create(sub, [HastaneRoles.Patient]);
+    protected static string DoctorToken(string doctorId) => TestJwt.Create(Unique("usr"), [HastaneRoles.Doctor], doctorId);
+    protected static string AdminToken() => TestJwt.Create(Unique("adm"), [HastaneRoles.Admin]);
+
+    // Servisi HTTP dışında doğrudan çağıran testler için: HttpContext olmadığından "kullanıcı" olarak Admin verilir.
+    protected static T CreateServiceAsAdmin<T>(IServiceProvider services) where T : class
+        => ActivatorUtilities.CreateInstance<T>(services, new StubAdminUser());
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -98,4 +117,15 @@ public abstract class PaymentTestBase
         foreach (var secret in secrets)
             Assert.False(ContainsSecret(text, secret), $"Metin gizli değer içeriyor ({secret.Length} karakterlik).");
     }
+}
+
+internal sealed class StubAdminUser : ICurrentUser
+{
+    public bool IsAuthenticated => true;
+    public string? UserId => "admin-stub";
+    public string? Email => null;
+    public string? DoctorId => null;
+    public IReadOnlyList<string> Roles => [HastaneRoles.Admin];
+    public bool IsAdmin => true;
+    public bool IsInRole(string role) => role == HastaneRoles.Admin;
 }

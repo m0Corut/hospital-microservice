@@ -1,5 +1,7 @@
 using Hastane.Payment.Api.Dtos;
 using Hastane.Payment.Api.Services;
+using Hastane.Shared.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.Payment.Api.Controllers;
@@ -8,6 +10,10 @@ namespace Hastane.Payment.Api.Controllers;
 [Route("api/payments")]
 public class PaymentsController : ControllerBase
 {
+    // Her eylem kendi yetkisini AÇIKÇA taşır (sınıf düzeyi [Authorize] ile metot düzeyi birleşip karışmasın).
+    private const string AnyPaymentRole = $"{HastaneRoles.Admin},{HastaneRoles.Doctor},{HastaneRoles.Patient}";
+    private const string PatientOrAdmin = $"{HastaneRoles.Patient},{HastaneRoles.Admin}";
+
     private readonly IPaymentService _service;
 
     public PaymentsController(IPaymentService service)
@@ -16,11 +22,13 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpGet]
+    [Authorize(Roles = AnyPaymentRole)]
     public async Task<ActionResult<PagedResult<PaymentResultDto>>> GetAll([FromQuery] PaymentListQuery query, CancellationToken ct)
         => ToActionResult(await _service.GetAllAsync(query, ct));
 
     // {id:guid} kısıtı: Guid biçiminde olmayan yol hiçbir rotayla eşleşmez, 500 yerine 404 döner.
     [HttpGet("{id:guid}")]
+    [Authorize(Roles = AnyPaymentRole)]
     public async Task<ActionResult<PaymentResultDto>> GetById(Guid id, CancellationToken ct)
     {
         var payment = await _service.GetByIdAsync(id, ct);
@@ -29,6 +37,7 @@ public class PaymentsController : ControllerBase
 
     // Idempotency-Key zorunlu: istemci her "ödeme niyeti" için bir anahtar üretir, yeniden denemede AYNISINI yollar.
     [HttpPost]
+    [Authorize(Roles = PatientOrAdmin)]
     public async Task<ActionResult<PaymentResultDto>> Create(
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CreatePaymentDto dto, CancellationToken ct)
     {
@@ -42,6 +51,7 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/refund")]
+    [Authorize(Policy = HastanePolicies.AdminOnly)]
     public async Task<ActionResult<PaymentResultDto>> Refund(Guid id, CancellationToken ct)
         => ToActionResult(await _service.RefundAsync(id, ct));
 
@@ -49,6 +59,7 @@ public class PaymentsController : ControllerBase
     {
         OperationStatus.Ok or OperationStatus.Created => Ok(result.Value),
         OperationStatus.NotFound => NotFound(),
+        OperationStatus.Forbidden => Forbid(),
         OperationStatus.Validation => BadRequest(new ProblemDetails { Status = 400, Title = "Geçersiz istek", Detail = result.Error }),
         OperationStatus.Conflict => Conflict(new ProblemDetails { Status = 409, Title = "Çakışma", Detail = result.Error }),
         OperationStatus.BadGateway => StatusCode(StatusCodes.Status502BadGateway,

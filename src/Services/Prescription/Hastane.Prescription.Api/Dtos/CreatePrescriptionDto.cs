@@ -8,8 +8,10 @@ public class CreatePrescriptionDto
 {
     [NotEmptyGuid]
     public Guid AppointmentId { get; set; }
-    [Required, StringLength(64)]
-    public string DoctorId { get; set; } = string.Empty;
+    // Doktor için YOK SAYILIR: DoctorId token'daki doctor_id claim'inden gelir. Yalnız Admin başkası adına
+    // reçete yazarken doldurur (controller'da zorunlu tutulur). PatientId ise gövdeden gelir: doktor hastayı seçer.
+    [StringLength(64)]
+    public string? DoctorId { get; set; }
     [Required, StringLength(64)]
     public string PatientId { get; set; } = string.Empty;
     [StringLength(2000)]

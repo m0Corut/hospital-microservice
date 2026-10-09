@@ -9,8 +9,10 @@ public class CreatePaymentDto
     [NotEmptyGuid]
     public Guid AppointmentId { get; set; }
 
-    [Required, StringLength(64)]
-    public string PatientId { get; set; } = string.Empty;
+    // Hasta (Patient rolü) için YOK SAYILIR: PatientId token'daki sub'dan gelir (başkası adına ödeme açılamaz).
+    // Yalnız Admin başkası adına ödeme alırken doldurur. DoctorId ise gövdeden gelir: hasta doktoru seçer.
+    [StringLength(64)]
+    public string? PatientId { get; set; }
 
     [Required, StringLength(64)]
     public string DoctorId { get; set; } = string.Empty;
