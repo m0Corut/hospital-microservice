@@ -1,0 +1,9 @@
+<Project>
+  <!-- Paket sürümleri tek yerde: csproj'lar yalnız paket adını yazar (<PackageReference Include="X" />).
+       İki servis aynı paketin farklı sürümünü kullanıp birbirinden farklı davranmasın. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,48 @@
+# Geliştirme altyapısı. Servislerin kendisi değil, kullandıkları veritabanları ve log aracı.
+# Başlat: docker compose up -d   Durdur: docker compose down   (veri volume'larda kalır)
+# Şifreler .env dosyasından gelir (.env.example'ı kopyala). Diğer veritabanları (MariaDB, Redis,
+# Elasticsearch) ilgili dalgada eklenecek; şimdiden açıp bilgisayarı yormayalım.
+
+name: hastane
+
+services:
+  mongo:
+    image: mongo:8.0
+    container_name: hastane-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: hastane-sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD}
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    restart: unless-stopped
+
+  seq:
+    image: datalust/seq:latest
+    container_name: hastane-seq
+    ports:
+      - "5341:80"
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"   # yalnız yerel geliştirme
+    volumes:
+      - seq-data:/data
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  sqlserver-data:
+  seq-data:
