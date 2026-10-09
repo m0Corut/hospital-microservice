@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Test yardımcı kütüphanesi: yalnız test projeleri başvurur, üretim servisleri ASLA. -->
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Shared\Hastane.Shared\Hastane.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

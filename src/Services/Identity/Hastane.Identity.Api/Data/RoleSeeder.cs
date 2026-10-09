@@ -1,4 +1,4 @@
-using Hastane.Identity.Api.Constants;
+using Hastane.Shared.Security;
 using Microsoft.AspNetCore.Identity;
 
 namespace Hastane.Identity.Api.Data;
@@ -12,7 +12,7 @@ public static class RoleSeeder
         using var scope = services.CreateScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-        foreach (var role in AppRoles.All)
+        foreach (var role in HastaneRoles.All)
         {
             if (await roleManager.RoleExistsAsync(role)) continue;
 

@@ -2,9 +2,12 @@ using Hastane.Identity.Api.Data;
 using Hastane.Identity.Api.Entities;
 using Hastane.Identity.Api.Mapping;
 using Hastane.Identity.Api.Services;
+using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +21,7 @@ builder.Services.AddMapster();
 builder.Services.AddDbContext<HastaneIdentityDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("IdentityDb")));
 
-// AddIdentityCore: yalnız kullanıcı/rol/şifre yönetimi. Cookie ya da JWT şeması EKLENMEZ (JWT Dalga 3).
+// AddIdentityCore: yalnız kullanıcı/rol/şifre yönetimi (şifre hash'i, kilitleme). Giriş KARTI (token) ayrıca üretilir.
 builder.Services.AddIdentityCore<AppUser>(options =>
     {
         options.Password.RequiredLength = 8;
@@ -36,13 +39,24 @@ builder.Services.AddIdentityCore<AppUser>(options =>
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<HastaneIdentityDbContext>()
     .AddSignInManager();
-// SignInManager kimlik doğrulama altyapısını (şema sağlayıcısı) ister; şema eklemeden yalnız çekirdeği kaydederiz.
-builder.Services.AddAuthenticationCore();
+
+// Gelen token'ı doğrulama (RS256, açık anahtar) + politikalar. Identity de kendi uçlarını bununla korur.
+builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
+builder.Services.AddHastaneCurrentUser();
+
+// Token ÜRETMEK Identity'ye özgü: özel anahtar zorunlu (yoksa açılışta durur).
+builder.Services.AddSingleton<IValidateOptions<JwtOptions>, IdentityJwtOptionsValidator>();
+builder.Services.TryAddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 var app = builder.Build();
+
+// Yapılandırma hatası (özel anahtar yok/bozuk) veritabanına dokunmadan, anlaşılır mesajla burada patlasın.
+_ = app.Services.GetRequiredService<IJwtTokenService>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -54,6 +68,12 @@ if (app.Environment.IsDevelopment())
 
 // Roller her ortamda garanti altına alınır (idempotent).
 await RoleSeeder.SeedAsync(app.Services);
+// İlk Admin: yalnız Seed:AdminEmail/AdminPassword verilmişse ve hiç Admin yoksa.
+await AdminSeeder.SeedAsync(app.Services);
+
+// Sıra önemli: önce "kimsin" (token'ı çöz), sonra "iznin var mı".
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

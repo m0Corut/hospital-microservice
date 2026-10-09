@@ -1,15 +1,21 @@
 using System.Net;
 using System.Net.Http.Json;
 using Hastane.Identity.Api.Dtos;
+using Hastane.TestSupport;
 
 namespace Hastane.Identity.Tests;
 
 public class AuthApiTests : IClassFixture<IdentityApiFactory>
 {
     private const string GoodPassword = "Passw0rd1";
+    private readonly IdentityApiFactory _factory;
     private readonly HttpClient _client;
 
-    public AuthApiTests(IdentityApiFactory factory) => _client = factory.CreateClient();
+    public AuthApiTests(IdentityApiFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -49,9 +55,11 @@ public class AuthApiTests : IClassFixture<IdentityApiFactory>
         AssertNoSecrets(body);
 
         var result = await login.Content.ReadFromJsonAsync<LoginResultDto>(Ct);
-        Assert.Equal(registered.Id, result!.Id);
-        Assert.Equal(["Patient"], result.Roles);
-        Assert.False(string.IsNullOrWhiteSpace(result.Message));
+        Assert.Equal(registered.Id, result!.User.Id);
+        Assert.Equal(["Patient"], result.User.Roles);
+        Assert.Equal("Bearer", result.TokenType);
+        Assert.False(string.IsNullOrWhiteSpace(result.AccessToken));
+        Assert.True(result.ExpiresAt > DateTime.UtcNow.AddMinutes(25));
     }
 
     [Fact]
@@ -61,7 +69,11 @@ public class AuthApiTests : IClassFixture<IdentityApiFactory>
         var user = await response.Content.ReadFromJsonAsync<UserSummaryDto>(Ct);
         Assert.EndsWith($"/api/users/{user!.Id}", response.Headers.Location!.AbsolutePath);
 
-        var fetched = await _client.GetAsync(response.Headers.Location, Ct);
+        // Artık users/{id} token ister: kayıt olan kişi kendi kaydını kendi token'ıyla okur.
+        var login = await _client.PostAsJsonAsync("/api/auth/login",
+            new { email = user.Email, password = GoodPassword }, Ct);
+        var token = (await login.Content.ReadFromJsonAsync<LoginResultDto>(Ct))!.AccessToken;
+        var fetched = await _factory.CreateClient().WithBearer(token).GetAsync(response.Headers.Location, Ct);
         Assert.Equal(HttpStatusCode.OK, fetched.StatusCode);
     }
 
@@ -87,7 +99,8 @@ public class AuthApiTests : IClassFixture<IdentityApiFactory>
         Assert.NotEqual("00000000-0000-0000-0000-000000000001", user.Id);
 
         // Veritabanındaki gerçek durum da aynı: GET ile tekrar oku.
-        var fetched = await _client.GetFromJsonAsync<UserSummaryDto>($"/api/users/{user.Id}", Ct);
+        var admin = IdentityTestData.AdminClient(_factory);
+        var fetched = await admin.GetFromJsonAsync<UserSummaryDto>($"/api/users/{user.Id}", Ct);
         Assert.Equal(["Patient"], fetched!.Roles);
     }
 

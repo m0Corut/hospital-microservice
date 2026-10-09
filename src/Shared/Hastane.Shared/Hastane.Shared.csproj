@@ -2,4 +2,15 @@
 
   <!-- Ortak ayarlar Directory.Build.props'tan gelir. -->
 
+  <ItemGroup>
+    <!-- JwtBearer, ASP.NET Core çerçevesini (HttpContext, Authorization) ister; kütüphane de web çerçevesini kullanır. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Açık anahtar derlemenin İÇİNE gömülür: servis çıktısında dosya kaybolamaz, yanlış klasörden okunamaz. -->
+    <EmbeddedResource Include="jwt-public.pem" LogicalName="Hastane.Shared.jwt-public.pem" />
+  </ItemGroup>
+
 </Project>

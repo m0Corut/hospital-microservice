@@ -1,7 +1,7 @@
-namespace Hastane.Identity.Api.Constants;
+namespace Hastane.Shared.Security;
 
-// Rol adları tek yerde: yazım hatası ("Pasient") sessizce başka rol yaratmasın diye string'ler dağılmaz.
-public static class AppRoles
+// Rol adları tek yerde: "Pasient" gibi yazım hatası sessizce başka rol yaratmasın.
+public static class HastaneRoles
 {
     public const string Admin = "Admin";
     public const string Doctor = "Doctor";

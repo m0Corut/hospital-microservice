@@ -12,9 +12,5 @@ public class UserMappingConfig : IRegister
         config.NewConfig<AppUser, UserSummaryDto>()
             .Map(d => d.Email, s => s.Email ?? string.Empty)
             .Ignore(d => d.Roles);
-
-        // Message'ı servis yazar.
-        config.NewConfig<UserSummaryDto, LoginResultDto>()
-            .Ignore(d => d.Message);
     }
 }

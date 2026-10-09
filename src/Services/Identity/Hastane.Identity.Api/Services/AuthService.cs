@@ -1,7 +1,6 @@
-using Hastane.Identity.Api.Constants;
 using Hastane.Identity.Api.Dtos;
 using Hastane.Identity.Api.Entities;
-using MapsterMapper;
+using Hastane.Shared.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,15 +11,15 @@ public class AuthService : IAuthService
     private readonly UserManager<AppUser> _userManager;
     private readonly SignInManager<AppUser> _signInManager;
     private readonly IUserService _userService;
-    private readonly IMapper _mapper;
+    private readonly IJwtTokenService _tokens;
 
     public AuthService(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
-        IUserService userService, IMapper mapper)
+        IUserService userService, IJwtTokenService tokens)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _userService = userService;
-        _mapper = mapper;
+        _tokens = tokens;
     }
 
     public async Task<RegisterOutcome> RegisterAsync(RegisterDto dto, CancellationToken ct)
@@ -60,7 +59,7 @@ public class AuthService : IAuthService
         }
 
         // Rol istemciden gelmez: kayıt olan HER ZAMAN Patient.
-        var roleResult = await _userManager.AddToRoleAsync(user, AppRoles.Patient);
+        var roleResult = await _userManager.AddToRoleAsync(user, HastaneRoles.Patient);
         if (!roleResult.Succeeded)
         {
             // Rolsüz yarım kullanıcı kalmasın.
@@ -87,8 +86,13 @@ public class AuthService : IAuthService
 
         var summary = await _userService.GetByIdAsync(user.Id, ct)
             ?? throw new InvalidOperationException("Giriş yapan kullanıcı okunamadı.");
-        var login = _mapper.Map<LoginResultDto>(summary);
-        login.Message = "Giriş başarılı.";
-        return new LoginOutcome(LoginStatus.Success, login);
+        // Roller ve doktor bağı veritabanından HER girişte taze okunur; token bu andaki yetkiyi taşır.
+        var token = _tokens.CreateAccessToken(summary);
+        return new LoginOutcome(LoginStatus.Success, new LoginResultDto
+        {
+            AccessToken = token.Value,
+            ExpiresAt = token.ExpiresAt,
+            User = summary,
+        });
     }
 }

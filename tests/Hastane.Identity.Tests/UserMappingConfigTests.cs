@@ -46,21 +46,13 @@ public class UserMappingConfigTests
     }
 
     [Fact]
-    public void Summary_To_LoginResult_CopiesFields_AndLeavesMessageEmpty()
+    public void AppUser_To_Summary_CopiesDoctorLink()
     {
-        var summary = new UserSummaryDto
-        {
-            Id = "abc",
-            FirstName = "Ayşe",
-            LastName = "Yılmaz",
-            Email = "a@b.co",
-            Roles = ["Patient"],
-        };
+        var user = new AppUser { Id = "abc", Email = "d@b.co", DoctorId = "665f1c2e9b1d4a0012345678" };
 
-        var result = summary.Adapt<LoginResultDto>(StrictConfig());
+        var dto = user.Adapt<UserSummaryDto>(StrictConfig());
 
-        Assert.Equal(["Patient"], result.Roles);
-        Assert.Equal("a@b.co", result.Email);
-        Assert.Equal(string.Empty, result.Message);
+        Assert.Equal("665f1c2e9b1d4a0012345678", dto.DoctorId);
+        Assert.Null(new AppUser { Email = "x@y.zz" }.Adapt<UserSummaryDto>(StrictConfig()).DoctorId);
     }
 }

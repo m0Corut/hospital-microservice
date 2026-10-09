@@ -33,5 +33,7 @@
     <Project Path="tests/Hastane.Payment.Tests/Hastane.Payment.Tests.csproj" />
     <Project Path="tests/Hastane.Prescription.Tests/Hastane.Prescription.Tests.csproj" />
     <Project Path="tests/Hastane.Review.Tests/Hastane.Review.Tests.csproj" />
+    <Project Path="tests/Hastane.Shared.Tests/Hastane.Shared.Tests.csproj" />
+    <Project Path="tests/Hastane.TestSupport/Hastane.TestSupport.csproj" />
   </Folder>
 </Solution>

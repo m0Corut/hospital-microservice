@@ -10,4 +10,8 @@ public class AppUser : IdentityUser
     public string LastName { get; set; } = string.Empty;
     // Sunucu atar (UTC); istemci gönderemez.
     public DateTime CreatedAt { get; set; }
+
+    // Doctor servisindeki (MongoDB) doktor kaydının kimliği. Yalnız Admin bağlar (PUT users/{id}/doctor-link).
+    // Token'a doctor_id claim'i olarak buradan girer. Doctor servisine sorulmaz: kimlik metin olarak saklanır.
+    public string? DoctorId { get; set; }
 }

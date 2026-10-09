@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using Hastane.Identity.Api.Data;
 using Hastane.Identity.Api.Dtos;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,19 +12,21 @@ namespace Hastane.Identity.Tests;
 public class UsersApiTests : IClassFixture<IdentityApiFactory>
 {
     private readonly IdentityApiFactory _factory;
-    private readonly HttpClient _client;
+    private readonly HttpClient _anonymous;
+    private readonly HttpClient _admin;
 
     public UsersApiTests(IdentityApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _anonymous = factory.CreateClient();
+        _admin = IdentityTestData.AdminClient(factory);
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private async Task<UserSummaryDto> RegisterAsync(string firstName)
     {
-        var response = await _client.PostAsJsonAsync("/api/auth/register",
+        var response = await _anonymous.PostAsJsonAsync("/api/auth/register",
             new { firstName, lastName = "Test", email = $"{Guid.NewGuid():N}@example.com", password = "Passw0rd1" }, Ct);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<UserSummaryDto>(Ct))!;
@@ -46,14 +50,24 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
 
         using var scope = _factory.Services.CreateScope();
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-        Assert.Equal(3, roleManager.Roles.Count());
+        // Başka testler özel rol ekleyebilir; sistem rolleri tam üçer kez değil BİR kez var.
+        foreach (var role in HastaneRoles.All)
+            Assert.Single(roleManager.Roles.Where(r => r.Name == role));
+    }
+
+    [Fact]
+    public async Task GetById_WithoutToken_Returns401()
+    {
+        var user = await RegisterAsync("Mehmet");
+        var response = await _anonymous.GetAsync($"/api/users/{user.Id}", Ct);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task GetById_ReturnsSummaryWithoutSecrets()
     {
         var user = await RegisterAsync("Mehmet");
-        var response = await _client.GetAsync($"/api/users/{user.Id}", Ct);
+        var response = await _admin.GetAsync($"/api/users/{user.Id}", Ct);
         var body = await response.Content.ReadAsStringAsync(Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -66,9 +80,29 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
     }
 
     [Fact]
+    public async Task GetById_Self_Returns200_ButOtherPatientsRecord_Returns404()
+    {
+        var me = await RegisterAsync("Ben");
+        var other = await RegisterAsync("Başkası");
+        var meClient = _factory.CreateClient().WithBearer(TestJwt.Create(me.Id, [HastaneRoles.Patient]));
+
+        Assert.Equal(HttpStatusCode.OK, (await meClient.GetAsync($"/api/users/{me.Id}", Ct)).StatusCode);
+        // Rol yetmiyor ama 403 değil 404: başkasının kaydının var olduğu sızmasın.
+        Assert.Equal(HttpStatusCode.NotFound, (await meClient.GetAsync($"/api/users/{other.Id}", Ct)).StatusCode);
+    }
+
+    [Fact]
+    public async Task GetById_Doctor_CanReadAnyUser()
+    {
+        var user = await RegisterAsync("Hasta");
+        var doctor = IdentityTestData.ClientWithRoles(_factory, HastaneRoles.Doctor);
+        Assert.Equal(HttpStatusCode.OK, (await doctor.GetAsync($"/api/users/{user.Id}", Ct)).StatusCode);
+    }
+
+    [Fact]
     public async Task GetById_Unknown_Returns404()
     {
-        var response = await _client.GetAsync($"/api/users/{Guid.NewGuid()}", Ct);
+        var response = await _admin.GetAsync($"/api/users/{Guid.NewGuid()}", Ct);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -78,7 +112,7 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
     [InlineData("'; DROP TABLE AspNetUsers;--")]
     public async Task GetById_MalformedId_Returns404(string id)
     {
-        var response = await _client.GetAsync($"/api/users/{Uri.EscapeDataString(id)}", Ct);
+        var response = await _admin.GetAsync($"/api/users/{Uri.EscapeDataString(id)}", Ct);
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
@@ -89,7 +123,7 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
         var b = await RegisterAsync("Berk");
         await RegisterAsync("Can"); // istenmedi
 
-        var list = await _client.GetFromJsonAsync<List<UserSummaryDto>>(
+        var list = await _admin.GetFromJsonAsync<List<UserSummaryDto>>(
             $"/api/users?ids={a.Id},{b.Id},{Guid.NewGuid()},bozuk-id", Ct);
 
         Assert.Equal(2, list!.Count);
@@ -98,13 +132,25 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
         Assert.All(list, u => Assert.Equal(["Patient"], u.Roles));
     }
 
+    [Fact]
+    public async Task GetByIds_Authorization_Anonymous401_Patient403_Doctor200()
+    {
+        Assert.Equal(HttpStatusCode.Unauthorized, (await _anonymous.GetAsync("/api/users?ids=", Ct)).StatusCode);
+
+        var patient = IdentityTestData.ClientWithRoles(_factory, HastaneRoles.Patient);
+        Assert.Equal(HttpStatusCode.Forbidden, (await patient.GetAsync("/api/users?ids=", Ct)).StatusCode);
+
+        var doctor = IdentityTestData.ClientWithRoles(_factory, HastaneRoles.Doctor);
+        Assert.Equal(HttpStatusCode.OK, (await doctor.GetAsync("/api/users?ids=", Ct)).StatusCode);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData(",,,")]
     public async Task GetByIds_EmptyOrNoIds_ReturnsEmptyList(string ids)
     {
-        var response = await _client.GetAsync($"/api/users?ids={Uri.EscapeDataString(ids)}", Ct);
+        var response = await _admin.GetAsync($"/api/users?ids={Uri.EscapeDataString(ids)}", Ct);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Empty((await response.Content.ReadFromJsonAsync<List<UserSummaryDto>>(Ct))!);
     }
@@ -112,7 +158,7 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
     [Fact]
     public async Task GetByIds_WithoutQuery_ReturnsEmptyList()
     {
-        var list = await _client.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Ct);
+        var list = await _admin.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Ct);
         Assert.Empty(list!);
     }
 
@@ -120,7 +166,7 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
     public async Task GetByIds_TooMany_Returns400()
     {
         var ids = string.Join(",", Enumerable.Range(0, 101).Select(_ => Guid.NewGuid()));
-        var response = await _client.GetAsync($"/api/users?ids={ids}", Ct);
+        var response = await _admin.GetAsync($"/api/users?ids={ids}", Ct);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

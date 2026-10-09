@@ -1,12 +1,11 @@
 namespace Hastane.Identity.Api.Dtos;
 
-// UserSummaryDto ile aynı alanlar + Message. (Dalga 3'te buraya JWT eklenecek.)
+// JWT-TASARIM.md §6: { accessToken, tokenType, expiresAt, user }
 public class LoginResultDto
 {
-    public string Id { get; set; } = string.Empty;
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public List<string> Roles { get; set; } = [];
-    public string Message { get; set; } = string.Empty;
+    public string AccessToken { get; set; } = string.Empty;
+    public string TokenType { get; set; } = "Bearer";
+    // UTC; istemci "ne zaman yeniden giriş yapmalıyım" diye buna bakar.
+    public DateTime ExpiresAt { get; set; }
+    public UserSummaryDto User { get; set; } = new();
 }
