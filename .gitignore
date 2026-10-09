@@ -1,0 +1,19 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+TestResults/
+*.trx
+
+# Sırlar ve yerel ayarlar
+.env
+*.local.json
+appsettings.*.local.json
+
+
+# Loglar
+logs/
+*.log
