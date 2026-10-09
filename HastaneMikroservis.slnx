@@ -7,11 +7,15 @@
   <Folder Name="/src/Services/Doctor/">
     <Project Path="src/Services/Doctor/Hastane.Doctor.Api/Hastane.Doctor.Api.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Review/">
+    <Project Path="src/Services/Review/Hastane.Review.Api/Hastane.Review.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Hastane.Shared/Hastane.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
     <Project Path="tests/Hastane.Doctor.Tests/Hastane.Doctor.Tests.csproj" />
+    <Project Path="tests/Hastane.Review.Tests/Hastane.Review.Tests.csproj" />
   </Folder>
 </Solution>
