@@ -13,6 +13,9 @@
   <Folder Name="/src/Services/Identity/">
     <Project Path="src/Services/Identity/Hastane.Identity.Api/Hastane.Identity.Api.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Prescription/">
+    <Project Path="src/Services/Prescription/Hastane.Prescription.Api/Hastane.Prescription.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Review/">
     <Project Path="src/Services/Review/Hastane.Review.Api/Hastane.Review.Api.csproj" />
   </Folder>
@@ -24,6 +27,7 @@
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
     <Project Path="tests/Hastane.Doctor.Tests/Hastane.Doctor.Tests.csproj" />
     <Project Path="tests/Hastane.Identity.Tests/Hastane.Identity.Tests.csproj" />
+    <Project Path="tests/Hastane.Prescription.Tests/Hastane.Prescription.Tests.csproj" />
     <Project Path="tests/Hastane.Review.Tests/Hastane.Review.Tests.csproj" />
   </Folder>
 </Solution>
