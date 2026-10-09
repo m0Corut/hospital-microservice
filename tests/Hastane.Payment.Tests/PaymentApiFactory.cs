@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Hastane.Payment.Api.Providers;
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -25,6 +26,8 @@ public class PaymentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         builder.UseSetting("ConnectionStrings:DefaultConnection", _sql.GetConnectionString());
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
+        // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar geçer.
+        builder.UseTestJwt();
         builder.ConfigureTestServices(services =>
         {
             // Sahte sağlayıcıyı, çağrıları sayan sürümle değiştir: "sağlayıcı kaç kez çağrıldı" sorusu test edilebilir.

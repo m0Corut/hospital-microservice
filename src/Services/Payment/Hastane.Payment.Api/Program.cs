@@ -4,6 +4,7 @@ using Hastane.Payment.Api.Mapping;
 using Hastane.Payment.Api.Providers;
 using Hastane.Payment.Api.Services;
 using Hastane.Payment.Api.Settings;
+using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,6 +32,11 @@ builder.Services.AddDbContext<PaymentDbContext>((sp, options) =>
 // Sağlayıcı arayüzün arkasında: gerçek sağlayıcıya geçmek için YALNIZ bu satır değişir.
 builder.Services.AddSingleton<IPaymentProvider, MockPaymentProvider>();
 
+// Kimlik doğrulama (token geçerli mi?) + yetkilendirme (politikalar) + "token'daki kullanıcı kim?" (ICurrentUser).
+builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
+builder.Services.AddHastaneAuthorization();
+builder.Services.AddHastaneCurrentUser();
+
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 
@@ -45,6 +51,10 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<PaymentDbContext>().Database.Migrate();
 }
+
+// Sıra önemli: önce kimlik (token okunur), sonra yetki (politika uygulanır), en son uç.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

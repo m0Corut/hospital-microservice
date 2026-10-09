@@ -1,6 +1,7 @@
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
+using Hastane.Shared.Security;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,15 +11,21 @@ public class AppointmentDetailService : IAppointmentDetailService
 {
     private readonly AppointmentDbContext _db;
     private readonly IMapper _mapper;
+    private readonly ICurrentUser _user;
 
-    public AppointmentDetailService(AppointmentDbContext db, IMapper mapper)
+    public AppointmentDetailService(AppointmentDbContext db, IMapper mapper, ICurrentUser user)
     {
         _db = db;
         _mapper = mapper;
+        _user = user;
     }
 
     public async Task<AppointmentDetailDto?> GetByAppointmentIdAsync(Guid appointmentId, CancellationToken ct)
     {
+        // Detay, randevunun sahibine aittir: önce randevuya bakılır; görmeye hakkı yoksa "detay yok" gibi 404.
+        var appointment = await _db.Appointments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appointmentId, ct);
+        if (appointment is null || !AppointmentAccess.CanAccess(_user, appointment)) return null;
+
         var detail = await _db.AppointmentDetails.AsNoTracking()
             .FirstOrDefaultAsync(d => d.AppointmentId == appointmentId, ct);
         return detail is null ? null : _mapper.Map<AppointmentDetailDto>(detail);
@@ -27,7 +34,9 @@ public class AppointmentDetailService : IAppointmentDetailService
     public async Task<OperationResult<AppointmentDetailDto>> UpsertAsync(
         Guid appointmentId, UpsertAppointmentDetailDto dto, CancellationToken ct)
     {
-        if (!await _db.Appointments.AnyAsync(a => a.Id == appointmentId, ct))
+        // Yazma: yalnız randevunun doktoru ya da Admin (hasta yazamaz; rol politikası zaten 403 verir).
+        var appointment = await _db.Appointments.AsNoTracking().FirstOrDefaultAsync(a => a.Id == appointmentId, ct);
+        if (appointment is null || !(_user.IsAdmin || AppointmentAccess.IsDoctorOf(_user, appointment)))
             return OperationResult<AppointmentDetailDto>.NotFound();
 
         var detail = await _db.AppointmentDetails.FirstOrDefaultAsync(d => d.AppointmentId == appointmentId, ct);

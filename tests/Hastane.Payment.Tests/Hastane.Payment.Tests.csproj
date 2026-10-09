@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\Payment\Hastane.Payment.Api\Hastane.Payment.Api.csproj" />
+    <ProjectReference Include="..\Hastane.TestSupport\Hastane.TestSupport.csproj" />
   </ItemGroup>
 
 </Project>

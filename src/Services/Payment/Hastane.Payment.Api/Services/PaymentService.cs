@@ -4,6 +4,7 @@ using Hastane.Payment.Api.Dtos;
 using Hastane.Payment.Api.Entities;
 using Hastane.Payment.Api.Providers;
 using Hastane.Payment.Api.Settings;
+using Hastane.Shared.Security;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -26,11 +27,14 @@ public class PaymentService : IPaymentService
     private readonly BillingOptions _billing;
     private readonly ILogger<PaymentService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ICurrentUser _user;
 
     public PaymentService(
         PaymentDbContext db, IMapper mapper, IPaymentProvider provider,
-        IOptions<BillingOptions> billing, ILogger<PaymentService> logger, IServiceScopeFactory scopeFactory)
+        IOptions<BillingOptions> billing, ILogger<PaymentService> logger, IServiceScopeFactory scopeFactory,
+        ICurrentUser user)
     {
+        _user = user;
         _db = db;
         _mapper = mapper;
         _provider = provider;
@@ -50,6 +54,14 @@ public class PaymentService : IPaymentService
     public async Task<OperationResult<PaymentResultDto>> CreateAsync(
         string? idempotencyKey, CreatePaymentDto dto, CancellationToken ct)
     {
+        // Kimlik token'dan: Admin dışında gövdedeki PatientId YOK SAYILIR (başkası adına ödeme açılamaz).
+        // Bu atama parmak izinden (Idempotency) ÖNCE yapılır: özet, gövdedeki değil gerçek hasta üzerinden hesaplanır.
+        if (!_user.IsAdmin)
+        {
+            if (_user.UserId is not { } sub) return OperationResult<PaymentResultDto>.Forbidden();
+            dto.PatientId = sub;
+        }
+
         // İkinci savunma hattı: DTO öznitelikleri (controller) atlansa bile kurallar burada da korunur.
         var error = ValidateRequest(idempotencyKey, dto);
         if (error is not null) return OperationResult<PaymentResultDto>.Validation(error);
@@ -74,7 +86,7 @@ public class PaymentService : IPaymentService
         {
             Id = Guid.CreateVersion7(),
             AppointmentId = dto.AppointmentId,
-            PatientId = dto.PatientId,
+            PatientId = dto.PatientId!,
             DoctorId = dto.DoctorId,
             Amount = dto.Amount,
             Currency = dto.Currency,
@@ -323,6 +335,8 @@ public class PaymentService : IPaymentService
         };
     }
 
+    private bool CanView(PaymentEntity p) => PaymentAccess.CanView(_user, p.PatientId, p.DoctorId);
+
     private string? ValidateRequest(string? key, CreatePaymentDto dto)
     {
         if (string.IsNullOrWhiteSpace(key)) return "Idempotency-Key başlığı zorunlu.";
@@ -353,8 +367,31 @@ public class PaymentService : IPaymentService
 
         // Sorgu burada yalnız tarif edilir; ToListAsync'e kadar SQL'e gitmez. Her filtre WHERE'e bir AND koşulu ekler.
         IQueryable<PaymentEntity> payments = _db.Payments.AsNoTracking();
-        if (!string.IsNullOrWhiteSpace(query.PatientId)) payments = payments.Where(p => p.PatientId == query.PatientId);
-        if (!string.IsNullOrWhiteSpace(query.DoctorId)) payments = payments.Where(p => p.DoctorId == query.DoctorId);
+
+        // Liste filtresi ZORLAMA (IDOR savunması): Admin dışında kapsamı istemci değil token belirler.
+        // Hasta ?patientId=başkası yazsa bile değer token'daki sub ile EZİLİR; doktor için doctorId aynı şekilde.
+        var scope = PaymentAccess.ScopeOf(_user);
+        var me = _user.UserId;
+        var myDoctor = _user.DoctorId;
+        var patientFilter = query.PatientId;
+        var doctorFilter = query.DoctorId;
+        switch (scope)
+        {
+            case AccessScope.None:
+                return OperationResult<PagedResult<PaymentResultDto>>.Ok(new PagedResult<PaymentResultDto>
+                {
+                    Items = [],
+                    TotalCount = 0,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                });
+            case AccessScope.Patient: patientFilter = me; break;
+            case AccessScope.Doctor: doctorFilter = myDoctor; break;
+            case AccessScope.Either: payments = payments.Where(p => p.PatientId == me || p.DoctorId == myDoctor); break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(patientFilter)) payments = payments.Where(p => p.PatientId == patientFilter);
+        if (!string.IsNullOrWhiteSpace(doctorFilter)) payments = payments.Where(p => p.DoctorId == doctorFilter);
         if (query.AppointmentId is { } appointmentId) payments = payments.Where(p => p.AppointmentId == appointmentId);
         if (query.Status is { } status) payments = payments.Where(p => p.Status == status);
 
@@ -377,7 +414,8 @@ public class PaymentService : IPaymentService
     public async Task<PaymentResultDto?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var payment = await _db.Payments.AsNoTracking().Include(p => p.Invoice).FirstOrDefaultAsync(p => p.Id == id, ct);
-        return payment is null ? null : _mapper.Map<PaymentResultDto>(payment);
+        // Sahibi olmayan için "yok" ile aynı cevap (null -> 404): varlığını sızdırmayız.
+        return payment is null || !CanView(payment) ? null : _mapper.Map<PaymentResultDto>(payment);
     }
 
     // İade akışı (yarışsız): Status iade BİTENE kadar Paid kalır, böylece "bir randevu = bir Paid" indeksi aynı randevuya

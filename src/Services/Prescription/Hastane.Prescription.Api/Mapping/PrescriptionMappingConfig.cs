@@ -20,6 +20,7 @@ public class PrescriptionMappingConfig : IRegister
         // Id, IssuedAt ve kalem Id'leri sunucu işi (serviste atanır); Create DTO'sunda zaten yoklar.
         config.NewConfig<CreatePrescriptionDto, PrescriptionEntity>()
             .Ignore(p => p.Id)
+            .Ignore(p => p.DoctorId) // token'dan atanır
             .Ignore(p => p.IssuedAt);
 
         config.NewConfig<CreatePrescriptionItemDto, PrescriptionItem>()

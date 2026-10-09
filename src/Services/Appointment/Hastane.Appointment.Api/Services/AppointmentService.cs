@@ -1,6 +1,7 @@
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
+using Hastane.Shared.Security;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,14 @@ public class AppointmentService : IAppointmentService
 {
     private readonly AppointmentDbContext _db;
     private readonly IMapper _mapper;
+    private readonly ICurrentUser _user;
 
     // DbContext Scoped: istek başına bir tane. Değişiklik izleyicisi ve bağlantı o isteğe aittir, istekler arası paylaşılmaz.
-    public AppointmentService(AppointmentDbContext db, IMapper mapper)
+    public AppointmentService(AppointmentDbContext db, IMapper mapper, ICurrentUser user)
     {
         _db = db;
         _mapper = mapper;
+        _user = user;
     }
 
     public async Task<List<ResultAppointmentDto>> GetAllAsync(
@@ -26,6 +29,25 @@ public class AppointmentService : IAppointmentService
         // Sorgu burada yalnız tarif edilir; ToListAsync'e kadar SQL'e gitmez. İsteğe bağlı her filtre
         // gelmişse WHERE'e bir koşul daha ekler (hepsi AND ile birleşir), gelmemişse hiç dokunmaz.
         IQueryable<AppointmentEntity> query = _db.Appointments.AsNoTracking();
+
+        // Liste filtresi ZORLAMA (IDOR savunması): Admin dışında kapsamı istemci değil token belirler.
+        // Hasta ?patientId=başkası yazsa bile değer token'daki sub ile EZİLİR; doktor için doctorId aynı şekilde.
+        if (!_user.IsAdmin)
+        {
+            var isPatient = _user.IsInRole(HastaneRoles.Patient) && _user.UserId is not null;
+            var isDoctor = _user.IsInRole(HastaneRoles.Doctor) && _user.DoctorId is not null;
+            var me = _user.UserId;
+            var myDoctor = _user.DoctorId;
+
+            if (isPatient && isDoctor)
+                query = query.Where(a => a.PatientId == me || a.DoctorId == myDoctor);
+            else if (isPatient)
+                patientId = me;
+            else if (isDoctor)
+                doctorId = myDoctor;
+            else
+                return []; // doctor_id'si olmayan Doctor ya da rolsüz kullanıcı: görecek bir şey yok
+        }
 
         if (!string.IsNullOrWhiteSpace(doctorId)) query = query.Where(a => a.DoctorId == doctorId);
         if (!string.IsNullOrWhiteSpace(patientId)) query = query.Where(a => a.PatientId == patientId);
@@ -51,7 +73,8 @@ public class AppointmentService : IAppointmentService
         var entity = await _db.Appointments.AsNoTracking()
             .Include(a => a.Detail)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
-        return entity is null ? null : _mapper.Map<GetByIdAppointmentDto>(entity);
+        // Sahibi olmayan için "yok" ile aynı cevap (null -> 404): varlığını sızdırmayız.
+        return entity is null || !AppointmentAccess.CanAccess(_user, entity) ? null : _mapper.Map<GetByIdAppointmentDto>(entity);
     }
 
     private const string SlotTakenMessage = "Bu doktorun bu saatte başka bir randevusu var.";
@@ -72,6 +95,13 @@ public class AppointmentService : IAppointmentService
     public async Task<OperationResult<ResultAppointmentDto>> CreateAsync(CreateAppointmentDto dto, CancellationToken ct)
     {
         var entity = _mapper.Map<AppointmentEntity>(dto);
+        // Kimlik token'dan: Admin dışında gövdedeki PatientId YOK SAYILIR. Admin başkası adına açabilir (controller boş olmadığını denetler).
+        if (_user.IsAdmin)
+            entity.PatientId = dto.PatientId!;
+        else if (_user.UserId is { } sub)
+            entity.PatientId = sub;
+        else
+            return OperationResult<ResultAppointmentDto>.Forbidden();
         // Sunucunun atadığı alanlar: istemci bunları gönderemez.
         entity.Id = Guid.CreateVersion7();
         entity.Status = AppointmentStatus.Pending;
@@ -98,7 +128,7 @@ public class AppointmentService : IAppointmentService
     public async Task<OperationResult<ResultAppointmentDto>> RescheduleAsync(UpdateAppointmentDto dto, CancellationToken ct)
     {
         var entity = await _db.Appointments.FirstOrDefaultAsync(a => a.Id == dto.Id, ct);
-        if (entity is null) return OperationResult<ResultAppointmentDto>.NotFound();
+        if (entity is null || !AppointmentAccess.CanAccess(_user, entity)) return OperationResult<ResultAppointmentDto>.NotFound();
 
         if (AppointmentStatusTransitions.IsFinal(entity.Status))
             return OperationResult<ResultAppointmentDto>.Conflict(
@@ -126,7 +156,10 @@ public class AppointmentService : IAppointmentService
         Guid id, AppointmentStatus newStatus, CancellationToken ct)
     {
         var entity = await _db.Appointments.FirstOrDefaultAsync(a => a.Id == id, ct);
-        if (entity is null) return OperationResult<ResultAppointmentDto>.NotFound();
+        if (entity is null || !AppointmentAccess.CanAccess(_user, entity)) return OperationResult<ResultAppointmentDto>.NotFound();
+
+        // Sıra: önce sahiplik (404), sonra alan düzeyinde yetki (403), en son durum makinesi (409).
+        if (!AppointmentAccess.CanSetStatus(_user, entity, newStatus)) return OperationResult<ResultAppointmentDto>.Forbidden();
 
         if (!AppointmentStatusTransitions.CanTransition(entity.Status, newStatus))
             return OperationResult<ResultAppointmentDto>.Conflict(

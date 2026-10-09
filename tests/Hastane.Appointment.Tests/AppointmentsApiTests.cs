@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -24,7 +26,9 @@ public class AppointmentsApiTests : IClassFixture<AppointmentApiFactory>
     public AppointmentsApiTests(AppointmentApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        // Mevcut testler "randevuyu herkes adına açabilen" Admin ile çalışır: gövdedeki PatientId/DoctorId ile
+        // senaryo kurmaya devam eder ve her randevuyu görür/değiştirir. Yetki kuralları AppointmentAuthorizationTests'te.
+        _client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

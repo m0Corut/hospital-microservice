@@ -1,6 +1,7 @@
 using Hastane.Prescription.Api.Data;
 using Hastane.Prescription.Api.Mapping;
 using Hastane.Prescription.Api.Services;
+using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -17,6 +18,11 @@ builder.Services.AddMapster();
 builder.Services.AddDbContext<PrescriptionDbContext>((sp, options) =>
     options.UseSqlServer(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")));
 
+// Kimlik doğrulama (token geçerli mi?) + yetkilendirme (politikalar) + "token'daki kullanıcı kim?" (ICurrentUser).
+builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
+builder.Services.AddHastaneAuthorization();
+builder.Services.AddHastaneCurrentUser();
+
 builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
 
 var app = builder.Build();
@@ -30,6 +36,10 @@ if (app.Environment.IsDevelopment())
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<PrescriptionDbContext>().Database.Migrate();
 }
+
+// Sıra önemli: önce kimlik (token okunur), sonra yetki (politika uygulanır), en son uç.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
