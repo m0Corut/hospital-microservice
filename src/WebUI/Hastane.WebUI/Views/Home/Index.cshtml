@@ -1,0 +1,58 @@
+@model HomeIndexViewModel
+@{
+    ViewData["Title"] = "Ana sayfa";
+}
+
+<section class="page-hero mb-4">
+    <h1 class="h3 mb-1">
+        @if (User.Identity?.IsAuthenticated == true)
+        {
+            <text>Hoş geldiniz, @User.Identity.Name</text>
+        }
+        else
+        {
+            <text>Hastane'ye hoş geldiniz</text>
+        }
+    </h1>
+    <p class="mb-3 opacity-75">Branşınıza göre doktor arayın, randevunuzu çevrimiçi alın.</p>
+    <form method="get" action="~/Doctors" class="row g-2">
+        <div class="col-md-9">
+            <input type="search" name="q" class="form-control form-control-lg" placeholder="Doktor adı ya da uzmanlık ara" aria-label="Doktor ara" maxlength="100" />
+        </div>
+        <div class="col-md-3 d-grid">
+            <button type="submit" class="btn btn-accent btn-lg">Doktor ara</button>
+        </div>
+    </form>
+</section>
+
+<h2 class="h5 mb-3">Branşlar</h2>
+@if (Model.BranchesUnavailable)
+{
+    <div class="alert alert-warning" role="alert">Branş listesi şu anda yüklenemiyor. Lütfen biraz sonra tekrar deneyin.</div>
+}
+else if (Model.Branches.Count == 0)
+{
+    <p class="text-muted">Henüz tanımlı branş yok.</p>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var branch in Model.Branches)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <a class="text-decoration-none" href="~/Doctors?branchId=@Uri.EscapeDataString(branch.Id)">
+                    <div class="card card-branch">
+                        <div class="card-body text-center">
+                            <span class="branch-icon mb-2" aria-hidden="true">@(branch.Name.Length > 0 ? branch.Name[..1].ToUpperInvariant() : "?")</span>
+                            <div class="fw-semibold text-body">@branch.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(branch.Description))
+                            {
+                                <div class="small text-muted text-truncate">@branch.Description</div>
+                            }
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}

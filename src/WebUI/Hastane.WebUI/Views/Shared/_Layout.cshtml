@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is string t && t.Length > 0 ? t + " · Hastane" : "Hastane")</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-light bg-white site-nav">
+            <div class="container">
+                <a class="navbar-brand fw-bold" href="~/">
+                    <span class="brand-mark" aria-hidden="true">+</span> Hastane
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                        aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="mainNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item"><a class="nav-link" href="~/Branches">Branşlar</a></li>
+                        <li class="nav-item"><a class="nav-link" href="~/Doctors">Doktorlar</a></li>
+                        @if (User.IsInRole(HastaneRoles.Admin))
+                        {
+                            <li class="nav-item"><a class="nav-link" href="~/Admin">Yönetim</a></li>
+                        }
+                        @if (User.IsInRole(HastaneRoles.Doctor))
+                        {
+                            <li class="nav-item"><a class="nav-link" href="~/Doctor">Doktor Paneli</a></li>
+                        }
+                        @if (User.IsInRole(HastaneRoles.Patient))
+                        {
+                            <li class="nav-item"><a class="nav-link" href="~/Patient">Randevularım</a></li>
+                        }
+                    </ul>
+                    <ul class="navbar-nav align-items-lg-center">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            var roles = User.FindAll(HastaneClaims.Role).Select(c => UiText.RoleName(c.Value)).ToList();
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    @User.Identity.Name
+                                    @if (roles.Count > 0)
+                                    {
+                                        <span class="badge text-bg-info ms-1">@string.Join(", ", roles)</span>
+                                    }
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="px-3">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">Çıkış yap</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Account" asp-action="Login">Giriş yap</a></li>
+                            <li class="nav-item ms-lg-2"><a class="btn btn-primary btn-sm" asp-area="" asp-controller="Account" asp-action="Register">Kayıt ol</a></li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow-1 py-4">
+        <div class="container">
+            @if (TempData["Success"] is string ok)
+            {
+                <div class="alert alert-success" role="status">@ok</div>
+            }
+            @if (TempData["Warning"] is string warn)
+            {
+                <div class="alert alert-warning" role="alert">@warn</div>
+            }
+            @RenderBody()
+        </div>
+    </main>
+
+    <footer class="site-footer py-3 mt-auto">
+        <div class="container d-flex flex-wrap justify-content-between small">
+            <span>&copy; @DateTime.Now.Year Hastane</span>
+            <span>Eğitim projesi: gerçek bir sağlık hizmeti değildir.</span>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

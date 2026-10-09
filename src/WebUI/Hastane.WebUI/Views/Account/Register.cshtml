@@ -1,0 +1,41 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "Kayıt ol";
+}
+
+<div class="auth-card panel-card p-4">
+    <h1 class="h4 mb-3">Hasta olarak kayıt ol</h1>
+    <form asp-action="Register" asp-controller="Account" asp-area="" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <div class="row">
+            <div class="col-6 mb-3">
+                <label asp-for="FirstName" class="form-label"></label>
+                <input asp-for="FirstName" class="form-control" autocomplete="given-name" />
+                <span asp-validation-for="FirstName" class="text-danger small"></span>
+            </div>
+            <div class="col-6 mb-3">
+                <label asp-for="LastName" class="form-label"></label>
+                <input asp-for="LastName" class="form-control" autocomplete="family-name" />
+                <span asp-validation-for="LastName" class="text-danger small"></span>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" autocomplete="username" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="Password" class="text-danger small"></span>
+            <div class="form-text">En az 8 karakter; büyük harf, küçük harf ve rakam içermeli.</div>
+        </div>
+        <div class="mb-3">
+            <label asp-for="ConfirmPassword" class="form-label"></label>
+            <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+            <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Kayıt ol</button>
+    </form>
+    <p class="small text-center mt-3 mb-0">Zaten hesabınız var mı? <a asp-action="Login" asp-controller="Account" asp-area="">Giriş yapın</a></p>
+</div>
