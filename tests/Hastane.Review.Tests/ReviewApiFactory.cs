@@ -1,3 +1,4 @@
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,10 +13,15 @@ public class ReviewApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly MongoDbContainer _mongo = new MongoDbBuilder("mongo:7").Build();
 
+    // Ham belge doğrulaması ve eski (ReviewerId'siz) belge eklemek için: API'yi atlayıp veritabanına doğrudan bakılır.
+    public string MongoConnectionString => _mongo.GetConnectionString();
+
     public async ValueTask InitializeAsync() => await _mongo.StartAsync();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar doğrulanır.
+        builder.UseTestJwt();
         builder.UseSetting("DatabaseSettings:DatabaseName", "hastane_review_test");
         builder.UseSetting("DatabaseSettings:ReviewCollectionName", "reviews");
         // Singleton IMongoClient kaydını konteynerin adresiyle değiştir.

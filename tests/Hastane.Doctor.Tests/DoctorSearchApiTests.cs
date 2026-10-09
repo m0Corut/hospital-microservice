@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Hastane.Doctor.Api.Dtos;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Hastane.Doctor.Api.Entities;
 using static Hastane.Doctor.Tests.TestSupport;
 
@@ -13,7 +15,8 @@ public class DoctorSearchApiTests : IClassFixture<DoctorApiFactory>
 {
     private readonly HttpClient _client;
 
-    public DoctorSearchApiTests(DoctorApiFactory factory) => _client = factory.CreateClient();
+    public DoctorSearchApiTests(DoctorApiFactory factory)
+        => _client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

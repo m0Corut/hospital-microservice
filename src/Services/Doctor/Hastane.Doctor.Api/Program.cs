@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hastane.Doctor.Api.Mapping;
 using Hastane.Doctor.Api.Services;
 using Hastane.Doctor.Api.Settings;
+using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
@@ -29,12 +30,21 @@ builder.Services.AddScoped<IDoctorService, DoctorService>();
 // Açılışta dizinleri (BranchId, Gender, ClinicLocations.City) idempotent oluşturur.
 builder.Services.AddHostedService<DoctorIndexInitializer>();
 
+// Gelen token'ı doğrulama (RS256, açık anahtar) + politikalar + "token'daki kullanıcı kim?" (ICurrentUser).
+builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
+builder.Services.AddHastaneAuthorization();
+builder.Services.AddHastaneCurrentUser();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+// Sıra önemli: önce "kimsin" (token'ı çöz), sonra "iznin var mı"; ikisi de uç eşlemeden önce.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

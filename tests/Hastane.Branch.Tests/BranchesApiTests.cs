@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using Hastane.Branch.Api.Dtos;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 
 namespace Hastane.Branch.Tests;
 
@@ -8,7 +10,9 @@ public class BranchesApiTests : IClassFixture<BranchApiFactory>
 {
     private readonly HttpClient _client;
 
-    public BranchesApiTests(BranchApiFactory factory) => _client = factory.CreateClient();
+    // Yazma uçları Admin ister; davranış testleri Admin token'lı istemciyle koşar (yetki testleri BranchAuthorizationTests'te).
+    public BranchesApiTests(BranchApiFactory factory)
+        => _client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 

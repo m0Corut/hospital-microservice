@@ -1,9 +1,13 @@
 using Hastane.Branch.Api.Dtos;
 using Hastane.Branch.Api.Services;
+using Hastane.Shared.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.Branch.Api.Controllers;
 
+// Güvenli varsayılan: sınıfın her ucu Admin ister; okuma uçları bilerek [AllowAnonymous] ile açılır.
+[Authorize(Policy = HastanePolicies.AdminOnly)]
 [ApiController]
 [Route("api/branches")]
 public class BranchesController : ControllerBase
@@ -13,10 +17,12 @@ public class BranchesController : ControllerBase
     // Servis new ile burada üretilmez; DI konteyneri constructor'dan verir.
     public BranchesController(IBranchService service) => _service = service;
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<List<ResultBranchDto>>> GetAll(CancellationToken ct)
         => Ok(await _service.GetAllAsync(ct));
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<ActionResult<GetByIdBranchDto>> GetById(string id, CancellationToken ct)
     {

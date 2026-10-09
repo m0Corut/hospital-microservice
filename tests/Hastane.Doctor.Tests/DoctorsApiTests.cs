@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Hastane.Doctor.Api.Dtos;
+using Hastane.Shared.Security;
+using Hastane.TestSupport;
 using Hastane.Doctor.Api.Entities;
 using Hastane.Doctor.Api.Validation;
 using MongoDB.Bson;
@@ -19,7 +21,8 @@ public class DoctorsApiTests : IClassFixture<DoctorApiFactory>
     public DoctorsApiTests(DoctorApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        // Yazma uçları Admin ister; davranış testleri Admin token'lı istemciyle koşar (yetki testleri DoctorAuthorizationTests'te).
+        _client = factory.CreateClient().WithBearer(TestJwt.Create("admin-1", [HastaneRoles.Admin]));
     }
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;

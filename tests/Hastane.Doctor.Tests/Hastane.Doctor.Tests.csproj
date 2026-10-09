@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\Doctor\Hastane.Doctor.Api\Hastane.Doctor.Api.csproj" />
+    <ProjectReference Include="..\Hastane.TestSupport\Hastane.TestSupport.csproj" />
   </ItemGroup>
 
 </Project>

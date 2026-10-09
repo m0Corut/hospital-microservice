@@ -1,3 +1,4 @@
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,6 +25,8 @@ public class DoctorApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar doğrulanır.
+        builder.UseTestJwt();
         builder.UseSetting("DatabaseSettings:DatabaseName", DatabaseName);
         builder.UseSetting("DatabaseSettings:DoctorCollectionName", CollectionName);
         // Singleton IMongoClient kaydını konteynerin adresiyle değiştir.

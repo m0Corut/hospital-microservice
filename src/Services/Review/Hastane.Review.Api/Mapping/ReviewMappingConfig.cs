@@ -8,11 +8,14 @@ public class ReviewMappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        // ReviewerId bilerek DTO'da yok: başkasının kullanıcı kimliği sızmasın.
         config.NewConfig<ReviewEntity, ResultReviewDto>();
         // Id'yi Mongo, CreatedAt'i servis (DateTime.UtcNow) atar; Create DTO'sunda zaten yoklar.
         // Güncelleme eşlemesi yok: UpdateReviewDto kaydı komple değil yalnız üç alanı değiştirir (serviste Set).
         config.NewConfig<CreateReviewDto, ReviewEntity>()
             .Ignore(r => r.Id!)
-            .Ignore(r => r.CreatedAt);
+            .Ignore(r => r.CreatedAt)
+            .Ignore(r => r.ReviewerId!)
+            .Ignore(r => r.ReviewerName);
     }
 }

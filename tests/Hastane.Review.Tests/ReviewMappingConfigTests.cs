@@ -28,13 +28,15 @@ public class ReviewMappingConfigTests
         var entity = new CreateReviewDto
         {
             DoctorId = "d1",
-            ReviewerName = "Ali",
             Rating = 4,
             Comment = "İyi",
         }.Adapt<ReviewEntity>(StrictConfig());
 
         Assert.Null(entity.Id);
         Assert.Equal(default, entity.CreatedAt);
+        // Yorum sahibi DTO'dan değil token'dan gelir: eşleme bunları doldurmaz.
+        Assert.Null(entity.ReviewerId);
+        Assert.Equal(string.Empty, entity.ReviewerName);
         Assert.Equal("d1", entity.DoctorId);
         Assert.Equal(4, entity.Rating);
     }

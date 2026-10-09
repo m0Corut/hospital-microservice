@@ -44,9 +44,11 @@ public class ReviewService : IReviewService
         return entity is null ? null : _mapper.Map<ResultReviewDto>(entity);
     }
 
-    public async Task<ResultReviewDto> CreateAsync(CreateReviewDto dto, CancellationToken ct)
+    public async Task<ResultReviewDto> CreateAsync(CreateReviewDto dto, string reviewerId, string reviewerName, CancellationToken ct)
     {
         var entity = _mapper.Map<ReviewEntity>(dto);
+        entity.ReviewerId = reviewerId;
+        entity.ReviewerName = reviewerName;
         // Zamanı sunucu damgalar: istemcinin saati yanlış ya da kötü niyetli olabilir.
         // Mongo tarihi milisaniye hassasiyetinde saklar; yanıt da aynı değeri göstersin diye baştan kırpıyoruz.
         var now = DateTime.UtcNow;
@@ -55,24 +57,31 @@ public class ReviewService : IReviewService
         return _mapper.Map<ResultReviewDto>(entity);
     }
 
-    public async Task<bool> UpdateAsync(UpdateReviewDto dto, CancellationToken ct)
+    public async Task<bool> UpdateAsync(UpdateReviewDto dto, string? ownerId, CancellationToken ct)
     {
         if (!ObjectId.TryParse(dto.Id, out _)) return false;
-        // Belgeyi komple değiştirmek (Replace) yerine yalnız üç alanı Set ediyoruz:
-        // DoctorId ve CreatedAt'e hiç dokunulmadığı için istemci ne gönderirse göndersin değişemez.
+        // Belgeyi komple değiştirmek (Replace) yerine yalnız iki alanı Set ediyoruz:
+        // DoctorId, CreatedAt, ReviewerId ve ReviewerName'e hiç dokunulmadığı için istemci ne gönderirse göndersin değişemez.
         var update = Builders<ReviewEntity>.Update
-            .Set(r => r.ReviewerName, dto.ReviewerName)
             .Set(r => r.Rating, dto.Rating)
             .Set(r => r.Comment, dto.Comment);
-        var result = await _reviews.UpdateOneAsync(r => r.Id == dto.Id, update, cancellationToken: ct);
+        // Sahiplik süzgeçte: "id eşleşir VE sahibi odur" tek sorguda; sahip değilse sonuç "bulunamadı" ile aynıdır (404).
+        var result = await _reviews.UpdateOneAsync(OwnedBy(dto.Id, ownerId), update, cancellationToken: ct);
         return result.MatchedCount > 0;
     }
 
-    public async Task<bool> DeleteAsync(string id, CancellationToken ct)
+    public async Task<bool> DeleteAsync(string id, string? ownerId, CancellationToken ct)
     {
         if (!ObjectId.TryParse(id, out _)) return false;
-        var result = await _reviews.DeleteOneAsync(r => r.Id == id, ct);
+        var result = await _reviews.DeleteOneAsync(OwnedBy(id, ownerId), ct);
         return result.DeletedCount > 0;
+    }
+
+    // ownerId null (Admin): yalnız id. Dolu: ReviewerId tam eşleşmeli; ReviewerId'si olmayan eski belge hiçbir ownerId ile eşleşmez.
+    private static FilterDefinition<ReviewEntity> OwnedBy(string id, string? ownerId)
+    {
+        var byId = Builders<ReviewEntity>.Filter.Eq(r => r.Id, id);
+        return ownerId is null ? byId : Builders<ReviewEntity>.Filter.And(byId, Builders<ReviewEntity>.Filter.Eq(r => r.ReviewerId, ownerId));
     }
 
     public async Task<DoctorRatingSummaryDto> GetDoctorSummaryAsync(string doctorId, CancellationToken ct)

@@ -13,6 +13,11 @@ public class Review
     // Doctor servisindeki doktor kimliği. Yalnız metin: Doctor'a bağlantı/çağrı yok (veri sahipliği Doctor'da).
     public string DoctorId { get; set; } = string.Empty;
 
+    // Yorumu yazanın Identity kullanıcı kimliği (token "sub"). ObjectId DEĞİL, düz metin. Eski belgelerde yok (null):
+    // sahibi bilinmeyen yorumu yalnız Admin değiştirebilir/silebilir. API çıktısında (ResultReviewDto) görünmez.
+    public string? ReviewerId { get; set; }
+
+    // Yazıldığı andaki görünen ad (token "name" claim'i). Anlık görüntüdür; sonra ad değişse de yorumda eskisi kalır.
     public string ReviewerName { get; set; } = string.Empty;
 
     // 1-5 aralığı DTO'da doğrulanır (CreateReviewDto / UpdateReviewDto).

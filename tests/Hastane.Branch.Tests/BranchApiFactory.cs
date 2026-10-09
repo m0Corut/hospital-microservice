@@ -1,3 +1,4 @@
+using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Testcontainers.MongoDb;
@@ -13,6 +14,8 @@ public class BranchApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar doğrulanır.
+        builder.UseTestJwt();
         builder.UseSetting("DatabaseSettings:ConnectionString", _mongo.GetConnectionString());
         builder.UseSetting("DatabaseSettings:DatabaseName", "hastane_branch_test");
         builder.UseSetting("DatabaseSettings:BranchCollectionName", "branches");
