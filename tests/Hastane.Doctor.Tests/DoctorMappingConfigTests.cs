@@ -1,5 +1,6 @@
 using System.Reflection;
 using Hastane.Doctor.Api.Dtos;
+using Hastane.Doctor.Api.Entities;
 using Hastane.Doctor.Api.Mapping;
 using Mapster;
 using DoctorEntity = Hastane.Doctor.Api.Entities.Doctor;
@@ -30,22 +31,78 @@ public class DoctorMappingConfigTests
         {
             FirstName = "Ayşe",
             LastName = "Yılmaz",
+            Gender = DoctorGender.Female,
             BranchId = "b1",
+            Degrees = "BDS",
+            Services = ["Dolgu"],
+            Gallery = ["https://x.test/1.jpg"],
+            SocialLinks = new SocialLinksDto { LinkedIn = "https://linkedin.com/in/a" },
             Educations = [new EducationDto { School = "İTÜ", Department = "Tıp", StartYear = 2000, EndYear = 2006 }],
-            ClinicLocations = [new ClinicLocationDto { ClinicName = "Merkez", City = "Ankara" }],
+            ClinicLocations =
+            [
+                new ClinicLocationDto
+                {
+                    ClinicName = "Merkez", City = "Ankara", HourlyFee = 250.5m, Currency = "USD",
+                    Schedule = [new ScheduleSlotDto { DayOfWeek = DayOfWeek.Monday, StartTime = "09:00", EndTime = "12:00", SlotMinutes = 20 }],
+                },
+            ],
         }.Adapt<DoctorEntity>(StrictConfig());
 
         Assert.Null(entity.Id);
         Assert.Equal("Ayşe", entity.FirstName);
+        Assert.Equal(DoctorGender.Female, entity.Gender);
+        Assert.Equal("BDS", entity.Degrees);
+        Assert.Equal("Dolgu", Assert.Single(entity.Services));
+        Assert.Equal("https://linkedin.com/in/a", entity.SocialLinks.LinkedIn);
         Assert.Equal("İTÜ", Assert.Single(entity.Educations).School);
-        Assert.Equal("Ankara", Assert.Single(entity.ClinicLocations).City);
+        var loc = Assert.Single(entity.ClinicLocations);
+        Assert.Equal("Ankara", loc.City);
+        Assert.Equal(250.5m, loc.HourlyFee);
+        Assert.Equal("USD", loc.Currency);
+        var slot = Assert.Single(loc.Schedule);
+        Assert.Equal((DayOfWeek.Monday, "09:00", "12:00", 20), (slot.DayOfWeek, slot.StartTime, slot.EndTime, slot.SlotMinutes));
     }
 
     [Fact]
-    public void ResultDto_DoesNotExposePhoneOrEmail()
+    public void Entity_To_Results_ComputesDerivedFees_WithoutStoringThem()
     {
-        var names = typeof(ResultDoctorDto).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Select(p => p.Name).ToList();
+        var entity = new DoctorEntity
+        {
+            Id = "x",
+            Gallery = ["1", "2", "3", "4", "5", "6"],
+            ClinicLocations =
+            [
+                new ClinicLocation { City = "Ankara", HourlyFee = 300m, Currency = "TRY" },
+                new ClinicLocation { City = "İzmir", HourlyFee = 100m, Currency = "TRY" },
+                new ClinicLocation { City = "Bursa", HourlyFee = 5m, Currency = "USD" },
+                new ClinicLocation { City = "Adana" },
+            ],
+        };
+        var config = StrictConfig();
+        var item = entity.Adapt<DoctorSearchItemDto>(config);
+        Assert.Equal(100m, item.MinFee);
+        Assert.Equal(300m, item.MaxFee);
+        Assert.Equal("TRY", item.Currency);
+        Assert.Equal("Ankara", item.PrimaryCity);
+        Assert.Equal(4, item.Gallery.Count);
+
+        var none = new DoctorEntity { ClinicLocations = [new ClinicLocation { City = "X" }] }.Adapt<ResultDoctorDto>(config);
+        Assert.Null(none.MinFee);
+        Assert.Null(none.Currency);
+
+        // Türetilmiş alanlar entity'de YOK (saklanmaz).
+        var entityProps = typeof(DoctorEntity).GetProperties().Select(p => p.Name).ToList();
+        Assert.DoesNotContain("MinFee", entityProps);
+        Assert.DoesNotContain("PrimaryCity", entityProps);
+    }
+
+    [Theory]
+    [InlineData(typeof(ResultDoctorDto))]
+    [InlineData(typeof(DoctorSearchItemDto))]
+    [InlineData(typeof(DoctorSummaryDto))]
+    public void PublicDtos_DoNotExposePhoneOrEmail(Type dto)
+    {
+        var names = dto.GetProperties(BindingFlags.Public | BindingFlags.Instance).Select(p => p.Name).ToList();
         Assert.DoesNotContain("Phone", names);
         Assert.DoesNotContain("Email", names);
         Assert.Contains("Phone", typeof(GetByIdDoctorDto).GetProperties().Select(p => p.Name));

@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Hastane.Doctor.Api.Mapping;
 using Hastane.Doctor.Api.Services;
 using Hastane.Doctor.Api.Settings;
@@ -7,7 +8,9 @@ using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Enum'lar JSON'da metin ("Female", "Monday"); sayı kabul edilmez (anlamı belirsiz, sıra değişince bozulur).
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddOpenApi();
 
 TypeAdapterConfig.GlobalSettings.Scan(typeof(DoctorMappingConfig).Assembly);
@@ -22,6 +25,9 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
     new MongoClient(sp.GetRequiredService<IOptions<DatabaseSettings>>().Value.ConnectionString));
 
 builder.Services.AddScoped<IDoctorService, DoctorService>();
+
+// Açılışta dizinleri (BranchId, Gender, ClinicLocations.City) idempotent oluşturur.
+builder.Services.AddHostedService<DoctorIndexInitializer>();
 
 var app = builder.Build();
 

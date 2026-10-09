@@ -20,13 +20,30 @@ public class Doctor
     // Branch servisindeki branş kimliği. Yalnız metin: Branch'e bağlantı/çağrı yok (veri sahipliği Branch'te).
     public string BranchId { get; set; } = string.Empty;
 
+    [BsonRepresentation(BsonType.String)]
+    public DoctorGender Gender { get; set; }
+
+    // Ör. "MDS - Periodontology and Oral Implantology, BDS"
+    public string? Degrees { get; set; }
+
     public string? Biography { get; set; }
     public string? ImageUrl { get; set; }
     public string? Phone { get; set; }
     public string? Email { get; set; }
 
+    public List<string> Services { get; set; } = [];
+    public List<string> Gallery { get; set; } = [];
+    public SocialLinks SocialLinks { get; set; } = new();
+
     public List<Education> Educations { get; set; } = [];
     public List<Experience> Experiences { get; set; } = [];
     public List<Award> Awards { get; set; } = [];
     public List<ClinicLocation> ClinicLocations { get; set; } = [];
+}
+
+public enum DoctorGender
+{
+    Male,
+    Female,
+    Other,
 }

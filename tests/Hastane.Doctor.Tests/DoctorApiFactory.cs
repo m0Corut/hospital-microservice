@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using Testcontainers.MongoDb;
 
@@ -10,14 +11,21 @@ namespace Hastane.Doctor.Tests;
 // Test sınıfı başına gerçek bir MongoDB konteyneri açar; bitince siler.
 public class DoctorApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
+    public const string DatabaseName = "hastane_doctor_test";
+    public const string CollectionName = "doctors";
+
     private readonly MongoDbContainer _mongo = new MongoDbBuilder("mongo:7").Build();
 
     public async ValueTask InitializeAsync() => await _mongo.StartAsync();
 
+    // Ham belge ve dizin kontrolü için: API'yi atlayıp veritabanına doğrudan bakar.
+    public IMongoCollection<BsonDocument> RawCollection
+        => new MongoClient(_mongo.GetConnectionString()).GetDatabase(DatabaseName).GetCollection<BsonDocument>(CollectionName);
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting("DatabaseSettings:DatabaseName", "hastane_doctor_test");
-        builder.UseSetting("DatabaseSettings:DoctorCollectionName", "doctors");
+        builder.UseSetting("DatabaseSettings:DatabaseName", DatabaseName);
+        builder.UseSetting("DatabaseSettings:DoctorCollectionName", CollectionName);
         // Singleton IMongoClient kaydını konteynerin adresiyle değiştir.
         builder.ConfigureServices(services =>
         {

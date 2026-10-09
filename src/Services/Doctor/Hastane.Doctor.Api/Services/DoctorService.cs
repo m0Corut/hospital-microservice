@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
 using Hastane.Doctor.Api.Dtos;
+using Hastane.Doctor.Api.Entities;
 using Hastane.Doctor.Api.Settings;
+using Hastane.Doctor.Api.Validation;
 using MapsterMapper;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -10,6 +14,9 @@ namespace Hastane.Doctor.Api.Services;
 
 public class DoctorService : IDoctorService
 {
+    private const int MaxBranchIds = 20;
+    private const int MaxBatchIds = 100;
+
     private readonly IMongoCollection<DoctorEntity> _doctors;
     private readonly IMapper _mapper;
 
@@ -44,6 +51,7 @@ public class DoctorService : IDoctorService
 
     public async Task<ResultDoctorDto> CreateAsync(CreateDoctorDto dto, CancellationToken ct)
     {
+        DoctorInputValidator.ValidateOrThrow(dto);
         var entity = _mapper.Map<DoctorEntity>(dto);
         await _doctors.InsertOneAsync(entity, cancellationToken: ct);
         return _mapper.Map<ResultDoctorDto>(entity);
@@ -51,6 +59,7 @@ public class DoctorService : IDoctorService
 
     public async Task<bool> UpdateAsync(UpdateDoctorDto dto, CancellationToken ct)
     {
+        DoctorInputValidator.ValidateOrThrow(dto);
         if (!ObjectId.TryParse(dto.Id, out _)) return false;
         var entity = _mapper.Map<DoctorEntity>(dto);
         var result = await _doctors.ReplaceOneAsync(d => d.Id == dto.Id, entity, cancellationToken: ct);
@@ -62,5 +71,148 @@ public class DoctorService : IDoctorService
         if (!ObjectId.TryParse(id, out _)) return false;
         var result = await _doctors.DeleteOneAsync(d => d.Id == id, ct);
         return result.DeletedCount > 0;
+    }
+
+    // Arama/toplu getirmede yalnız kartın ihtiyacı olan alanlar okunur: Phone/Email/Biography
+    // veritabanından hiç çekilmez (sızma riski sıfır, ağ trafiği küçük).
+    private static readonly ProjectionDefinition<DoctorEntity> CardProjection =
+        Builders<DoctorEntity>.Projection
+            .Include(d => d.FirstName).Include(d => d.LastName).Include(d => d.Title).Include(d => d.Degrees)
+            .Include(d => d.Gender).Include(d => d.BranchId).Include(d => d.ImageUrl)
+            .Include(d => d.Services).Include(d => d.Gallery)
+            .Include("ClinicLocations.City").Include("ClinicLocations.HourlyFee").Include("ClinicLocations.Currency");
+
+    public async Task<PagedResult<DoctorSearchItemDto>> SearchAsync(DoctorSearchQuery query, CancellationToken ct)
+    {
+        var filter = BuildSearchFilter(query, out var sort);
+
+        // Sayfa: skip/limit MongoDB'de. TotalCount: AYNI filtreyle ayrı sayım; çünkü Find().Limit() yalnız
+        // bu sayfanın satırlarını döndürür, "toplam kaç eşleşme var" bilgisini taşımaz.
+        var items = await _doctors.Find(filter).Project<DoctorEntity>(CardProjection).Sort(sort)
+            .Skip(SkipCount(query.Page, query.PageSize)).Limit(query.PageSize).ToListAsync(ct);
+        var total = await _doctors.CountDocumentsAsync(filter, cancellationToken: ct);
+
+        return new PagedResult<DoctorSearchItemDto>
+        {
+            Items = _mapper.Map<List<DoctorSearchItemDto>>(items),
+            TotalCount = total,
+            Page = query.Page,
+            PageSize = query.PageSize,
+        };
+    }
+
+    // Derin sayfa pahalıdır: MongoDB skip kadar belgeyi de tek tek sayıp atlar. Üst sınır (MaxPage) bu maliyeti
+    // ve int taşmasını keser; hesap long + checked ile yapılır.
+    private const int MaxPage = 10000;
+
+    private static int SkipCount(int page, int pageSize) => checked((int)((long)(page - 1) * pageSize));
+
+    private static FilterDefinition<DoctorEntity> BuildSearchFilter(DoctorSearchQuery q, out SortDefinition<DoctorEntity> sort)
+    {
+        var errors = new Dictionary<string, string[]>();
+        var f = Builders<DoctorEntity>.Filter;
+        var lf = Builders<ClinicLocation>.Filter;
+        var filters = new List<FilterDefinition<DoctorEntity>>();
+
+        // Servis katmanı sınır savunması (DTO [Range] atlanırsa bile).
+        if (q.Page < 1 || q.Page > MaxPage) errors["page"] = [$"page 1..{MaxPage} arasında olmalı."];
+        if (q.PageSize < 1 || q.PageSize > 50) errors["pageSize"] = ["pageSize 1..50 arasında olmalı."];
+        if (q.Text is { Length: > 100 }) errors["text"] = ["text en çok 100 karakter."];
+        if (q.MinFee < 0) errors["minFee"] = ["minFee negatif olamaz."];
+        if (q.MaxFee < 0) errors["maxFee"] = ["maxFee negatif olamaz."];
+        if (q.MinFee > q.MaxFee) errors["minFeeMaxFee"] = ["minFee, maxFee'den büyük olamaz."];
+
+        var text = q.Text?.Trim();
+        if (!string.IsNullOrEmpty(text))
+        {
+            // Regex.Escape: kullanıcı metni DÜZ METİN olarak aranır. Kaçırılmazsa ".*" her şeyi eşler, "(" geçersiz
+            // desen olup hata fırlatır, kötü niyetli desen sunucuyu yorar (regex enjeksiyonu).
+            // Regex araması indeksi KULLANAMAZ (baştan sona tarar); Elasticsearch ile B21'de değişecek.
+            var rx = new BsonRegularExpression(Regex.Escape(text), "i");
+            filters.Add(f.Or(
+                f.Regex(nameof(DoctorEntity.FirstName), rx),
+                f.Regex(nameof(DoctorEntity.LastName), rx),
+                f.Regex(nameof(DoctorEntity.Degrees), rx),
+                f.Regex(nameof(DoctorEntity.Services), rx),
+                f.Regex("ClinicLocations.ClinicName", rx)));
+        }
+
+        if (!string.IsNullOrWhiteSpace(q.Gender))
+        {
+            // Sayısal metin ("1") kabul edilmez: yalnız adı.
+            if (int.TryParse(q.Gender, out _) || !Enum.TryParse<DoctorGender>(q.Gender.Trim(), true, out var gender) || !Enum.IsDefined(gender))
+                errors["gender"] = ["gender Male, Female veya Other olmalı."];
+            else filters.Add(f.Eq(d => d.Gender, gender));
+        }
+
+        if (!string.IsNullOrWhiteSpace(q.BranchIds))
+        {
+            var ids = q.BranchIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToList();
+            if (ids.Count > MaxBranchIds) errors["branchIds"] = [$"branchIds en çok {MaxBranchIds} öğe."];
+            else if (ids.Count > 0) filters.Add(f.In(d => d.BranchId, ids));
+        }
+
+        // KONUM FİLTRELERİ (city, minFee/maxFee, date) TEK $elemMatch içinde birleşir: verilenlerin HEPSİNİ AYNI konum
+        // sağlamalı. Ayrı ayrı koşul olsaydı her biri farklı konumla sağlanabilirdi (İzmir'de ucuz + Ankara'da pahalı
+        // doktor, "city=Ankara&maxFee=500" aramasında yanlışlıkla eşleşirdi).
+        var locationParts = new List<FilterDefinition<ClinicLocation>>();
+
+        if (!string.IsNullOrWhiteSpace(q.City))
+            locationParts.Add(lf.Eq(l => l.City, q.City.Trim()));
+
+        if (q.MinFee is { } min) locationParts.Add(lf.Gte(l => l.HourlyFee, min));
+        if (q.MaxFee is { } max) locationParts.Add(lf.Lte(l => l.HourlyFee, max));
+
+        if (!string.IsNullOrWhiteSpace(q.Date))
+        {
+            if (!DateOnly.TryParseExact(q.Date.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                errors["date"] = ["date yyyy-MM-dd biçiminde geçerli bir tarih olmalı."];
+            else
+            {
+                // Tarih -> haftanın günü; o konumun programında o gün varsa doktor orada çalışıyordur.
+                var sf = Builders<ScheduleSlot>.Filter;
+                locationParts.Add(lf.ElemMatch(l => l.Schedule, sf.Eq(s => s.DayOfWeek, date.DayOfWeek)));
+            }
+        }
+
+        if (locationParts.Count > 0)
+            filters.Add(f.ElemMatch(d => d.ClinicLocations, lf.And(locationParts)));
+
+        var sortBuilder = Builders<DoctorEntity>.Sort;
+        var sortKey = string.IsNullOrWhiteSpace(q.Sort) ? "name" : q.Sort.Trim();
+        // Her sıralamanın sonunda Id: eşit değerlerde sıra kararlı olsun, yoksa sayfa kaydırınca kayıt tekrar eder/atlanır.
+        sort = sortKey.ToLowerInvariant() switch
+        {
+            "name" => sortBuilder.Ascending(d => d.LastName).Ascending(d => d.FirstName).Ascending(d => d.Id),
+            // Dizi alanında artan sıralama dizinin EN KÜÇÜK, azalan sıralama EN BÜYÜK öğesine bakar = MinFee / MaxFee.
+            "feeasc" => sortBuilder.Ascending("ClinicLocations.HourlyFee").Ascending(d => d.LastName).Ascending(d => d.Id),
+            "feedesc" => sortBuilder.Descending("ClinicLocations.HourlyFee").Ascending(d => d.LastName).Ascending(d => d.Id),
+            _ => sortBuilder.Ascending(d => d.Id),
+        };
+        if (sortKey.ToLowerInvariant() is not ("name" or "feeasc" or "feedesc"))
+            errors["sort"] = ["sort name, feeAsc veya feeDesc olmalı."];
+
+        if (errors.Count > 0) throw new DoctorValidationException(errors);
+        return filters.Count == 0 ? f.Empty : f.And(filters);
+    }
+
+    public async Task<List<DoctorSummaryDto>> GetBatchAsync(string? ids, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(ids)) return [];
+        var tokens = ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToList();
+        if (tokens.Count > MaxBatchIds)
+            throw new DoctorValidationException("ids", $"En çok {MaxBatchIds} id gönderilebilir.");
+
+        // Geçersiz ObjectId sessizce atılır: Mongo'ya bozuk id gitseydi tüm istek 500 olurdu.
+        var valid = tokens.Where(t => ObjectId.TryParse(t, out _)).Select(t => ObjectId.Parse(t).ToString()).Distinct().ToList();
+        if (valid.Count == 0) return [];
+
+        // TEK sorgu ($in): 100 doktor için 100 ayrı GetById çağrısı (N+1) yerine tek gidiş-dönüş.
+        var found = await _doctors.Find(f => valid.Contains(f.Id!)).Project<DoctorEntity>(CardProjection).ToListAsync(ct);
+
+        // İstenen sırayı koru (Mongo $in sırayı garanti etmez).
+        var order = valid.Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i);
+        found = [.. found.OrderBy(d => order[d.Id!])];
+        return _mapper.Map<List<DoctorSummaryDto>>(found);
     }
 }
