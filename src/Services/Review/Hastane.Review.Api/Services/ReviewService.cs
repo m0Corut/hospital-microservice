@@ -77,17 +77,45 @@ public class ReviewService : IReviewService
 
     public async Task<DoctorRatingSummaryDto> GetDoctorSummaryAsync(string doctorId, CancellationToken ct)
     {
-        // Ortalama ve sayı MongoDB'de hesaplanır; ağdan yalnız tek satırlık sonuç gelir (tüm yorumlar değil).
-        var group = await _reviews.Aggregate()
-            .Match(r => r.DoctorId == doctorId)
-            .Group(r => r.DoctorId, g => new { Count = g.Count(), Average = g.Average(x => x.Rating) })
-            .FirstOrDefaultAsync(ct);
-
-        return new DoctorRatingSummaryDto
-        {
-            DoctorId = doctorId,
-            ReviewCount = group?.Count ?? 0,
-            AverageRating = group is null ? 0 : Math.Round(group.Average, 1, MidpointRounding.AwayFromZero), // 4.25 -> 4.3 (varsayılan banker yuvarlaması 4.2 verirdi)
-        };
+        var groups = await AggregateByDoctorAsync(r => r.DoctorId == doctorId, ct);
+        return ToSummary(doctorId, groups.FirstOrDefault());
     }
+
+    public async Task<List<DoctorRatingSummaryDto>> GetDoctorSummariesAsync(IReadOnlyList<string> doctorIds, CancellationToken ct)
+    {
+        if (doctorIds.Count == 0) return [];
+
+        // N+1 YOK: kimlik başına sorgu değil, tek $match ($in) + $group. Ağdan doktor başına tek satır gelir.
+        var groups = (await AggregateByDoctorAsync(r => doctorIds.Contains(r.DoctorId), ct))
+            .ToDictionary(g => g.DoctorId);
+
+        // "İstenen her kimlik için kayıt" sözleşmesi: yorumsuz doktor aggregation'da çıkmaz, burada sıfırla doldurulur;
+        // sıra da istenen sıradır (Mongo gruplarının sırası garanti değildir).
+        return doctorIds.Select(id => ToSummary(id, groups.GetValueOrDefault(id))).ToList();
+    }
+
+    // Ortak aggregation: sayı, ortalama ve tavsiye sayısı (Rating >= 4) MongoDB'de hesaplanır.
+    // Sum(x => x.Rating >= 4 ? 1 : 0) -> {$sum: {$cond: [{$gte: ["$Rating", 4]}, 1, 0]}}
+    private async Task<List<RatingGroup>> AggregateByDoctorAsync(
+        System.Linq.Expressions.Expression<Func<ReviewEntity, bool>> filter, CancellationToken ct)
+        => await _reviews.Aggregate()
+            .Match(filter)
+            .Group(r => r.DoctorId, g => new RatingGroup(
+                g.Key,
+                g.Count(),
+                g.Average(x => x.Rating),
+                g.Sum(x => x.Rating >= 4 ? 1 : 0)))
+            .ToListAsync(ct);
+
+    private static DoctorRatingSummaryDto ToSummary(string doctorId, RatingGroup? group) => new()
+    {
+        DoctorId = doctorId,
+        ReviewCount = group?.Count ?? 0,
+        AverageRating = group is null ? 0 : Math.Round(group.Average, 1, MidpointRounding.AwayFromZero), // 4.25 -> 4.3 (varsayılan banker yuvarlaması 4.2 verirdi)
+        // 5/8 = 62.5 -> 63 (banker yuvarlaması 62 verirdi). Yorum yoksa 0.
+        RecommendationPercent = group is null ? 0
+            : (int)Math.Round(100.0 * group.Recommended / group.Count, MidpointRounding.AwayFromZero),
+    };
+
+    private sealed record RatingGroup(string DoctorId, int Count, double Average, int Recommended);
 }

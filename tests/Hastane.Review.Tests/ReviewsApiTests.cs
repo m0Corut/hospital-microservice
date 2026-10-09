@@ -191,4 +191,82 @@ public class ReviewsApiTests : IClassFixture<ReviewApiFactory>
         Assert.Equal(0, summary.ReviewCount);
         Assert.Equal(0, summary.AverageRating);
     }
+
+    private async Task<DoctorRatingSummaryDto> SummaryAsync(string doctorId)
+        => (await _client.GetFromJsonAsync<DoctorRatingSummaryDto>($"/api/reviews/doctors/{doctorId}/summary", Ct))!;
+
+    private async Task<List<DoctorRatingSummaryDto>> SummariesAsync(string query)
+        => (await _client.GetFromJsonAsync<List<DoctorRatingSummaryDto>>($"/api/reviews/summaries{query}", Ct))!;
+
+    [Theory]
+    [InlineData("doc-rec-a", new[] { 5, 4, 3 }, 67)]        // 2/3 = 66.67 -> 67
+    [InlineData("doc-rec-b", new[] { 5, 5, 5, 5 }, 100)]
+    [InlineData("doc-rec-c", new[] { 3, 3 }, 0)]
+    [InlineData("doc-rec-d", new[] { 5, 5, 5, 3 }, 75)]     // 3/4 = 75 tam
+    [InlineData("doc-rec-e", new[] { 5, 5, 5, 5, 4, 3, 2, 1 }, 63)] // 5/8 = 62.5 tam yarım: AwayFromZero 63 (banker 62 verirdi)
+    public async Task Summary_RecommendationPercent_IsShareOfRatingsAtLeastFour(string doctorId, int[] ratings, int expected)
+    {
+        foreach (var rating in ratings)
+            await CreateAsync(NewReview(doctorId, rating));
+        var summary = await SummaryAsync(doctorId);
+        Assert.Equal(ratings.Length, summary.ReviewCount);
+        Assert.Equal(expected, summary.RecommendationPercent);
+    }
+
+    [Fact]
+    public async Task Summary_RecommendationPercent_ForDoctorWithoutReviews_IsZero()
+        => Assert.Equal(0, (await SummaryAsync("doc-rec-yorumsuz")).RecommendationPercent);
+
+    [Fact]
+    public async Task Summaries_ReturnsOneRecordPerRequestedId_InRequestedOrder_EvenWithoutReviews()
+    {
+        // Tek aggregation ($match $in + $group) kullanılır; kimlik başına ayrı sorgu (N+1) yoktur.
+        foreach (var rating in new[] { 5, 4, 3 })
+            await CreateAsync(NewReview("doc-bulk-b", rating));
+        await CreateAsync(NewReview("doc-bulk-a", 5));
+        await CreateAsync(NewReview("doc-bulk-baska", 1)); // istenmeyen doktor karışmamalı
+
+        var list = await SummariesAsync("?doctorIds=doc-bulk-b,doc-bulk-yorumsuz,doc-bulk-a");
+
+        Assert.Equal(["doc-bulk-b", "doc-bulk-yorumsuz", "doc-bulk-a"], list.Select(s => s.DoctorId));
+        Assert.Equal((3, 4.0, 67), (list[0].ReviewCount, list[0].AverageRating, list[0].RecommendationPercent));
+        Assert.Equal((0, 0.0, 0), (list[1].ReviewCount, list[1].AverageRating, list[1].RecommendationPercent));
+        Assert.Equal((1, 5.0, 100), (list[2].ReviewCount, list[2].AverageRating, list[2].RecommendationPercent));
+    }
+
+    [Fact]
+    public async Task Summaries_DropsDuplicatesAndBlankIds_KeepingFirstOrder()
+    {
+        await CreateAsync(NewReview("doc-dup-a", 5));
+        var list = await SummariesAsync("?doctorIds=doc-dup-b, doc-dup-a ,,%20%20,doc-dup-b,doc-dup-a");
+        Assert.Equal(["doc-dup-b", "doc-dup-a"], list.Select(s => s.DoctorId));
+        Assert.Equal(1, list[1].ReviewCount);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("?doctorIds=")]
+    [InlineData("?doctorIds=,%20,")]
+    public async Task Summaries_WithMissingOrEmptyIds_ReturnsEmptyList(string query)
+        => Assert.Empty(await SummariesAsync(query));
+
+    [Fact]
+    public async Task Summaries_With100Ids_Returns100_But101Ids_Returns400()
+    {
+        string Ids(int n) => string.Join(',', Enumerable.Range(0, n).Select(i => $"doc-limit-{i}"));
+        Assert.Equal(100, (await SummariesAsync($"?doctorIds={Ids(100)}")).Count);
+        var response = await _client.GetAsync($"/api/reviews/summaries?doctorIds={Ids(101)}", Ct);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SummariesRoute_DoesNotCollideWithIdRoute()
+    {
+        // "summaries" {id} sanılsaydı GetById çalışır, 404 dönerdi; sabit rota kazanmalı: 200 ve JSON dizi.
+        var response = await _client.GetAsync("/api/reviews/summaries", Ct);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("[]", await response.Content.ReadAsStringAsync(Ct));
+        // {id} yolu hâlâ çalışır.
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync("/api/reviews/64b7f0f0f0f0f0f0f0f0f0f0", Ct)).StatusCode);
+    }
 }

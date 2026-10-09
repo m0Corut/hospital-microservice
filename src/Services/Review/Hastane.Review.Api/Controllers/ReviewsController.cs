@@ -8,6 +8,8 @@ namespace Hastane.Review.Api.Controllers;
 [Route("api/reviews")]
 public class ReviewsController : ControllerBase
 {
+    private const int MaxSummaryIds = 100;
+
     private readonly IReviewService _service;
 
     public ReviewsController(IReviewService service) => _service = service;
@@ -30,6 +32,20 @@ public class ReviewsController : ControllerBase
     [HttpGet("doctors/{doctorId}/summary")]
     public async Task<ActionResult<DoctorRatingSummaryDto>> GetDoctorSummary(string doctorId, CancellationToken ct)
         => Ok(await _service.GetDoctorSummaryAsync(doctorId, ct));
+
+    // Toplu özet: GET api/reviews/summaries?doctorIds=a,b,c. Sabit "summaries" yolu "{id}" parametresinden önce
+    // eşleşir (ASP.NET literal segmenti parametreye tercih eder), bu yüzden GetById ile karışmaz.
+    // Not: yorumdaki ReviewerName/Comment ham döner; HTML kaçırma (XSS) ekran katmanının işidir.
+    [HttpGet("summaries")]
+    public async Task<ActionResult<List<DoctorRatingSummaryDto>>> GetSummaries([FromQuery] string? doctorIds, CancellationToken ct)
+    {
+        var ids = (doctorIds ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct() // ilk görülen sıra korunur
+            .ToList();
+        if (ids.Count > MaxSummaryIds) return BadRequest($"En çok {MaxSummaryIds} doktor kimliği istenebilir.");
+        return Ok(await _service.GetDoctorSummariesAsync(ids, ct));
+    }
 
     [HttpPost]
     public async Task<ActionResult<ResultReviewDto>> Create(CreateReviewDto dto, CancellationToken ct)

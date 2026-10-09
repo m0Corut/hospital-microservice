@@ -13,6 +13,11 @@ public interface IReviewService
     Task<bool> UpdateAsync(UpdateReviewDto dto, CancellationToken ct);
     /// <summary>Kayıt yoksa false döner.</summary>
     Task<bool> DeleteAsync(string id, CancellationToken ct);
-    /// <summary>Yorumu olmayan doktor için ReviewCount=0, AverageRating=0.</summary>
+    /// <summary>Yorumu olmayan doktor için ReviewCount=0, AverageRating=0, RecommendationPercent=0.</summary>
     Task<DoctorRatingSummaryDto> GetDoctorSummaryAsync(string doctorId, CancellationToken ct);
+    /// <summary>
+    /// İstenen HER kimlik için bir kayıt, istenen sırayla (yorumsuz doktor için sıfırlı kayıt). Tek aggregation.
+    /// Çağıran kimlikleri temizlemiş olmalı (tekrarsız, boşsuz).
+    /// </summary>
+    Task<List<DoctorRatingSummaryDto>> GetDoctorSummariesAsync(IReadOnlyList<string> doctorIds, CancellationToken ct);
 }
