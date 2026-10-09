@@ -1,6 +1,13 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Branch/">
+    <Project Path="src/Services/Branch/Hastane.Branch.Api/Hastane.Branch.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Hastane.Shared/Hastane.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
   </Folder>
 </Solution>

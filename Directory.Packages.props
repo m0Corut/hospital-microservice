@@ -6,8 +6,9 @@
   </PropertyGroup>
   <ItemGroup Label="API">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <!-- 14.0.0 son MIT (ücretsiz) sürüm; 15+ ticari lisans ister. Yükseltme yok. -->
-    <PackageVersion Include="AutoMapper" Version="14.0.0" />
+    <!-- Eşleme: Mapster (MIT). AutoMapper 14.0.0 bilinen açık (GHSA-rvv3-g6hj-g44x), 15+ ticari lisans → Muhammet kararı 2026-10-09. -->
+    <PackageVersion Include="Mapster" Version="10.0.13" />
+    <PackageVersion Include="Mapster.DependencyInjection" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup Label="Veritabanı">
     <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
