@@ -8,6 +8,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
     <!-- Eşleme: Mapster (MIT). AutoMapper 14.0.0 bilinen açık (GHSA-rvv3-g6hj-g44x), 15+ ticari lisans → Muhammet kararı 2026-10-09. -->
     <PackageVersion Include="Mapster" Version="10.0.13" />
+    <PackageVersion Include="Ocelot" Version="25.0.1" />
     <PackageVersion Include="Mapster.DependencyInjection" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup Label="Veritabanı">
