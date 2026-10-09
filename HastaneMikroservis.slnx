@@ -1,6 +1,9 @@
 <Solution>
   <Folder Name="/src/" />
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Appointment/">
+    <Project Path="src/Services/Appointment/Hastane.Appointment.Api/Hastane.Appointment.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Branch/">
     <Project Path="src/Services/Branch/Hastane.Branch.Api/Hastane.Branch.Api.csproj" />
   </Folder>
@@ -14,6 +17,7 @@
     <Project Path="src/Shared/Hastane.Shared/Hastane.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Hastane.Appointment.Tests/Hastane.Appointment.Tests.csproj" />
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
     <Project Path="tests/Hastane.Doctor.Tests/Hastane.Doctor.Tests.csproj" />
     <Project Path="tests/Hastane.Review.Tests/Hastane.Review.Tests.csproj" />
