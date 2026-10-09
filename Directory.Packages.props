@@ -13,6 +13,9 @@
   <ItemGroup Label="Veritabanı">
     <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
   </ItemGroup>
+  <ItemGroup Label="E-posta">
+    <PackageVersion Include="MailKit" Version="4.18.1" />
+  </ItemGroup>
   <ItemGroup Label="SQL Server / EF Core">
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
@@ -25,5 +28,6 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
   </ItemGroup>
 </Project>

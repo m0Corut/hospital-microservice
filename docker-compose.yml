@@ -42,6 +42,14 @@ services:
       - seq-data:/data
     restart: unless-stopped
 
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: hastane-mailhog
+    ports:
+      - "1025:1025"   # SMTP (servislerin e-posta gönderdiği yer)
+      - "8025:8025"   # web arayüzü: http://localhost:8025 (yakalanan e-postaları gör)
+    restart: unless-stopped
+
 volumes:
   mongo-data:
   sqlserver-data:
