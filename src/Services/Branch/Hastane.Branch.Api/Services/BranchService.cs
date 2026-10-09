@@ -13,11 +13,10 @@ public class BranchService : IBranchService
     private readonly IMongoCollection<BranchEntity> _branches;
     private readonly IMapper _mapper;
 
-    public BranchService(IMapper mapper, IOptions<DatabaseSettings> options)
+    public BranchService(IMapper mapper, IOptions<DatabaseSettings> options, IMongoClient client)
     {
         _mapper = mapper;
         IDatabaseSettings settings = options.Value;
-        var client = new MongoClient(settings.ConnectionString);
         var database = client.GetDatabase(settings.DatabaseName);
         _branches = database.GetCollection<BranchEntity>(settings.BranchCollectionName);
     }
