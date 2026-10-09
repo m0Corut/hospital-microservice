@@ -1,0 +1,35 @@
+/* Renk paleti: mavi-beyaz, temiz sağlık teması (Doccure ekran görüntülerinden esinlenen kendi stilimiz). */
+:root {
+    --bs-primary: #1565c0;
+    --bs-primary-rgb: 21, 101, 192;
+    --bs-link-color: #1565c0;
+    --bs-link-hover-color: #0d47a1;
+    --hastane-navy: #0d3b7a;
+    --hastane-cyan: #00b8d9;
+    --hastane-bg: #f4f8fc;
+}
+
+body { background: var(--hastane-bg); color: #272b41; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+
+.btn-primary { --bs-btn-bg: #1565c0; --bs-btn-border-color: #1565c0; --bs-btn-hover-bg: #0d47a1; --bs-btn-hover-border-color: #0d47a1; --bs-btn-active-bg: #0d47a1; --bs-btn-active-border-color: #0d47a1; }
+.btn-accent { background: var(--hastane-cyan); border-color: var(--hastane-cyan); color: #fff; }
+.btn-accent:hover { background: #0097b2; border-color: #0097b2; color: #fff; }
+
+.site-nav { box-shadow: 0 1px 6px rgba(13, 59, 122, .12); }
+.site-nav .navbar-brand { color: var(--hastane-navy); letter-spacing: .3px; }
+.brand-mark { display: inline-flex; width: 1.7rem; height: 1.7rem; align-items: center; justify-content: center; background: var(--hastane-cyan); color: #fff; border-radius: .4rem; font-weight: 700; margin-right: .25rem; }
+.site-nav .nav-link { color: #272b41; font-weight: 500; }
+.site-nav .nav-link:hover { color: var(--bs-primary); }
+
+.page-hero { background: linear-gradient(120deg, var(--hastane-navy), #1565c0); color: #fff; border-radius: .75rem; padding: 2.5rem 1.5rem; }
+.page-hero .form-control { border: 0; }
+
+.card-branch { border: 0; border-radius: .75rem; box-shadow: 0 2px 10px rgba(13, 59, 122, .08); transition: transform .15s, box-shadow .15s; height: 100%; }
+.card-branch:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(13, 59, 122, .16); }
+.card-branch .branch-icon { width: 3rem; height: 3rem; border-radius: 50%; background: #e3f2fd; color: var(--bs-primary); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; }
+
+.panel-card { background: #fff; border: 0; border-radius: .75rem; box-shadow: 0 2px 10px rgba(13, 59, 122, .08); }
+
+.auth-card { max-width: 440px; margin: 0 auto; }
+
+.site-footer { background: #fff; color: #6c757d; border-top: 1px solid #e3eaf3; }
