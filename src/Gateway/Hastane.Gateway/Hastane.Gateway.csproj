@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <PackageReference Include="Ocelot" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Rota dosyası çıktı klasörüne kopyalanır; Program.cs çalışma anında buradan okur. -->
+    <Content Update="ocelot.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
