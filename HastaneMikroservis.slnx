@@ -28,6 +28,9 @@
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/Hastane.Shared/Hastane.Shared.csproj" />
   </Folder>
+  <Folder Name="/src/WebUI/">
+    <Project Path="src/WebUI/Hastane.WebUI/Hastane.WebUI.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hastane.Appointment.Tests/Hastane.Appointment.Tests.csproj" />
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
@@ -38,6 +41,7 @@
     <Project Path="tests/Hastane.Prescription.Tests/Hastane.Prescription.Tests.csproj" />
     <Project Path="tests/Hastane.Review.Tests/Hastane.Review.Tests.csproj" />
     <Project Path="tests/Hastane.Shared.Tests/Hastane.Shared.Tests.csproj" />
+    <Project Path="tests/Hastane.WebUI.Tests/Hastane.WebUI.Tests.csproj" />
     <Project Path="tests/Hastane.TestSupport/Hastane.TestSupport.csproj" />
   </Folder>
 </Solution>
