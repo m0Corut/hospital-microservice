@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Integration;
 using Hastane.Appointment.Api.Mapping;
+using Hastane.Appointment.Api.Messaging;
 using Hastane.Appointment.Api.Services;
 using Hastane.Appointment.Api.Settings;
 using Hastane.Shared.Hosting;
@@ -48,14 +49,9 @@ builder.Services.AddHttpClient<IDoctorScheduleLookup, DoctorScheduleLookup>((sp,
     client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
 });
 
-// Bildirimler Notification servisinin İÇ ucuna (X-Internal-Key). Randevu kaydedildikten sonra çağrılır; hatası yutulur.
-builder.Services.Configure<InternalOptions>(builder.Configuration.GetSection(InternalOptions.SectionName));
-builder.Services.AddHttpClient<INotificationClient, NotificationClient>((sp, client) =>
-{
-    var o = sp.GetRequiredService<IOptions<DownstreamServicesOptions>>().Value;
-    client.BaseAddress = new Uri(o.NotificationBaseUrl);
-    client.Timeout = TimeSpan.FromSeconds(o.NotificationTimeoutSeconds);
-});
+// Bildirimler artık senkron HTTP ile DEĞİL: randevu olayları (AppointmentCreated/StatusChanged/Rescheduled) RabbitMQ'ya
+// MassTransit EF outbox ile yayınlanır; Notification ve Queue servisleri tüketir. RabbitMq:Host boşsa bellek içi taşıma.
+builder.Services.AddAppointmentMessaging(builder.Configuration);
 
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentDetailService, AppointmentDetailService>();

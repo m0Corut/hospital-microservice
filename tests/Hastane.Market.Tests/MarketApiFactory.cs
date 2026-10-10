@@ -1,7 +1,10 @@
+using Hastane.Market.Api.Messaging;
 using Hastane.Market.Api.Settings;
 using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Testcontainers.MsSql;
@@ -44,6 +47,12 @@ public class MarketApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureServices(services =>
             // user-secrets'taki gerçek anahtar testi etkilemesin: seçenek son söz olarak sabit değere çekilir.
             services.PostConfigure<InternalOptions>(o => o.ApiKey = InternalKey));
+        // Üretimdeki tüketici yapılandırması + MassTransit test harness (bellek içi taşıma; RabbitMQ yok).
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveMassTransit();
+            services.AddMassTransitTestHarness(x => MarketMessaging.Configure(x));
+        });
     }
 
     public override async ValueTask DisposeAsync()

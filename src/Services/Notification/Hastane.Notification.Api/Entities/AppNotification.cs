@@ -21,6 +21,10 @@ public class AppNotification
 
     public string Kind { get; set; } = "info";
 
+    // Olaydan (RabbitMQ) üretilen bildirimlerde "{EventId}:{alıcı}"; REST ile oluşturulanlarda null. Tekil indeks (yalnız dolu olanlarda):
+    // aynı olay iki kez teslim edilse de ikinci bildirim yazılamaz. Listelerde/DTO'da görünmez.
+    public string? SourceKey { get; set; }
+
     [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
     public DateTime CreatedAt { get; set; }
 

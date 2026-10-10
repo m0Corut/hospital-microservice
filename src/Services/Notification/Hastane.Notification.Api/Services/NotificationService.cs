@@ -44,6 +44,25 @@ public class NotificationService : INotificationService
         return _mapper.Map<ResultNotificationDto>(entity);
     }
 
+    public async Task<bool> CreateFromEventAsync(CreateNotificationDto dto, string sourceKey, CancellationToken ct)
+    {
+        var entity = _mapper.Map<AppNotification>(dto);
+        entity.SourceKey = sourceKey;
+        var now = DateTime.UtcNow;
+        entity.CreatedAt = new DateTime(now.Ticks - now.Ticks % TimeSpan.TicksPerMillisecond, DateTimeKind.Utc);
+        try
+        {
+            await _notifications.InsertOneAsync(entity, cancellationToken: ct);
+            return true;
+        }
+        catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        {
+            // Aynı olay ikinci kez teslim edildi: bildirim zaten var, hata değil.
+            _logger.LogInformation("Olay bildirimi zaten işlenmişti ({SourceKey}); atlandı.", sourceKey);
+            return false;
+        }
+    }
+
     // Alıcı = token sub (hasta) YA DA doctor_id (doktor): hangisi doluysa o kimliklere adreslenmiş bildirimler.
     private static FilterDefinition<AppNotification>? RecipientFilter(string? userId, string? doctorId)
     {

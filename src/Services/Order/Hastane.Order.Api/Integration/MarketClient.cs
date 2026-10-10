@@ -54,30 +54,6 @@ public class MarketClient(
         }
     }
 
-    public async Task<bool> ReleaseAsync(Guid orderId, CancellationToken ct)
-    {
-        if (!TryInternalRequest(HttpMethod.Post, "/api/internal/stock/release",
-                JsonContent.Create(new { orderId }), out var request))
-            return false;
-
-        using (request)
-        {
-            try
-            {
-                using var response = await http.SendAsync(request, ct);
-                // 404: Market bu siparişe hiç rezervasyon kaydı tutmamış, yani iade edilecek bir şey yok.
-                if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound) return true;
-                logger.LogWarning("Market stok iadesi {StatusCode} döndü (sipariş {OrderId}).", (int)response.StatusCode, orderId);
-                return false;
-            }
-            catch (Exception ex) when (IsTransport(ex, ct))
-            {
-                logger.LogWarning("Market stok iadesi çağrısı başarısız (sipariş {OrderId}): {ExceptionType}", orderId, ex.GetType().Name);
-                return false;
-            }
-        }
-    }
-
     public async Task<bool> ClearCartAsync(CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Delete, "/api/cart");

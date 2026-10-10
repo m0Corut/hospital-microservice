@@ -36,7 +36,8 @@ public class Order
     // Çift tıklama savunması: aynı hasta + aynı anahtar = aynı sipariş (tekil indeks).
     public string? IdempotencyKey { get; set; }
 
-    // Sipariş iptal edildi ama Market'e "stok iade" çağrısı ulaşmadı: elle/yeniden denemeyle tamamlanmalı.
+    // ESKİ (senkron release dönemi): iptal edildi ama Market'e iade çağrısı ulaşmadı. Artık iade OrderCancelled olayıyla (outbox)
+    // yapıldığından hep false kalır; sütun/DTO alanı geriye dönük uyum için durur.
     public bool StockReleasePending { get; set; }
 
     // İyimser eşzamanlılık: her değişiklikte servis 1 artırır, EF "UPDATE ... WHERE Version = okuduğum" yazar.

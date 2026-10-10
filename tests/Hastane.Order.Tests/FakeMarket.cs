@@ -20,6 +20,7 @@ public sealed record FakeCartLine(Guid ProductId, string Name, decimal CartPrice
 
 public sealed record MarketCall(string Method, string Path, string? Authorization, string? InternalKey, string? Body);
 
+// NOT: stok İADESİ (release) artık HTTP değil olay (OrderCancelled); bu sahte release ucunu bilerek bilmez: Order çağırırsa 404 alır ve test CallCount ile yakalar.
 // Market servisinin (5109) sözleşmeye göre sahte hali: gerçek ağ yok. Order'ın typed HttpClient'ının altına
 // HttpMessageHandler olarak takılır. Sepeti isteğin Bearer token'ındaki `sub` ile bulur (kullanıcıya özel sepet).
 public sealed class FakeMarket
@@ -34,7 +35,6 @@ public sealed class FakeMarket
     public MarketMode CartMode { get; set; } = MarketMode.Normal;
     public MarketMode ProductMode { get; set; } = MarketMode.Normal;
     public MarketMode ReserveMode { get; set; } = MarketMode.Normal;
-    public MarketMode ReleaseMode { get; set; } = MarketMode.Normal;
     public MarketMode ClearMode { get; set; } = MarketMode.Normal;
 
     // true: stok yetersiz, reserve 409 döner ve hiçbir şey düşmez.
@@ -46,7 +46,7 @@ public sealed class FakeMarket
 
     public void Reset()
     {
-        CartMode = ProductMode = ReserveMode = ReleaseMode = ClearMode = MarketMode.Normal;
+        CartMode = ProductMode = ReserveMode = ClearMode = MarketMode.Normal;
         InsufficientStock = false;
         _reserved.Clear();
         while (_calls.TryDequeue(out _))
@@ -85,7 +85,6 @@ public sealed class FakeMarket
             if (path == "/api/cart") return await Gate(market.CartMode, ct) ?? Cart(request);
             if (path.StartsWith("/api/products/", StringComparison.Ordinal)) return await Gate(market.ProductMode, ct) ?? Product(path);
             if (path == "/api/internal/stock/reserve") return await Gate(market.ReserveMode, ct) ?? Reserve(request, body);
-            if (path == "/api/internal/stock/release") return await Gate(market.ReleaseMode, ct) ?? Release(request);
             return new HttpResponseMessage(HttpStatusCode.NotFound);
         }
 
@@ -152,13 +151,6 @@ public sealed class FakeMarket
                 };
             }
             market._reserved[orderId] = 0;
-            return new HttpResponseMessage(HttpStatusCode.OK);
-        }
-
-        private HttpResponseMessage Release(HttpRequestMessage request)
-        {
-            if (!request.Headers.TryGetValues("X-Internal-Key", out var keys) || keys.First() != InternalKey)
-                return new HttpResponseMessage(HttpStatusCode.Unauthorized);
             return new HttpResponseMessage(HttpStatusCode.OK);
         }
 

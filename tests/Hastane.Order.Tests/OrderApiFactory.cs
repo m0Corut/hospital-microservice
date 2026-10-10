@@ -1,4 +1,6 @@
+using Hastane.Order.Api.Messaging;
 using Hastane.TestSupport;
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -27,7 +29,13 @@ public class OrderApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // Zaman aşımı testi 1 sn'de biter (üretim varsayılanı 5 sn).
         builder.UseSetting("Services:TimeoutSeconds", "1");
         builder.ConfigureTestServices(services =>
-            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(() => Market.CreateHandler())));
+        {
+            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(() => Market.CreateHandler()));
+            // Üretimdeki outbox yapılandırması (MariaDB) + MassTransit test harness (bellek içi taşıma; RabbitMQ yok).
+            // Olaylar OutboxMessage tablosundan teslim servisiyle yayınlanır; harness.Published'da görünür.
+            services.RemoveMassTransit();
+            services.AddMassTransitTestHarness(x => OrderMessaging.Configure(x));
+        });
     }
 
     public override async ValueTask DisposeAsync()

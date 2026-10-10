@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Mapster" />
     <PackageReference Include="Mapster.DependencyInjection" />
@@ -17,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\Hastane.Shared\Hastane.Shared.csproj" />
+    <ProjectReference Include="..\..\..\Shared\Hastane.Contracts\Hastane.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

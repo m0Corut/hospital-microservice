@@ -3,6 +3,7 @@ using Hastane.Queue.Api.Data;
 using Hastane.Queue.Api.Hubs;
 using Hastane.Queue.Api.Integration;
 using Hastane.Queue.Api.Mapping;
+using Hastane.Queue.Api.Messaging;
 using Hastane.Queue.Api.Services;
 using Hastane.Queue.Api.Settings;
 using Hastane.Shared.Hosting;
@@ -51,6 +52,9 @@ builder.Services.AddHttpClient<IAppointmentLookup, AppointmentLookup>((sp, clien
 // "Şimdi" tek yerden: testte sahte saat verilebilsin.
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IQueueService, QueueService>();
+
+// Olay tüketicisi (RabbitMQ): AppointmentStatusChanged(Cancelled) -> bekleyen sıra kaydı Cancelled. RabbitMq:Host boşsa bellek içi taşıma.
+builder.Services.AddQueueMessaging(builder.Configuration);
 
 // SignalR: hub anonim ve yalnız dinleme (bkz. QueueHub). Gelen iletiyi küçük tut: istemci zaten bir şey göndermemeli.
 builder.Services.AddSignalR(o =>
