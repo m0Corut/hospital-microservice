@@ -31,6 +31,8 @@ public sealed class GatewayTests : IAsyncLifetime
         ("branches", "/api/branches"), ("doctors", "/api/doctors"), ("reviews", "/api/reviews"),
         ("appointments", "/api/appointments"), ("prescriptions", "/api/prescriptions"),
         ("payments", "/api/payments"), ("invoices", "/api/invoices"),
+        ("doctor-applications", "/api/doctor-applications"), ("patients", "/api/patients"),
+        ("notifications", "/api/notifications"), ("chat", "/api/chat"),
     ];
 
     public static TheoryData<string, string, string> PathCases()

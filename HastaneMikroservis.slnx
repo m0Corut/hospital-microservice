@@ -16,6 +16,15 @@
   <Folder Name="/src/Services/Identity/">
     <Project Path="src/Services/Identity/Hastane.Identity.Api/Hastane.Identity.Api.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Chat/">
+    <Project Path="src/Services/Chat/Hastane.Chat.Api/Hastane.Chat.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Notification/">
+    <Project Path="src/Services/Notification/Hastane.Notification.Api/Hastane.Notification.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Patient/">
+    <Project Path="src/Services/Patient/Hastane.Patient.Api/Hastane.Patient.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Payment/">
     <Project Path="src/Services/Payment/Hastane.Payment.Api/Hastane.Payment.Api.csproj" />
   </Folder>
@@ -36,6 +45,9 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hastane.Appointment.Tests/Hastane.Appointment.Tests.csproj" />
+    <Project Path="tests/Hastane.Chat.Tests/Hastane.Chat.Tests.csproj" />
+    <Project Path="tests/Hastane.Notification.Tests/Hastane.Notification.Tests.csproj" />
+    <Project Path="tests/Hastane.Patient.Tests/Hastane.Patient.Tests.csproj" />
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
     <Project Path="tests/Hastane.Doctor.Tests/Hastane.Doctor.Tests.csproj" />
     <Project Path="tests/Hastane.Gateway.Tests/Hastane.Gateway.Tests.csproj" />

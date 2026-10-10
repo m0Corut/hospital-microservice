@@ -179,6 +179,78 @@
           "Port": 5111
         }
       ]
+    },
+    {
+      "UpstreamPathTemplate": "/gateway/doctor-applications/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "DownstreamScheme": "http",
+      "DownstreamPathTemplate": "/api/doctor-applications/{everything}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5001
+        }
+      ]
+    },
+    {
+      "UpstreamPathTemplate": "/gateway/patients/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "DownstreamScheme": "http",
+      "DownstreamPathTemplate": "/api/patients/{everything}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5106
+        }
+      ]
+    },
+    {
+      "UpstreamPathTemplate": "/gateway/notifications/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "DownstreamScheme": "http",
+      "DownstreamPathTemplate": "/api/notifications/{everything}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5112
+        }
+      ]
+    },
+    {
+      "UpstreamPathTemplate": "/gateway/chat/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "DownstreamScheme": "http",
+      "DownstreamPathTemplate": "/api/chat/{everything}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 5114
+        }
+      ]
     }
   ],
   "GlobalConfiguration": {
