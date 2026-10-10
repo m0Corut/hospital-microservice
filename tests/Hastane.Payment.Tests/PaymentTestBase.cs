@@ -44,8 +44,14 @@ public abstract class PaymentTestBase
     protected static string AdminToken() => TestJwt.Create(Unique("adm"), [HastaneRoles.Admin]);
 
     // Servisi HTTP dışında doğrudan çağıran testler için: HttpContext olmadığından "kullanıcı" olarak Admin verilir.
+    // Servisten servise çağrılar Authorization başlığını HttpContext'ten okur; bu yüzden sahte bir HttpContext'e Admin token'ı konur.
     protected static T CreateServiceAsAdmin<T>(IServiceProvider services) where T : class
-        => ActivatorUtilities.CreateInstance<T>(services, new StubAdminUser());
+    {
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext();
+        context.Request.Headers.Authorization = "Bearer " + AdminToken();
+        services.GetRequiredService<Microsoft.AspNetCore.Http.IHttpContextAccessor>().HttpContext = context;
+        return ActivatorUtilities.CreateInstance<T>(services, new StubAdminUser());
+    }
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -53,7 +59,9 @@ public abstract class PaymentTestBase
 
     protected static CreatePaymentDto NewPayment(
         decimal amount = 110m, string card = VisaOk, Guid? appointmentId = null,
-        string? patientId = null, string? doctorId = null, string currency = "TRY") => new()
+        string? patientId = null, string? doctorId = null, string currency = "TRY")
+    {
+        var dto = new CreatePaymentDto
         {
             AppointmentId = appointmentId ?? Guid.CreateVersion7(),
             PatientId = patientId ?? Unique("pat"),
@@ -70,6 +78,13 @@ public abstract class PaymentTestBase
                 HolderName = "Test Hasta",
             },
         };
+
+        // Sahte Appointment/Doctor servislerinde "bu istek geçerli" dünyasını kurar: randevu hastaya ve doktora ait,
+        // doktorun TEK ücretli konumu istenen tutar ve birimde. Doğrulama testleri bu kaydı kendileri ezer.
+        FakeDownstream.RegisterAppointment(dto.AppointmentId, dto.PatientId!, dto.DoctorId!);
+        FakeDownstream.RegisterDoctor(dto.DoctorId!, new FakeLocation(amount, currency));
+        return dto;
+    }
 
     protected Task<HttpResponseMessage> PostAsync(CreatePaymentDto dto, string? key = null)
     {

@@ -58,10 +58,15 @@ public class PaymentsController : ControllerBase
     private ActionResult<T> ToActionResult<T>(OperationResult<T> result) => result.Status switch
     {
         OperationStatus.Ok or OperationStatus.Created => Ok(result.Value),
-        OperationStatus.NotFound => NotFound(),
+        OperationStatus.NotFound => result.Error is null
+            ? NotFound()
+            : NotFound(new ProblemDetails { Status = 404, Title = "Bulunamadı", Detail = result.Error }),
         OperationStatus.Forbidden => Forbid(),
         OperationStatus.Validation => BadRequest(new ProblemDetails { Status = 400, Title = "Geçersiz istek", Detail = result.Error }),
         OperationStatus.Conflict => Conflict(new ProblemDetails { Status = 409, Title = "Çakışma", Detail = result.Error }),
+        // 503: randevu/doktor doğrulaması yapılamadı. Kart çekilmedi, kayıt oluşmadı; aynı anahtarla tekrar denenebilir.
+        OperationStatus.ServiceUnavailable => StatusCode(StatusCodes.Status503ServiceUnavailable,
+            new ProblemDetails { Status = 503, Title = "Servis kullanılamıyor", Detail = result.Error }),
         OperationStatus.BadGateway => StatusCode(StatusCodes.Status502BadGateway,
             new ProblemDetails { Status = 502, Title = "Ödeme işlenemedi", Detail = result.Error }),
         // 402 Payment Required: istek geçerli, ama ödeme sağlayıcı tarafından reddedildi. Gövde yine ödeme sonucu (Failed).

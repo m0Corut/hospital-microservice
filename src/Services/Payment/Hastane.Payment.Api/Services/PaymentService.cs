@@ -2,6 +2,7 @@ using System.Globalization;
 using Hastane.Payment.Api.Data;
 using Hastane.Payment.Api.Dtos;
 using Hastane.Payment.Api.Entities;
+using Hastane.Payment.Api.Integration;
 using Hastane.Payment.Api.Providers;
 using Hastane.Payment.Api.Settings;
 using Hastane.Shared.Security;
@@ -28,13 +29,17 @@ public class PaymentService : IPaymentService
     private readonly ILogger<PaymentService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ICurrentUser _user;
+    private readonly IAppointmentLookup _appointments;
+    private readonly IDoctorFeeLookup _doctorFees;
 
     public PaymentService(
         PaymentDbContext db, IMapper mapper, IPaymentProvider provider,
         IOptions<BillingOptions> billing, ILogger<PaymentService> logger, IServiceScopeFactory scopeFactory,
-        ICurrentUser user)
+        ICurrentUser user, IAppointmentLookup appointments, IDoctorFeeLookup doctorFees)
     {
         _user = user;
+        _appointments = appointments;
+        _doctorFees = doctorFees;
         _db = db;
         _mapper = mapper;
         _provider = provider;
@@ -73,6 +78,13 @@ public class PaymentService : IPaymentService
         var existing = await FindByKeyAsync(key, ct);
         if (existing is not null) return await ReplayAsync(existing, hash, ct);
 
+        // 1b) Sunucu tarafı doğrulama: randevu (sahiplik/durum), doktor (ücret). Kart çekilmeden ve Pending satır
+        //     yazılmadan ÖNCE. Reddedilen istek anahtarı TÜKETMEZ (satır yok): aynı anahtarla düzeltilmiş istek gelebilir.
+        //     (Parmak izi bilerek istemcinin gönderdiği değerlerden hesaplandı; geçerli tekrar aynı özeti verir.)
+        var verified = await VerifyAsync(dto, ct);
+        if (verified.Rejection is not null) return verified.Rejection;
+        var terms = verified.Terms!;
+
         // 2) Katman 1 (güzel hata mesajı): randevu zaten ödenmiş mi?
         if (await _db.Payments.AnyAsync(p => p.AppointmentId == dto.AppointmentId && p.Status == PaymentStatus.Paid, ct))
             return OperationResult<PaymentResultDto>.Conflict(AlreadyPaidMessage);
@@ -86,10 +98,10 @@ public class PaymentService : IPaymentService
         {
             Id = Guid.CreateVersion7(),
             AppointmentId = dto.AppointmentId,
-            PatientId = dto.PatientId!,
-            DoctorId = dto.DoctorId,
-            Amount = dto.Amount,
-            Currency = dto.Currency,
+            PatientId = terms.PatientId,
+            DoctorId = terms.DoctorId,
+            Amount = terms.Amount,
+            Currency = terms.Currency,
             Status = PaymentStatus.Pending,
             IdempotencyKey = key,
             RequestHash = hash,
@@ -114,7 +126,7 @@ public class PaymentService : IPaymentService
         ChargeResult charge;
         try
         {
-            charge = await _provider.ChargeAsync(new ChargeRequest(dto.Amount, dto.Currency, new CardDetails
+            charge = await _provider.ChargeAsync(new ChargeRequest(terms.Amount, terms.Currency, new CardDetails
             {
                 Number = dto.Card.Number,
                 ExpMonth = dto.Card.ExpMonth,
@@ -335,6 +347,64 @@ public class PaymentService : IPaymentService
         };
     }
 
+    // Sunucunun kabul ettiği koşullar: faturaya/ödemeye YALNIZ bunlar yazılır, istemci değerleri değil.
+    private sealed record VerifiedTerms(string PatientId, string DoctorId, decimal Amount, string Currency);
+
+    private sealed record Verification(VerifiedTerms? Terms, OperationResult<PaymentResultDto>? Rejection);
+
+    private static Verification Reject(OperationResult<PaymentResultDto> rejection) => new(null, rejection);
+
+    private static readonly string[] PayableStatuses = ["Pending", "Confirmed", "Completed"];
+
+    private async Task<Verification> VerifyAsync(CreatePaymentDto dto, CancellationToken ct)
+    {
+        const string unavailable = "Randevu ya da doktor bilgisi şu an doğrulanamadı; ödeme alınmadı. Biraz sonra tekrar deneyin.";
+
+        // 1) Randevu: sahiplik kararı Appointment'ta (başkasının randevusu => 404, "yok" ile aynı: varlığı sızdırmayız).
+        var appointment = await _appointments.GetAsync(dto.AppointmentId, ct);
+        switch (appointment.Outcome)
+        {
+            case LookupOutcome.NotFound: return Reject(OperationResult<PaymentResultDto>.NotFound("Randevu bulunamadı."));
+            case LookupOutcome.Forbidden: return Reject(OperationResult<PaymentResultDto>.Forbidden());
+            case LookupOutcome.Unavailable: return Reject(OperationResult<PaymentResultDto>.ServiceUnavailable(unavailable));
+        }
+
+        var appt = appointment.Value!;
+        if (!PayableStatuses.Contains(appt.Status, StringComparer.OrdinalIgnoreCase))
+            return Reject(OperationResult<PaymentResultDto>.Conflict("Bu randevu ödenemez."));
+
+        // Savunma: hasta kendi token'ındaki kimlikle çağırır; Appointment zaten süzmüş olmalı, yine de uyuşmazsa "yok" say.
+        if (!_user.IsAdmin && appt.PatientId != dto.PatientId)
+            return Reject(OperationResult<PaymentResultDto>.NotFound("Randevu bulunamadı."));
+
+        // Gövdedeki kimlikler yalnız tutarlılık kontrolü içindir; gerçek değer randevudan gelir.
+        if (!string.IsNullOrWhiteSpace(dto.DoctorId) && dto.DoctorId != appt.DoctorId)
+            return Reject(OperationResult<PaymentResultDto>.Validation("DoctorId randevunun doktoruyla uyuşmuyor."));
+        if (_user.IsAdmin && !string.IsNullOrWhiteSpace(dto.PatientId) && dto.PatientId != appt.PatientId)
+            return Reject(OperationResult<PaymentResultDto>.Validation("PatientId randevunun hastasıyla uyuşmuyor."));
+
+        // 2) Tutar: ücret = doktorun ücretli konumlarının en düşüğü (birim o konumun birimi).
+        var doctor = await _doctorFees.GetFeeAsync(appt.DoctorId, ct);
+        switch (doctor.Outcome)
+        {
+            case LookupOutcome.NotFound: return Reject(OperationResult<PaymentResultDto>.Conflict("Randevunun doktoru bulunamadı."));
+            case LookupOutcome.Forbidden:
+            case LookupOutcome.Unavailable: return Reject(OperationResult<PaymentResultDto>.ServiceUnavailable(unavailable));
+        }
+
+        var fee = doctor.Value!;
+        if (fee.Amount is not { } amount || string.IsNullOrWhiteSpace(fee.Currency))
+            return Reject(OperationResult<PaymentResultDto>.Conflict("Doktorun ücreti tanımlı değil."));
+
+        if (dto.Amount != amount || dto.Currency != fee.Currency)
+        {
+            return Reject(OperationResult<PaymentResultDto>.Conflict(
+                $"Tutar güncel değil: {amount.ToString("F2", CultureInfo.InvariantCulture)} {fee.Currency}"));
+        }
+
+        return new Verification(new VerifiedTerms(appt.PatientId, appt.DoctorId, amount, fee.Currency), null);
+    }
+
     private bool CanView(PaymentEntity p) => PaymentAccess.CanView(_user, p.PatientId, p.DoctorId);
 
     private string? ValidateRequest(string? key, CreatePaymentDto dto)
@@ -343,8 +413,8 @@ public class PaymentService : IPaymentService
         if (!IdempotencyKeyRules.IsValid(key)) return IdempotencyKeyRules.Message;
         if (dto is null) return "İstek gövdesi boş.";
         if (dto.AppointmentId == Guid.Empty) return "AppointmentId boş olamaz.";
-        if (string.IsNullOrWhiteSpace(dto.PatientId) || dto.PatientId.Length > 64) return "PatientId zorunlu, en çok 64 karakter.";
-        if (string.IsNullOrWhiteSpace(dto.DoctorId) || dto.DoctorId.Length > 64) return "DoctorId zorunlu, en çok 64 karakter.";
+        if (dto.PatientId is { Length: > 64 }) return "PatientId en çok 64 karakter olabilir.";
+        if (dto.DoctorId is { Length: > 64 }) return "DoctorId en çok 64 karakter olabilir.";
         if (dto.Amount is < 0.01m or > 1_000_000m) return "Tutar 0,01 ile 1.000.000 arasında olmalı.";
         if (decimal.Round(dto.Amount, 2) != dto.Amount) return "Tutar en çok 2 ondalık basamak içerebilir.";
         if (string.IsNullOrEmpty(dto.Currency) || !_billing.AllowedCurrencies.Contains(dto.Currency, StringComparer.Ordinal))

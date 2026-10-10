@@ -28,8 +28,12 @@ public class PaymentApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.ConfigureLogging(logging => logging.AddProvider(Logs));
         // Üretim açık anahtarı yerine test anahtarı: TestJwt ile üretilen token'lar geçer.
         builder.UseTestJwt();
+        // Zaman aşımı testi 1 sn'de biter (üretim varsayılanı 5 sn).
+        builder.UseSetting("Services:TimeoutSeconds", "1");
         builder.ConfigureTestServices(services =>
         {
+            // Appointment ve Doctor servisleri sahte: gerçek ağ yok (bkz. FakeDownstream).
+            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(FakeDownstream.CreateHandler));
             // Sahte sağlayıcıyı, çağrıları sayan sürümle değiştir: "sağlayıcı kaç kez çağrıldı" sorusu test edilebilir.
             services.RemoveAll<IPaymentProvider>();
             services.AddSingleton<CountingPaymentProvider>();

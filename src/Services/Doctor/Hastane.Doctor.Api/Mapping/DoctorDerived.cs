@@ -7,10 +7,12 @@ namespace Hastane.Doctor.Api.Mapping;
 public static class DoctorDerived
 {
     // Para birimi karışık olabilir (bir konum TRY, biri USD); farklı birimleri kıyaslamak anlamsız.
+    // Bu sınıf "randevu ücreti"nin TEK tanımıdır; Payment ve WebUI aynı MinFee/Currency alanlarını okur.
     // Kural: ücreti olan İLK konumun birimi esas alınır, min/max yalnız o birimdeki ücretlerden hesaplanır.
     private static (string Currency, List<decimal> Fees)? Fees(IEnumerable<ClinicLocation> locations)
     {
-        var withFee = locations.Where(l => l.HourlyFee.HasValue).ToList();
+        // 0 (ya da negatif) ücret "tanımsız" sayılır: hesaba katılmaz (WebUI de fee <= 0'ı tanımsız sayar).
+        var withFee = locations.Where(l => l.HourlyFee is > 0).ToList();
         if (withFee.Count == 0) return null;
         var currency = withFee[0].Currency;
         return (currency, withFee.Where(l => l.Currency == currency).Select(l => l.HourlyFee!.Value).ToList());

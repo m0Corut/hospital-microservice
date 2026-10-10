@@ -25,7 +25,7 @@ public class PaymentAuthorizationTests : PaymentTestBase
     // Ödemeyi hasta kendi token'ıyla yapar (gövdede PatientId yok): sahibi token'daki sub olur.
     private async Task<PaymentResultDto> PayAsPatientAsync(string patientSub, string doctorId)
     {
-        var dto = NewPayment(doctorId: doctorId);
+        var dto = NewPayment(patientId: patientSub, doctorId: doctorId);
         dto.PatientId = null;
         var response = await PostAs(ClientFor(PatientToken(patientSub)), dto);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -117,7 +117,9 @@ public class PaymentAuthorizationTests : PaymentTestBase
     {
         var me = Unique("pat");
         var victim = Unique("pat");
-        var dto = NewPayment(patientId: victim);
+        // Randevu BENİM; gövdedeki PatientId kurbanı gösteriyor ama hasta için yok sayılır.
+        var dto = NewPayment(patientId: me);
+        dto.PatientId = victim;
         var response = await PostAs(ClientFor(PatientToken(me)), dto);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await ReadAsync<PaymentResultDto>(response);
@@ -130,7 +132,7 @@ public class PaymentAuthorizationTests : PaymentTestBase
     }
 
     [Fact]
-    public async Task Admin_Create_UsesBodyPatientId_AndRequiresIt()
+    public async Task Admin_Create_PatientComesFromAppointment_BodyPatientIdOptionalButMustMatch()
     {
         var admin = ClientFor(AdminToken());
         var patient = Unique("pat");
@@ -138,9 +140,18 @@ public class PaymentAuthorizationTests : PaymentTestBase
         Assert.Equal(HttpStatusCode.Created, ok.StatusCode);
         Assert.Equal(patient, (await ReadAsync<PaymentResultDto>(ok)).PatientId);
 
-        var dto = NewPayment();
-        dto.PatientId = null;
-        Assert.Equal(HttpStatusCode.BadRequest, (await PostAs(admin, dto)).StatusCode);
+        // Gövdede PatientId yoksa randevudaki hasta kullanılır (artık zorunlu değil).
+        var omitted = NewPayment(patientId: patient);
+        omitted.PatientId = null;
+        var okOmitted = await PostAs(admin, omitted);
+        Assert.Equal(HttpStatusCode.Created, okOmitted.StatusCode);
+        Assert.Equal(patient, (await ReadAsync<PaymentResultDto>(okOmitted)).PatientId);
+
+        // Gövdedeki PatientId randevununkiyle uyuşmuyorsa 400.
+        var mismatch = NewPayment(patientId: patient);
+        mismatch.PatientId = Unique("pat");
+        var bad = await PostAs(admin, mismatch);
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
 
     [Fact]
@@ -148,7 +159,7 @@ public class PaymentAuthorizationTests : PaymentTestBase
     {
         var first = Unique("pat");
         var key = Unique("shared-key");
-        var dto = NewPayment();
+        var dto = NewPayment(patientId: first);
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments") { Content = JsonContent.Create(dto, options: Json) };
         request.Headers.Add("Idempotency-Key", key);
         Assert.Equal(HttpStatusCode.Created, (await ClientFor(PatientToken(first)).SendAsync(request, Ct)).StatusCode);
