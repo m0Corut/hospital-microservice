@@ -159,7 +159,6 @@ public class PaymentsApiTests : PaymentTestBase
         { "aciklama-201", d => d.Description = new string('x', 201) },
         { "randevu-bos", d => d.AppointmentId = Guid.Empty },
         { "hasta-65", d => d.PatientId = new string('p', 65) },
-        { "doktor-bos", d => d.DoctorId = "" },
     };
 
     [Theory]

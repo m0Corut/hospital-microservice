@@ -43,8 +43,11 @@ public class PaymentConcurrencyTests : PaymentTestBase
         var chargesBefore = Factory.Provider.ChargeCalls;
         var refundsBefore = Factory.Provider.RefundCalls;
 
+        // Aynı randevu = aynı hasta ve doktor (sahte servisler randevuya tek hasta/doktor kaydeder).
+        var patientId = Unique("pat");
+        var doctorId = Unique("doc");
         var responses = await Task.WhenAll(Enumerable.Range(0, Parallel)
-            .Select(_ => PostAsync(NewPayment(appointmentId: appointmentId))));
+            .Select(_ => PostAsync(NewPayment(appointmentId: appointmentId, patientId: patientId, doctorId: doctorId))));
 
         Assert.Equal(1, responses.Count(r => r.StatusCode == HttpStatusCode.Created));
         Assert.Equal(Parallel - 1, responses.Count(r => r.StatusCode == HttpStatusCode.Conflict));

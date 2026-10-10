@@ -221,7 +221,9 @@ public class PaymentSafetyTests : PaymentTestBase
     public async Task CompensatedDuplicate_Replay_Returns409_LikeTheFirstResponse()
     {
         var appointmentId = Guid.CreateVersion7();
-        var dtos = Enumerable.Range(0, 6).Select(_ => NewPayment(appointmentId: appointmentId)).ToList();
+        var patientId = Unique("pat");
+        var doctorId = Unique("doc");
+        var dtos = Enumerable.Range(0, 6).Select(_ => NewPayment(appointmentId: appointmentId, patientId: patientId, doctorId: doctorId)).ToList();
         var keys = dtos.Select(_ => Unique("dup")).ToList();
 
         var responses = await Task.WhenAll(dtos.Select((d, i) => PostAsync(d, keys[i])));
@@ -306,7 +308,7 @@ public class PaymentSafetyTests : PaymentTestBase
                 Id = Guid.CreateVersion7(),
                 AppointmentId = dto.AppointmentId,
                 PatientId = dto.PatientId!,
-                DoctorId = dto.DoctorId,
+                DoctorId = dto.DoctorId!,
                 Amount = dto.Amount,
                 Currency = dto.Currency,
                 Status = PaymentStatus.Pending,

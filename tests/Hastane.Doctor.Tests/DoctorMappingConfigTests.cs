@@ -96,6 +96,35 @@ public class DoctorMappingConfigTests
         Assert.DoesNotContain("PrimaryCity", entityProps);
     }
 
+    private static List<ClinicLocation> Locations(params (decimal? Fee, string Currency)[] items)
+        => items.Select(i => new ClinicLocation { City = "X", HourlyFee = i.Fee, Currency = i.Currency }).ToList();
+
+    [Fact]
+    public void DerivedFee_ZeroFeeIsUndefined_AndIgnored()
+    {
+        var locations = Locations((0m, "TRY"), (200m, "TRY"));
+        Assert.Equal(200m, DoctorDerived.MinFee(locations));
+        Assert.Equal(200m, DoctorDerived.MaxFee(locations));
+        Assert.Equal("TRY", DoctorDerived.Currency(locations));
+    }
+
+    [Fact]
+    public void DerivedFee_OnlyZeroFee_IsNull()
+    {
+        var locations = Locations((0m, "TRY"));
+        Assert.Null(DoctorDerived.MinFee(locations));
+        Assert.Null(DoctorDerived.Currency(locations));
+    }
+
+    [Fact]
+    public void DerivedFee_MixedCurrencies_UsesFirstPricedLocationsCurrency()
+    {
+        // Sıfır ücretli ilk konum atlanır; ilk ÜCRETLİ konum USD: min yalnız USD'ler arasında (5 TRY daha ucuz görünse de).
+        var locations = Locations((0m, "EUR"), (50m, "USD"), (5m, "TRY"), (40m, "USD"));
+        Assert.Equal(40m, DoctorDerived.MinFee(locations));
+        Assert.Equal("USD", DoctorDerived.Currency(locations));
+    }
+
     [Theory]
     [InlineData(typeof(ResultDoctorDto))]
     [InlineData(typeof(DoctorSearchItemDto))]

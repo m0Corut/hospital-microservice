@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Hastane.Payment.Api.Data;
+using Hastane.Payment.Api.Integration;
 using Hastane.Payment.Api.Mapping;
 using Hastane.Payment.Api.Providers;
 using Hastane.Payment.Api.Services;
@@ -7,6 +8,7 @@ using Hastane.Payment.Api.Settings;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +38,26 @@ builder.Services.AddSingleton<IPaymentProvider, MockPaymentProvider>();
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
 builder.Services.AddHastaneAuthorization();
 builder.Services.AddHastaneCurrentUser();
+
+// Servisten servise doğrulama (kart çekilmeden ÖNCE): randevu sahipliği/durumu ve doktor ücreti.
+// Gelen Authorization başlığı IHttpContextAccessor ile aynen iletilir; adresler/zaman aşımı "Services" ayarından, tembel okunur.
+builder.Services.AddOptions<DownstreamServicesOptions>()
+    .BindConfiguration(DownstreamServicesOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<IAppointmentLookup, AppointmentLookup>((sp, client) =>
+{
+    var o = sp.GetRequiredService<IOptions<DownstreamServicesOptions>>().Value;
+    client.BaseAddress = new Uri(o.AppointmentBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
+});
+builder.Services.AddHttpClient<IDoctorFeeLookup, DoctorFeeLookup>((sp, client) =>
+{
+    var o = sp.GetRequiredService<IOptions<DownstreamServicesOptions>>().Value;
+    client.BaseAddress = new Uri(o.DoctorBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
+});
 
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
