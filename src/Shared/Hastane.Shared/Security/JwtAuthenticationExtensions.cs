@@ -10,7 +10,17 @@ public static class JwtAuthenticationExtensions
 {
     public static IServiceCollection AddHastaneJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName));
+        // PostConfigure: tüm Configure'lardan sonra, doğrulayıcılardan (ör. IdentityJwtOptionsValidator) ÖNCE çalışır;
+        // böylece dosyadan gelen anahtar hem doğrulayıcıya hem imzalama/doğrulama tarafına aynı yoldan ulaşır.
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .PostConfigure(jwt =>
+            {
+                if (string.IsNullOrWhiteSpace(jwt.PrivateKeyPem) && !string.IsNullOrWhiteSpace(jwt.PrivateKeyPemFile))
+                    jwt.PrivateKeyPem = ReadPemFile(jwt.PrivateKeyPemFile, "Jwt:PrivateKeyPemFile");
+                if (string.IsNullOrWhiteSpace(jwt.PublicKeyPem) && !string.IsNullOrWhiteSpace(jwt.PublicKeyPemFile))
+                    jwt.PublicKeyPem = ReadPemFile(jwt.PublicKeyPemFile, "Jwt:PublicKeyPemFile");
+            });
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 
@@ -62,5 +72,24 @@ public static class JwtAuthenticationExtensions
 
         services.AddHastaneAuthorization();
         return services;
+    }
+
+    // Hata iletisinde yalnız ayar adı ve yol yer alır; dosya içeriği (anahtar) asla yazılmaz.
+    private static string ReadPemFile(string path, string settingName)
+    {
+        string pem;
+        try
+        {
+            pem = File.ReadAllText(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+        {
+            throw new InvalidOperationException(
+                $"{settingName} ile verilen PEM dosyası okunamadı: {path} ({ex.GetType().Name})", ex);
+        }
+
+        if (string.IsNullOrWhiteSpace(pem))
+            throw new InvalidOperationException($"{settingName} ile verilen PEM dosyası boş: {path}");
+        return pem;
     }
 }

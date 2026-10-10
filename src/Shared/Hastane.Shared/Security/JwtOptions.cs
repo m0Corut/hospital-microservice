@@ -18,4 +18,10 @@ public class JwtOptions
     // İsteğe bağlı ezme: doğrulama (açık) anahtarı. Boşsa derlemeye gömülü jwt-public.pem kullanılır.
     // Testlerde test anahtarı buradan girer; anahtar değişiminde (rotation) yeniden derleme gerekmesin diye de var.
     public string? PublicKeyPem { get; set; }
+
+    // Docker secrets (/run/secrets/...) gibi dosyadan okuma. Yalnız karşılık gelen PEM değeri BOŞSA kullanılır
+    // (değer her zaman dosyayı ezer). Okuma AddHastaneJwtAuthentication'daki PostConfigure'da yapılır.
+    public string? PrivateKeyPemFile { get; set; }
+
+    public string? PublicKeyPemFile { get; set; }
 }

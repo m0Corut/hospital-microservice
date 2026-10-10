@@ -17,6 +17,8 @@ WORKDIR /src
 # yeniden kullanılır, NuGet paketleri tekrar indirilmez; paket sürümü (Directory.Packages.props) değişince yenilenir.
 COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/Shared/Hastane.Shared/Hastane.Shared.csproj src/Shared/Hastane.Shared/
+# Olay sözleşmeleri (RabbitMQ): Appointment, Notification, Queue, Market, Order başvurur; diğerleri için zararsız.
+COPY src/Shared/Hastane.Contracts/Hastane.Contracts.csproj src/Shared/Hastane.Contracts/
 COPY ${PROJECT_PATH}/${PROJECT_NAME}.csproj ${PROJECT_PATH}/
 RUN dotnet restore "${PROJECT_PATH}/${PROJECT_NAME}.csproj"
 

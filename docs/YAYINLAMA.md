@@ -11,8 +11,14 @@ Tarayıcı ──https──> Caddy (80/443) ──> webui:8080       (MVC sayfa
 
 webui ──> gateway:8080 ──> identity, branch, doctor, review, appointment, prescription, patient, queue,
                            pharmacy, market, order, payment, notification, chat   (hepsi :8080, yalnız Docker ağında)
-servisler ──> sqlserver · mongo · mariadb · redis · mailhog   (extra profili: elasticsearch · kafka · analytics)
+servisler ──> sqlserver · mongo · mariadb · redis · rabbitmq · mailhog   (extra profili: elasticsearch · kafka · analytics)
 ```
+
+Olaylar RabbitMQ üzerinden akar (MassTransit; ayrıntı: `docs/OLAY-MIMARISI-RABBITMQ.md`): Appointment ve Order yayınlar,
+Notification, Queue ve Market tüketir. Bu beş servis `RabbitMq__Host=rabbitmq` + `RABBITMQ_USER`/`RABBITMQ_PASSWORD` alır
+ve RabbitMQ `healthy` olmadan açılmaz. (`RabbitMq:Host` boş kalsaydı servisler sessizce bellek içi taşımaya düşer, olaylar
+servisler arasında hiç gitmezdi.) Servisler arası HTTP iç anahtarı (`INTERNAL_API_KEY`) yalnız Identity, Notification,
+Market ve Order'a verilir; Appointment artık Notification'a olayla ulaşır.
 
 **Gateway'i dışarı açmak gerekmiyor.** Koddan doğrulandı: WebUI, API çağrılarını sunucu tarafında yapar
 (`Hastane.WebUI/Infrastructure/ServiceCollectionExtensions.cs`: `Gateway:BaseUrl`, Docker'da `http://gateway:8080`).
@@ -77,10 +83,11 @@ MONGO_PASSWORD=...        # harf/rakam/_ -  (kaçışsız mongodb:// adresine gi
 SQL_SA_PASSWORD=...       # 8+ karakter, büyük+küçük+rakam+sembol; ; ve $ kullanmayın
 MARIADB_ROOT_PASSWORD=...
 REDIS_PASSWORD=...
-RABBITMQ_PASSWORD=...
+RABBITMQ_USER=hastane
+RABBITMQ_PASSWORD=...     # RabbitMQ kullanıcısı volume ilk oluşurken sabitlenir (SQL Server gibi)
 ADMIN_EMAIL=siz@alanadi.com
 ADMIN_PASSWORD=...        # ilk Admin hesabı (sistemde hiç Admin yoksa oluşur)
-INTERNAL_API_KEY=...      # openssl rand -hex 32   (servisler arası iç anahtar)
+INTERNAL_API_KEY=...      # openssl rand -hex 32   (servisler arası iç anahtar: Identity, Notification, Market, Order)
 DOMAIN=hastane.alanadi.com
 PUBLIC_WEB_URL=https://hastane.alanadi.com
 PUBLIC_GATEWAY_URL=https://hastane.alanadi.com
@@ -98,7 +105,11 @@ chmod 644 secrets/jwt-private.pem secrets/jwt-public.pem   # konteynerdeki root 
 ```
 
 Anahtarı kaybeder ya da yenilerseniz tüm oturumlar düşer (token'lar geçersiz olur); başka sonucu yok.
-Depodaki `src/Shared/Hastane.Shared/jwt-public.pem` Docker'da KULLANILMAZ: açık anahtar `Jwt__PublicKeyPemFile` ile dosyadan gelir, yeniden derleme gerekmez.
+Anahtarlar konteynere Docker secret olarak bağlanır (`/run/secrets/jwt_private_key`, `/run/secrets/jwt_public_key`) ve
+`Jwt__PrivateKeyPemFile` (yalnız Identity) / `Jwt__PublicKeyPemFile` (tüm servisler + WebUI) ayarlarıyla dosyadan okunur
+(`JwtAuthenticationExtensions` içindeki PostConfigure; `Jwt:PrivateKeyPem`/`Jwt:PublicKeyPem` doluysa dosyaya bakılmaz).
+Dosya yoksa/okunamazsa servis açılışta yolu söyleyen bir hatayla durur; anahtar içeriği günlüğe yazılmaz.
+Depodaki `src/Shared/Hastane.Shared/jwt-public.pem` Docker'da KULLANILMAZ: açık anahtar dosyadan gelir, yeniden derleme gerekmez.
 
 > PowerShell (`pwsh`) kuruluysa yukarıdaki iki adımın (`.env` + anahtarlar) yerine
 > `pwsh -File scripts/docker-up.ps1 -Proxy` hepsini yapar (rastgele parolalar dahil).
@@ -131,7 +142,7 @@ curl -sk https://hastane.alanadi.com/ -o /dev/null -w '%{http_code}\n'
 ## 5. Yedekleme
 
 Kalıcı veri adlandırılmış volume'larda (`docker volume ls | grep hastane`): `hastane_sqlserver-data`, `hastane_mongo-data`,
-`hastane_mariadb-data`, `hastane_redis-data`, `hastane_identity-photos` (profil fotoğrafları), `hastane_webui-keys`
+`hastane_mariadb-data`, `hastane_redis-data`, `hastane_rabbitmq-data` (henüz teslim edilmemiş olaylar), `hastane_identity-photos` (profil fotoğrafları), `hastane_webui-keys`
 (oturum çerezi anahtarları), `hastane_caddy-data` (HTTPS sertifikaları). Ayrıca `.env` ve `secrets/` (depoda yok; ayrı, güvenli yerde saklayın).
 
 Tutarlı yedek için veritabanı araçlarıyla (konteynerler çalışırken):
@@ -174,7 +185,9 @@ docker image prune -f
 | Belirti | Neden / çözüm |
 |---|---|
 | Servis `unhealthy`, günlükte `Login failed for user 'sa'` | `.env` parolası, volume'daki ilk parolayla uyuşmuyor. SQL Server parolası volume ilk oluşurken sabitlenir: eski parolayı geri yazın ya da `hastane_sqlserver-data` volume'unu silin (VERİYİ SİLER). |
-| Identity açılmıyor: `Jwt:PrivateKeyPem yapılandırılmamış` / dosya bulunamadı | `secrets/jwt-private.pem` yok ya da boş; yukarıdaki `openssl` adımını çalıştırın. |
+| Identity açılmıyor: `Jwt:PrivateKeyPem yapılandırılmamış` / `Jwt:PrivateKeyPemFile ile verilen PEM dosyası okunamadı/boş` | `secrets/jwt-private.pem` yok ya da boş; yukarıdaki `openssl` adımını çalıştırın. |
+| Servis açılmıyor: `Jwt:PublicKeyPemFile ile verilen PEM dosyası okunamadı` | `secrets/jwt-public.pem` yok ya da izni yok; `openssl pkey ... -pubout` adımı ve `chmod 644`. |
+| Randevu/sipariş bildirimi gelmiyor, günlükte RabbitMQ bağlantı hatası | `RABBITMQ_USER`/`RABBITMQ_PASSWORD`, `hastane_rabbitmq-data` volume'u ilk oluşurken sabitlenen kullanıcıyla uyuşmuyor (SQL Server satırındaki durumla aynı). |
 | Identity: `UnauthorizedAccessException ... jwt-private.pem` | Dosya izni. `chmod 644 secrets/*.pem` (klasör 700 kalsın). |
 | `docker compose` `required variable ... is missing` | `.env`'de değişken eksik; mesaj hangisi olduğunu söyler. |
 | Kuyruk ekranı canlı güncellenmiyor | Caddy `/gateway/hubs/*` yolunu Gateway'e yollamalı ve `PUBLIC_GATEWAY_URL` alan adı olmalı. 15 sn'de bir yedek yenileme vardır ama canlı değildir. |

@@ -17,8 +17,18 @@ x-app-env: &app-env
   ASPNETCORE_ENVIRONMENT: Docker
   Database__MigrateOnStartup: "true"
   Jwt__PublicKeyPemFile: /run/secrets/jwt_public_key
-  Internal__ApiKey: ${INTERNAL_API_KEY:?.env içinde INTERNAL_API_KEY yok (docker-up.ps1 üretir)}
   Kafka__BootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:-}
+
+# Servisler arası iç anahtar: yalnız iç uç SUNAN ya da ÇAĞIRAN servislere verilir
+# (Identity -> Notification e-posta, Order -> Market stok). Hepsinde AYNI değer.
+x-internal-key: &internal-key ${INTERNAL_API_KEY:?.env içinde INTERNAL_API_KEY yok (docker-up.ps1 üretir)}
+
+# Olay katmanı (MassTransit + RabbitMQ): Appointment, Order yayınlar; Notification, Queue, Market tüketir.
+# RabbitMq__Host boş kalsaydı servisler sessizce bellek içi taşımaya düşerdi (olaylar servisler arasında GİTMEZ).
+x-rabbitmq-env: &rabbitmq-env
+  RabbitMq__Host: rabbitmq
+  RabbitMq__Username: ${RABBITMQ_USER:?.env içinde RABBITMQ_USER yok}
+  RabbitMq__Password: ${RABBITMQ_PASSWORD:?.env içinde RABBITMQ_PASSWORD yok}
 
 # aspnet imajında curl yok: bash'in /dev/tcp'si ile 8080 portu açık mı diye bakılır.
 x-app-health: &app-health
@@ -134,6 +144,7 @@ services:
       <<: *app-env
       ConnectionStrings__IdentityDb: Server=sqlserver,1433;Database=hastane_identity;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
       Jwt__PrivateKeyPemFile: /run/secrets/jwt_private_key
+      Internal__ApiKey: *internal-key
       WebUi__BaseUrl: ${PUBLIC_WEB_URL:-http://localhost:5010}
       Services__NotificationBaseUrl: http://notification:8080
       Storage__PhotoPath: /data/photos
@@ -220,15 +231,17 @@ services:
     image: hastane/appointment:${HASTANE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *app-env
+      # Notification'a artık HTTP ile değil olayla (RabbitMQ) ulaşır: iç anahtar ve Notification adresi gerekmez.
+      <<: [*app-env, *rabbitmq-env]
       ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_appointment;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
       Services__DoctorBaseUrl: http://doctor:8080
-      Services__NotificationBaseUrl: http://notification:8080
     secrets:
       - jwt_public_key
     healthcheck: *app-health
     depends_on:
       sqlserver:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   prescription:
@@ -281,7 +294,7 @@ services:
     image: hastane/queue:${HASTANE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *app-env
+      <<: [*app-env, *rabbitmq-env]
       ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_queue;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
       Services__AppointmentBaseUrl: http://appointment:8080
     secrets:
@@ -289,6 +302,8 @@ services:
     healthcheck: *app-health
     depends_on:
       sqlserver:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   pharmacy:
@@ -303,6 +318,7 @@ services:
     environment:
       <<: *app-env
       ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_pharmacy;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Services__PrescriptionBaseUrl: http://prescription:8080
     secrets:
       - jwt_public_key
     healthcheck: *app-health
@@ -320,9 +336,11 @@ services:
     image: hastane/market:${HASTANE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *app-env
+      <<: [*app-env, *rabbitmq-env]
       ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_market;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
       ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
+      # İç stok uçları (Order çağırır) bu anahtarı ister.
+      Internal__ApiKey: *internal-key
       Market__SeedDemoData: ${MARKET_SEED_DEMO_DATA:-false}
     secrets:
       - jwt_public_key
@@ -331,6 +349,8 @@ services:
       sqlserver:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   order:
@@ -343,14 +363,18 @@ services:
     image: hastane/order:${HASTANE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *app-env
+      <<: [*app-env, *rabbitmq-env]
       ConnectionStrings__DefaultConnection: Server=mariadb;Port=3306;Database=hastane_order;User=root;Password=${MARIADB_ROOT_PASSWORD}
       Services__MarketBaseUrl: http://market:8080
+      # Market iç stok uçlarını çağırır (X-Internal-Key).
+      Internal__ApiKey: *internal-key
     secrets:
       - jwt_public_key
     healthcheck: *app-health
     depends_on:
       mariadb:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   payment:
@@ -384,10 +408,13 @@ services:
     image: hastane/notification:${HASTANE_TAG:-latest}
     restart: unless-stopped
     environment:
-      <<: *app-env
+      <<: [*app-env, *rabbitmq-env]
       DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
       Smtp__Host: mailhog
       Smtp__Port: "1025"
+      # İç e-posta uçları (Identity çağırır) bu anahtarı ister.
+      Internal__ApiKey: *internal-key
+      # Scheduling:TimeZone verilmez: appsettings varsayılanı (Europe/Istanbul) Appointment/Queue ile ortak kalmalı.
     secrets:
       - jwt_public_key
     healthcheck: *app-health
@@ -396,6 +423,8 @@ services:
         condition: service_healthy
       mailhog:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
 
   chat:
     build:

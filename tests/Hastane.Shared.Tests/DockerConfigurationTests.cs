@@ -54,6 +54,45 @@ public sealed class DockerConfigurationTests
         Assert.Equal(TestKeys.PublicKeyPem, provider.GetRequiredService<IOptions<JwtOptions>>().Value.PublicKeyPem);
     }
 
+    [Fact]
+    public void MissingPemFile_FailsWithPath_NotSilently()
+    {
+        var missing = Path.Combine(Path.GetTempPath(), $"hastane-yok-{Guid.NewGuid():N}.pem");
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Jwt:PublicKeyPemFile"] = missing,
+        }).Build();
+        using var provider = new ServiceCollection().AddHastaneJwtAuthentication(config).BuildServiceProvider();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IOptions<JwtOptions>>().Value);
+
+        Assert.Contains("Jwt:PublicKeyPemFile", ex.Message);
+        Assert.Contains(missing, ex.Message);
+    }
+
+    [Fact]
+    public void EmptyPemFile_FailsWithPath()
+    {
+        var path = Path.GetTempFileName();
+        try
+        {
+            var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:PrivateKeyPemFile"] = path,
+            }).Build();
+            using var provider = new ServiceCollection().AddHastaneJwtAuthentication(config).BuildServiceProvider();
+
+            var ex = Assert.Throws<InvalidOperationException>(() => provider.GetRequiredService<IOptions<JwtOptions>>().Value);
+
+            Assert.Contains("boş", ex.Message);
+            Assert.Contains(path, ex.Message);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Theory]
     [InlineData("Development", null, true)]
     [InlineData("Production", null, false)]
