@@ -1,13 +1,13 @@
 using Hastane.WebUI.Models.Api.DoctorPanel;
+using Hastane.WebUI.ViewModels.Shared;
 
 namespace Hastane.WebUI.ViewModels.DoctorPanel;
 
 // Doktor paneli ekranlarının ortak biçimleme yardımcıları (tarih, durum, kimlik kısaltma).
 public static class DoctorPanelFormat
 {
-    // API UTC döner (EF bazen Kind'siz verir): Kind belirsizse UTC kabul edip yerel saate çevir.
-    public static DateTime ToLocal(DateTime value)
-        => value.Kind == DateTimeKind.Local ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc).ToLocalTime();
+    // API UTC döner (EF bazen Kind'siz verir): Kind belirsizse UTC kabul edip İstanbul saatine çevir.
+    public static DateTime ToLocal(DateTime value) => AppointmentTime.ToClinicLocal(value);
 
     public static string DateTimeText(DateTime value) => ToLocal(value).ToString("dd.MM.yyyy HH:mm");
 

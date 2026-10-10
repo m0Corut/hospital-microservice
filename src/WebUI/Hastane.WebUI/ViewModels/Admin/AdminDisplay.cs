@@ -2,6 +2,7 @@ using System.Globalization;
 using Hastane.WebUI.Clients;
 using Hastane.WebUI.Infrastructure.Gateway;
 using Hastane.WebUI.Models.Api.Admin;
+using Hastane.WebUI.ViewModels.Shared;
 
 namespace Hastane.WebUI.ViewModels.Admin;
 
@@ -9,7 +10,7 @@ namespace Hastane.WebUI.ViewModels.Admin;
 public static class AdminDisplay
 {
     public static string Date(DateTime? value)
-        => value is null ? "-" : value.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+        => value is null ? "-" : AppointmentTime.ToClinicLocal(value.Value).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
 
     public static string Money(decimal amount, string currency)
         => $"{amount.ToString("N2", CultureInfo.InvariantCulture)} {currency}";

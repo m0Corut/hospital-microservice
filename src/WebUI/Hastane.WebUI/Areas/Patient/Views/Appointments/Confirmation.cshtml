@@ -19,6 +19,10 @@
         <li><span class="k">Doktor</span><span class="v">@Model.DoctorName</span></li>
         <li><span class="k">Tarih ve saat</span><span class="v">@DisplayText.DateTimeLocal(a.AppointmentDate)</span></li>
         <li><span class="k">Durum</span><span class="v"><span class="badge @DisplayText.AppointmentBadge(a.Status)">@DisplayText.AppointmentStatus(a.Status)</span></span></li>
+        @if (!string.IsNullOrWhiteSpace(a.Note))
+        {
+            <li><span class="k">Şikâyet / not</span><span class="v text-break">@a.Note</span></li>
+        }
         <li>
             <span class="k">Ödeme</span>
             <span class="v">

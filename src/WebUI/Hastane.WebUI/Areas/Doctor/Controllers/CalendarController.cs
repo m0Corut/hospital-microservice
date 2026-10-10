@@ -1,5 +1,6 @@
 using Hastane.WebUI.Clients;
 using Hastane.WebUI.ViewModels.DoctorPanel;
+using Hastane.WebUI.ViewModels.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Areas.Doctor.Controllers;
@@ -9,15 +10,15 @@ public class CalendarController(IDoctorPanelAppointmentClient appointments) : Do
     // /Doctor/Calendar?start=2026-10-12: verilen günün haftası (Pazartesi-Pazar). Boşsa bu hafta.
     public async Task<IActionResult> Index(DateTime? start, CancellationToken ct)
     {
-        var day = (start ?? DateTime.Now).Date;
+        var day = (start ?? AppointmentTime.NowLocal()).Date;
         var weekStart = day.AddDays(-(((int)day.DayOfWeek + 6) % 7));
 
-        var fromUtc = weekStart.ToUniversalTime();
-        var toUtc = weekStart.AddDays(7).AddTicks(-1).ToUniversalTime();
+        var fromUtc = AppointmentTime.ClinicLocalToUtc(weekStart);
+        var toUtc = AppointmentTime.ClinicLocalToUtc(weekStart.AddDays(7)).AddTicks(-1);
         var list = (await appointments.ListAsync(DoctorId, null, fromUtc, toUtc, ct)).Value ?? [];
         var patientLabel = await PatientLabelsAsync(list.Select(a => a.PatientId), ct);
 
-        var today = DateTime.Now.Date;
+        var today = AppointmentTime.NowLocal().Date;
         var days = Enumerable.Range(0, 7).Select(i =>
         {
             var date = weekStart.AddDays(i);

@@ -26,6 +26,8 @@ public sealed class DoctorPanelAppointmentApiModel
     public DateTime AppointmentDate { get; set; }
     public DoctorPanelAppointmentStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    // Hastanın randevu alırken yazdığı şikâyet / not (yoksa null).
+    public string? Note { get; set; }
     // Yalnız GET {id} yanıtında dolu olabilir; muayene detayı girilmediyse null.
     public DoctorPanelAppointmentDetailApiModel? Detail { get; set; }
 }

@@ -12,12 +12,7 @@
     </ul>
     <form asp-action="Reschedule" asp-controller="Appointments" asp-area="Doctor" asp-route-id="@Model.Id" method="post" novalidate>
         <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
-        <div class="mb-3">
-            <label asp-for="AppointmentLocal" class="form-label"></label>
-            <input asp-for="AppointmentLocal" type="datetime-local" class="form-control" />
-            <span asp-validation-for="AppointmentLocal" class="text-danger small"></span>
-            <div class="form-text">Çalışma saatleriniz dışında ya da dolu bir saat seçerseniz sistem sizi uyarır.</div>
-        </div>
+        <partial name="_SlotPicker" model="Model.Picker" />
         <button type="submit" class="btn btn-accent">Yeniden planla</button>
         <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Vazgeç</a>
     </form>

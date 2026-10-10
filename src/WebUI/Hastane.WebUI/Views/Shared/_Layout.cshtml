@@ -109,6 +109,8 @@
                                     {
                                         <li><a class="dropdown-item" href="~/Patient"><i class="bi bi-speedometer2" aria-hidden="true"></i>Hasta paneli</a></li>
                                     }
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile"><i class="bi bi-person-gear" aria-hidden="true"></i>Hesap ayarları</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword"><i class="bi bi-key" aria-hidden="true"></i>Şifre değiştir</a></li>
                                     <li>
                                         <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="px-3 pt-2 pb-1">
                                             <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Çıkış yap</button>
@@ -183,7 +185,7 @@
         </div>
         <div class="footer-note py-3">
             <div class="container d-flex flex-wrap justify-content-between gap-2">
-                <span>&copy; @DateTime.Now.Year Hastane</span>
+                <span>&copy; @AppointmentTime.NowLocal().Year Hastane</span>
                 <span>Eğitim projesi: gerçek bir sağlık hizmeti değildir.</span>
             </div>
         </div>

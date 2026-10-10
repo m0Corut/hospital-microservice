@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Controllers;
 
-public class AccountController(IAuthClient auth, IAccessTokenValidator tokenValidator, ILogger<AccountController> logger)
+public class AccountController(
+    IAuthClient auth, IAccountSettingsClient settings, IAccessTokenValidator tokenValidator, ILogger<AccountController> logger)
     : AppController
 {
     private const string GenericLoginError = "E-posta veya şifre hatalı.";
@@ -74,6 +75,65 @@ public class AccountController(IAuthClient auth, IAccessTokenValidator tokenVali
 
         SetSuccess("Kayıt tamamlandı. Şimdi giriş yapabilirsiniz.");
         return RedirectToAction(nameof(Login));
+    }
+
+    // Hesap ayarları (tüm roller): ad/soyad düzenleme; e-posta ve roller salt okunur.
+    [HttpGet, Authorize]
+    public async Task<IActionResult> Profile(CancellationToken ct)
+    {
+        var me = (await settings.GetMeAsync(ct)).Value!;
+        return View(new ProfileViewModel { FirstName = me.FirstName, LastName = me.LastName, Email = me.Email, Roles = me.Roles });
+    }
+
+    [HttpPost, Authorize]
+    public async Task<IActionResult> Profile(ProfileViewModel model, CancellationToken ct)
+    {
+        if (ModelState.IsValid)
+        {
+            var result = await settings.UpdateProfileAsync(model.FirstName.Trim(), model.LastName.Trim(), ct);
+            if (result.IsSuccess)
+            {
+                // Menüdeki ad oturum belirtecinden (token) gelir; belirteç yenilenmediği için yeni ad bir sonraki girişte görünür.
+                // Kullanıcıyı çıkış yaptırmak yerine açıkça bilgilendiririz: ad değişimi güvenlik olayı değil.
+                SetSuccess("Bilgileriniz güncellendi. Menüdeki adınız bir sonraki girişinizde yenilenir.");
+                return RedirectToAction(nameof(Profile));
+            }
+
+            ModelState.AddApiProblem(result, "Bilgiler güncellenemedi.");
+        }
+
+        // E-posta ve roller formdan alınmaz; her seferinde API'den okunur.
+        var me = (await settings.GetMeAsync(ct)).Value!;
+        model.Email = me.Email;
+        model.Roles = me.Roles;
+        return View(model);
+    }
+
+    [HttpGet, Authorize]
+    public IActionResult ChangePassword() => View(new ChangePasswordViewModel());
+
+    [HttpPost, Authorize]
+    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model, CancellationToken ct)
+    {
+        if (ModelState.IsValid)
+        {
+            var result = await settings.ChangePasswordAsync(model.CurrentPassword, model.NewPassword, ct);
+            if (result.IsSuccess)
+            {
+                // Eski oturum belirteci süresi dolana dek geçerli kalır; güvenli olan, çıkış yaptırıp yeni şifreyle girişi istemek.
+                await HttpContext.SignOutAsync(AuthConstants.CookieScheme);
+                SetSuccess("Şifre değişti, yeniden giriş yapın.");
+                return RedirectToAction(nameof(Login));
+            }
+
+            if (result.Kind == ApiResultKind.Locked)
+                ModelState.AddModelError(string.Empty, "Hesap geçici olarak kilitlendi. Lütfen daha sonra tekrar deneyin.");
+            else
+                ModelState.AddApiProblem(result, "Şifre değiştirilemedi.");
+        }
+
+        // Parola alanları (type=password) tag helper tarafından geri yazılmaz: form boş döner.
+        return View(model);
     }
 
     // Çıkış POST: bir bağlantıyla (GET) çıkış yaptırılamasın (başka sitedeki <img src=/Account/Logout> hilesi).

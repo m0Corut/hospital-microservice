@@ -17,8 +17,11 @@ public interface IPublicDoctorClient
     // Ana sayfa "öne çıkan doktorlar" gibi yardımcı bölümler servis kapalıyken sayfayı düşürmesin diye hata kümesi verilebilir.
     Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria criteria, ApiFailures handle, CancellationToken ct);
 
-    // Ayrıntı uç noktası giriş ister (telefon + e-posta içerir): anonimde istemci 401 fırlatır, filtre girişe yönlendirir.
+    // Ayrıntı uç noktası giriş ister (telefon + e-posta içerir); anonim ziyaretçi için GetPublicAsync kullanılır.
     Task<ApiResult<DoctorDetailApiModel>> GetAsync(string id, CancellationToken ct);
+
+    // Herkese açık profil (anonim): telefon ve e-posta YOK (alanlar null kalır). Girişsiz ziyaretçi için.
+    Task<ApiResult<DoctorDetailApiModel>> GetPublicAsync(string id, CancellationToken ct);
 
     // Toplu özet (N+1 yok): randevu / reçete listelerinde doktor adı için. En çok 100 id.
     Task<ApiResult<List<DoctorSummaryApiModel>>> GetBatchAsync(IEnumerable<string> ids, ApiFailures handle, CancellationToken ct);
@@ -44,6 +47,9 @@ public sealed class PublicDoctorClient(IGatewayClient gateway) : IPublicDoctorCl
 
     public Task<ApiResult<DoctorDetailApiModel>> GetAsync(string id, CancellationToken ct)
         => gateway.GetAsync<DoctorDetailApiModel>($"/gateway/doctors/{Uri.EscapeDataString(id)}", ct: ct);
+
+    public Task<ApiResult<DoctorDetailApiModel>> GetPublicAsync(string id, CancellationToken ct)
+        => gateway.GetAsync<DoctorDetailApiModel>($"/gateway/doctors/{Uri.EscapeDataString(id)}/public", ct: ct);
 
     public Task<ApiResult<List<DoctorSummaryApiModel>>> GetBatchAsync(IEnumerable<string> ids, ApiFailures handle, CancellationToken ct)
     {

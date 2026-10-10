@@ -78,9 +78,9 @@ public sealed class ReviewRowViewModel
 {
     public required ReviewApiModel Review { get; init; }
 
-    // Yorum sahibinin kimliği API yanıtında yok; ad eşleşmesi yalnız düzenle/sil düğmelerini göstermek içindir.
-    // Asıl sahiplik denetimi API'dedir (başkasının yorumu 404 döner).
-    public bool LooksOwned { get; init; }
+    // API yanıtındaki isMine (token'dan hesaplanır): düzenle/sil düğmeleri buna bağlı, ad eşleşmesine DEĞİL.
+    // Asıl sahiplik denetimi yine API'dedir (başkasının yorumu 404 döner).
+    public bool IsMine { get; init; }
 }
 
 public sealed class DoctorProfileViewModel
@@ -91,6 +91,7 @@ public sealed class DoctorProfileViewModel
     public List<ReviewRowViewModel> Reviews { get; init; } = [];
     public bool ReviewsUnavailable { get; init; }
     public bool IsPatient { get; init; }
+    public bool IsSignedIn { get; init; }
     public ReviewFormModel ReviewForm { get; init; } = new() { Rating = 5 };
 
     public string FullName => DisplayText.DoctorName(Doctor.Title, Doctor.FirstName, Doctor.LastName);

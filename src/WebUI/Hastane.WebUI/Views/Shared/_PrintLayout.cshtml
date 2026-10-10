@@ -18,7 +18,7 @@
     <main class="print-sheet">
         <div class="print-head">
             <img src="~/img/logo.svg" alt="Hastane" width="150" height="40" />
-            <div class="text-end small text-muted">@(ViewData["DocTitle"] ?? "Belge")<br />@DateTime.Now.ToString("dd.MM.yyyy")</div>
+            <div class="text-end small text-muted">@(ViewData["DocTitle"] ?? "Belge")<br />@AppointmentTime.NowLocal().ToString("dd.MM.yyyy")</div>
         </div>
         @RenderBody()
         <p class="small text-muted mt-4 mb-0">Eğitim projesi: bu belge gerçek bir sağlık hizmeti ya da mali belge değildir.</p>

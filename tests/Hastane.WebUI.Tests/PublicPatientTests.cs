@@ -1,6 +1,8 @@
 using System.Net;
 using System.Web;
+using System.Text.RegularExpressions;
 using static Hastane.WebUI.Tests.PublicPatientTestHelpers;
+using static Hastane.WebUI.Tests.SlotTestHelpers;
 
 namespace Hastane.WebUI.Tests;
 
@@ -192,22 +194,32 @@ public class PublicDoctorProfileTests
             new { doctorId = "d1", reviewCount = 2, averageRating = 4.5, recommendationPercent = 100 });
         host.Gateway.MapJson("GET", "/gateway/reviews", 200, new[]
         {
-            Review("r1", "Ayşe Yılmaz", 5, "Harika"),
+            Review("r1", "Ayşe Yılmaz", 5, "Harika", isMine: true),
             Review("r2", "Mehmet Kaya", 4, "<script>alert(1)</script> iyi"),
         });
         return (host, await host.LoginAsAsync(role));
     }
 
     [Fact]
-    public async Task Anonymous_is_sent_to_login_without_calling_the_detail_endpoint()
+    public async Task Anonymous_sees_public_profile_without_phone_or_email_and_never_calls_the_detail_endpoint()
     {
         await using var host = await WebUiTestHost.StartAsync();
+        host.Gateway.MapBranches("Kardiyoloji");
+        host.Gateway.MapJson("GET", "/gateway/doctors/d1/public", 200, PublicDoctor());
+        host.Gateway.MapJson("GET", "/gateway/reviews/doctors/d1/summary", 200, new { doctorId = "d1", reviewCount = 0, averageRating = 0.0, recommendationPercent = 0 });
+        host.Gateway.MapJson("GET", "/gateway/reviews", 200, Array.Empty<object>());
 
         var response = await host.CreateClient().GetAsync("/Doctors/d1");
+        var html = await response.Content.ReadHtmlAsync();
 
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/Account/Login?returnUrl=%2FDoctors%2Fd1", Location(response));
-        Assert.Empty(host.Gateway.Calls("GET", "/gateway/doctors/d1"));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Dr. Ali Veli", html);
+        Assert.DoesNotContain("0555 000 00 00", html);
+        Assert.DoesNotContain("ali@hastane.test", html);
+        Assert.DoesNotContain("Telefon:", html);
+        Assert.Single(host.Gateway.Calls("GET", "/gateway/doctors/d1/public"));
+        Assert.Empty(host.Gateway.Calls("GET", "/gateway/doctors/d1")); // giriş gerektiren uç anonimde çağrılmaz
+        Assert.Equal("", host.Gateway.Calls("GET", "/gateway/doctors/d1/public").Single().Authorization);
     }
 
     [Fact]
@@ -679,18 +691,28 @@ public class PatientAppointmentTests
     }
 
     [Fact]
-    public async Task Create_form_shows_doctor_and_schedule()
+    public async Task Create_form_shows_doctor_schedule_day_buttons_slots_and_note_field()
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        var slot = SlotUtc(2, 10);
+        var availability = host.Gateway.MapAvailability(slot, SlotUtc(2, 10, 30));
         var client = await host.LoginAsAsync("Patient");
 
-        var html = await (await client.GetAsync("/Patient/Appointments/Create?doctorId=d1")).Content.ReadHtmlAsync();
+        var html = await (await client.GetAsync($"/Patient/Appointments/Create?doctorId=d1&date={DayText(2)}")).Content.ReadHtmlAsync();
 
         Assert.Contains("Dr. Ali Veli", html);
         Assert.Contains("Pazartesi: 09:00 - 12:00 (30 dk)", html);
-        Assert.Contains("datetime-local", html);
+        Assert.DoesNotContain("datetime-local", html); // serbest tarih girişi kalktı
+        Assert.Equal($"?doctorId=d1&date={DayText(2)}", availability.LastQuery);
+        Assert.Equal(14, Regex.Matches(html, "href=\"/Patient/Appointments/Create\\?doctorId=d1&date=").Count); // önümüzdeki 14 gün
+        Assert.Contains(">10:00</label>", html); // 07:00Z -> İstanbul 10:00
+        Assert.Contains(">10:30</label>", html);
+        Assert.Contains($"name=\"SlotStart\" id=\"slot-0\" value=\"{SlotValue(slot)}\"", html);
+        Assert.Contains($"name=\"Date\" value=\"{DayText(2)}\"", html);
+        Assert.Contains("name=\"Note\"", html);
         Assert.Contains("name=\"DoctorId\"", html);
+        Assert.StartsWith("Bearer ", host.Gateway.Calls("GET", "/gateway/appointments/availability").Last().Authorization);
     }
 
     [Fact]
@@ -706,19 +728,21 @@ public class PatientAppointmentTests
     }
 
     [Fact]
-    public async Task Create_posts_utc_date_with_branch_from_api_and_ignores_patient_and_branch_from_form()
+    public async Task Create_posts_selected_slot_utc_start_and_note_with_branch_from_api_and_ignores_patient_and_branch_from_form()
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
         host.Gateway.MapJson("POST", "/gateway/appointments", 201, Appointment(Appt1));
         var client = await host.LoginAsAsync("Patient");
-        var localText = LocalFuture();
-        var expectedUtc = DateTime.SpecifyKind(DateTime.Parse(localText, System.Globalization.CultureInfo.InvariantCulture), DateTimeKind.Local).ToUniversalTime();
+        var slot = SlotUtc(2, 10);
 
         var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
         {
             ["DoctorId"] = "d1",
-            ["AppointmentLocal"] = localText,
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(slot),
+            ["Note"] = "  Göğsümde baskı var  ",
             ["BranchId"] = "kotu-sube",
             ["PatientId"] = "baska-hasta",
         });
@@ -732,24 +756,76 @@ public class PatientAppointmentTests
         Assert.False(json.TryGetProperty("patientId", out _));
         var sentDate = json.GetProperty("appointmentDate").GetDateTime();
         Assert.Equal(DateTimeKind.Utc, sentDate.Kind);
-        Assert.Equal(expectedUtc, sentDate);
+        Assert.Equal(slot, sentDate); // slotun UTC başlangıcı aynen gider (yerel saat dönüşümü yok)
+        Assert.Equal("Göğsümde baskı var", json.GetProperty("note").GetString());
     }
 
     [Fact]
-    public async Task Create_409_slot_taken_is_shown_in_form_and_keeps_the_entered_date()
+    public async Task Create_without_note_sends_no_note()
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
+        host.Gateway.MapJson("POST", "/gateway/appointments", 201, Appointment(Appt1));
+        var client = await host.LoginAsAsync("Patient");
+
+        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(SlotUtc(2, 10)),
+            ["Note"] = "   ",
+        });
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        var json = Json(host.Gateway.Calls("POST", "/gateway/appointments").Single().Body);
+        Assert.True(!json.TryGetProperty("note", out var note) || note.ValueKind == System.Text.Json.JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Create_409_slot_taken_is_shown_in_form_and_keeps_day_note_and_redraws_slots()
+    {
+        await using var host = await WebUiTestHost.StartAsync();
+        host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        var availability = host.Gateway.MapAvailability(SlotUtc(2, 10), SlotUtc(2, 11));
         host.Gateway.MapJson("POST", "/gateway/appointments", 409, Problem(409, "Bu doktorun bu saatte başka bir randevusu var."));
         var client = await host.LoginAsAsync("Patient");
-        var localText = LocalFuture();
+        var slot = SlotUtc(2, 10);
 
-        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1", ["AppointmentLocal"] = localText });
+        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(slot),
+            ["Note"] = "Kontrol",
+        });
         var html = await response.Content.ReadHtmlAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Bu doktorun bu saatte başka bir randevusu var.", html);
-        Assert.Contains(localText, html);
+        Assert.Equal($"?doctorId=d1&date={DayText(2)}", availability.LastQuery); // aynı gün yeniden çizilir
+        Assert.Contains($"value=\"{SlotValue(slot)}\" checked", html); // seçili saat işaretli kalır
+        Assert.Contains("Kontrol</textarea>", html);
+    }
+
+    [Fact]
+    public async Task Create_400_outside_doctor_schedule_message_is_shown_in_form()
+    {
+        await using var host = await WebUiTestHost.StartAsync();
+        host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
+        host.Gateway.MapJson("POST", "/gateway/appointments", 400, Problem(400, "Seçilen saat doktorun çalışma programında değil"));
+        var client = await host.LoginAsAsync("Patient");
+
+        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(SlotUtc(2, 10)),
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Seçilen saat doktorun çalışma programında değil", await response.Content.ReadHtmlAsync());
     }
 
     [Fact]
@@ -757,28 +833,67 @@ public class PatientAppointmentTests
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
         host.Gateway.MapJson("POST", "/gateway/appointments", 400, Problem(400, "Geçersiz", new { AppointmentDate = new[] { "Randevu tarihi gelecekte olmalı." } }));
         var client = await host.LoginAsAsync("Patient");
 
-        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1", ["AppointmentLocal"] = LocalFuture() });
+        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(SlotUtc(2, 10)),
+        });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Randevu tarihi gelecekte olmalı.", await response.Content.ReadHtmlAsync());
     }
 
     [Fact]
-    public async Task Create_with_past_or_missing_date_never_reaches_the_api()
+    public async Task Create_503_doctor_service_down_is_a_form_message_not_an_error_page()
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
+        host.Gateway.MapStatus("POST", "/gateway/appointments", 503);
         var client = await host.LoginAsAsync("Patient");
-        var past = DateTime.Now.AddDays(-2).ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture);
 
-        var pastHtml = await (await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1", ["AppointmentLocal"] = past })).Content.ReadHtmlAsync();
+        var response = await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["Date"] = DayText(2),
+            ["SlotStart"] = SlotValue(SlotUtc(2, 10)),
+            ["Note"] = "Not",
+        });
+        var html = await response.Content.ReadHtmlAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Doktorun programına şu an ulaşılamıyor", html);
+        Assert.Contains("Not</textarea>", html);
+    }
+
+    [Fact]
+    public async Task Create_with_past_missing_or_malformed_slot_or_too_long_note_never_reaches_the_api()
+    {
+        await using var host = await WebUiTestHost.StartAsync();
+        host.Gateway.MapJson("GET", "/gateway/doctors/d1", 200, Doctor());
+        host.Gateway.MapAvailability(SlotUtc(2, 10));
+        var client = await host.LoginAsAsync("Patient");
+        var past = SlotValue(DateTime.UtcNow.AddDays(-2));
+
+        var pastHtml = await (await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1", ["SlotStart"] = past })).Content.ReadHtmlAsync();
         var missingHtml = await (await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1" })).Content.ReadHtmlAsync();
+        var malformedHtml = await (await host.PostAsync(client, "/Patient/Appointments/Create", new() { ["DoctorId"] = "d1", ["SlotStart"] = "2030-01-01T10:00" })).Content.ReadHtmlAsync();
+        var longNoteHtml = await (await host.PostAsync(client, "/Patient/Appointments/Create", new()
+        {
+            ["DoctorId"] = "d1",
+            ["SlotStart"] = SlotValue(SlotUtc(2, 10)),
+            ["Note"] = new string('a', 501),
+        })).Content.ReadHtmlAsync();
 
         Assert.Contains("Randevu tarihi gelecekte olmalı.", pastHtml);
-        Assert.Contains("Tarih ve saat seçin.", missingHtml);
+        Assert.Contains("Bir saat seçin.", missingHtml);
+        Assert.Contains("Geçersiz saat seçimi.", malformedHtml);
+        Assert.Contains("Not en çok 500 karakter olabilir.", longNoteHtml);
         Assert.Empty(host.Gateway.Calls("POST", "/gateway/appointments"));
     }
 }

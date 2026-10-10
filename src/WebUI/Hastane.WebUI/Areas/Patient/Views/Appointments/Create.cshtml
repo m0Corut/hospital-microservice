@@ -30,11 +30,11 @@
             <form asp-action="Create" asp-controller="Appointments" asp-area="Patient" method="post" novalidate>
                 <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
                 <input type="hidden" asp-for="DoctorId" />
+                <partial name="_SlotPicker" model="Model.Picker" />
                 <div class="mb-3">
-                    <label asp-for="AppointmentLocal" class="form-label"></label>
-                    <input asp-for="AppointmentLocal" type="datetime-local" class="form-control" />
-                    <span asp-validation-for="AppointmentLocal" class="text-danger small"></span>
-                    <div class="form-text">Doktorun çalışma günlerinden birini seçin. Dolu saatler için sistem sizi uyarır.</div>
+                    <label asp-for="Note" class="form-label"></label>
+                    <textarea asp-for="Note" class="form-control" rows="3" maxlength="500" placeholder="İsteğe bağlı: doktorun bilmesini istediğiniz şikâyet ya da not"></textarea>
+                    <span asp-validation-for="Note" class="text-danger small"></span>
                 </div>
                 <button type="submit" class="btn btn-accent">Randevuyu oluştur</button>
                 <a class="btn btn-outline-secondary" asp-area="" asp-controller="Doctors" asp-action="Details" asp-route-id="@Model.DoctorId">Vazgeç</a>

@@ -166,7 +166,8 @@ internal static partial class PublicPatientTestHelpers
 
     public static object EmptyPayments() => new { items = Array.Empty<object>(), totalCount = 0, page = 1, pageSize = 10 };
 
-    public static object Review(string id, string reviewer, int rating = 4, string comment = "Çok memnun kaldım") => new
+    // isMine: API'nin token'dan hesapladığı sahiplik bayrağı (düzenle/sil düğmeleri buna bağlı; ad eşleşmesine değil).
+    public static object Review(string id, string reviewer, int rating = 4, string comment = "Çok memnun kaldım", bool isMine = false) => new
     {
         id,
         doctorId = DoctorId,
@@ -174,6 +175,7 @@ internal static partial class PublicPatientTestHelpers
         rating,
         comment,
         createdAt = DateTime.UtcNow.AddDays(-2),
+        isMine,
     };
 
     public static object Problem(int status, string detail, object? errors = null) => errors is null

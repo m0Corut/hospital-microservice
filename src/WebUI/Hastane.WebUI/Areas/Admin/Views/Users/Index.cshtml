@@ -1,18 +1,67 @@
+@model UserIndexViewModel
 @{
     ViewData["Title"] = "Kullanıcılar";
+    var pager = new PagerViewModel
+    {
+        Action = "Index", Page = Model.Page.Page, PageSize = Model.Page.PageSize, TotalCount = Model.Page.TotalCount,
+        Filters = new Dictionary<string, string?> { ["search"] = Model.Search, ["role"] = Model.Role },
+    };
 }
 
 <h1 class="h4 mb-3">Kullanıcılar</h1>
 
-<div class="panel-card p-4">
-    <p class="text-muted small">Kimlik servisi kullanıcı listesi sunmaz; kullanıcıyı Id'si (GUID) ile bulabilirsiniz.</p>
-    <form method="get" asp-area="Admin" asp-controller="Users" asp-action="Index" class="row g-2">
-        <div class="col-md-9">
-            <label for="id" class="form-label visually-hidden">Kullanıcı Id</label>
-            <input id="id" name="id" class="form-control" placeholder="Kullanıcı Id (ör. 3f2b1c9e-...)" />
+<form method="get" asp-area="Admin" asp-controller="Users" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-6">
+        <label for="search" class="form-label small">Ara (ad, soyad, e-posta)</label>
+        <input id="search" name="search" value="@Model.Search" class="form-control" maxlength="100" />
+    </div>
+    <div class="col-md-4">
+        <label for="role" class="form-label small">Rol</label>
+        <select id="role" name="role" class="form-select">
+            <option value="">Tümü</option>
+            @foreach (var r in Model.Roles)
+            {
+                <option value="@r" selected="@(Model.Role == r)">@UiText.RoleName(r)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary mt-auto">Süz</button></div>
+</form>
+
+<div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+<div class="panel-card p-3">
+    @if (Model.Page.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Kullanıcı bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Ad soyad</th><th>E-posta</th><th>Roller</th><th>Doktor bağı</th><th class="text-end">İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var u in Model.Page.Items)
+                {
+                    <tr>
+                        <td>@u.FirstName @u.LastName</td>
+                        <td class="small">@u.Email</td>
+                        <td>
+                            @foreach (var role in u.Roles)
+                            {
+                                <span class="badge text-bg-info">@UiText.RoleName(role)</span>
+                            }
+                        </td>
+                        <td>@(u.DoctorId is null ? "-" : "Var")</td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@u.Id">Ayrıntı</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
         </div>
-        <div class="col-md-3 d-grid">
-            <button type="submit" class="btn btn-primary">Bul</button>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-muted">Toplam @Model.Page.TotalCount kullanıcı</span>
+            <partial name="_Pager" model="pager" />
         </div>
-    </form>
+    }
 </div>

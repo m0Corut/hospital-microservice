@@ -1,6 +1,7 @@
 using Hastane.WebUI.Clients;
 using Hastane.WebUI.Models.Api.DoctorPanel;
 using Hastane.WebUI.ViewModels.DoctorPanel;
+using Hastane.WebUI.ViewModels.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Areas.Doctor.Controllers;
@@ -10,8 +11,8 @@ public class HomeController(IDoctorPanelAppointmentClient appointments) : Doctor
     // Sınıf düzeyindeki alan kapısı (Doctor) geçerli; action'a ek etiket gerekmez.
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var todayStart = DateTime.Now.Date;
-        var todayStartUtc = todayStart.ToUniversalTime();
+        var todayStart = AppointmentTime.NowLocal().Date;
+        var todayStartUtc = AppointmentTime.ClinicLocalToUtc(todayStart);
 
         // İki çağrı: bugünden sonrası (bugün + yaklaşan) ve bekleyenler (geçmiş tarihli bekleyen de görünsün diye ayrı).
         var upcomingResult = await appointments.ListAsync(DoctorId, null, todayStartUtc, null, ct);

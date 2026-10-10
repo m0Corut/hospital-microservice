@@ -62,6 +62,8 @@ public sealed class AppointmentDetailViewModel
     public DoctorPanelAppointmentStatus Status { get; set; }
     public string PatientLabel { get; set; } = string.Empty;
     public string BranchLabel { get; set; } = string.Empty;
+    // Hastanın randevu alırken yazdığı şikâyet / not.
+    public string? Note { get; set; }
     public AppointmentDetailForm Form { get; set; } = new();
     public DateTime? DetailUpdatedAt { get; set; }
     public List<PrescriptionLinkRow> Prescriptions { get; set; } = [];

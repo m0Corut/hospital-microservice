@@ -11,7 +11,7 @@ namespace Hastane.WebUI.Areas.Patient.Controllers;
 
 public class AppointmentsController(
     IPatientAppointmentClient appointments, IPatientPaymentClient payments, IPublicDoctorClient doctors,
-    IAppointmentRescheduleClient reschedule) : PatientAreaController
+    IAppointmentRescheduleClient reschedule, IAppointmentAvailabilityClient availability) : PatientAreaController
 {
     private static readonly string[] Statuses = ["Pending", "Confirmed", "Cancelled", "Completed"];
 
@@ -49,7 +49,7 @@ public class AppointmentsController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> Create(string? doctorId, CancellationToken ct)
+    public async Task<IActionResult> Create(string? doctorId, string? date, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(doctorId))
         {
@@ -57,8 +57,9 @@ public class AppointmentsController(
             return RedirectToAction("Index", "Doctors", new { area = "" });
         }
 
-        var model = new CreateAppointmentViewModel { DoctorId = doctorId };
+        var model = new CreateAppointmentViewModel { DoctorId = doctorId, Date = date };
         await FillDoctorAsync(model, ct);
+        await FillPickerAsync(model, ct);
         return View(model);
     }
 
@@ -68,26 +69,25 @@ public class AppointmentsController(
         // Şube ve doktor bilgisi formdan değil API'den alınır (şube kimliği istemciden güvenilmez).
         var doctor = await FillDoctorAsync(model, ct);
 
-        DateTime? utc = null;
-        if (model.AppointmentLocal is { } local)
+        // Saat serbest girilmez: radio'dan gelen slotun UTC başlangıcı. Programa uyum ve çakışma API'de denetlenir (400 / 409).
+        var utc = AppointmentTime.ParseSlot(model.SlotStart, ModelState, nameof(model.SlotStart));
+
+        if (ModelState.IsValid && utc is { } start)
         {
-            utc = DateTime.SpecifyKind(local, DateTimeKind.Local).ToUniversalTime();
-            if (utc <= DateTime.UtcNow)
-                ModelState.AddModelError(nameof(model.AppointmentLocal), "Randevu tarihi gelecekte olmalı.");
+            var note = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim();
+            var result = await appointments.CreateAsync(new CreateAppointmentRequest(doctor.Id, doctor.BranchId, start, note), ct);
+            if (result.TryGetValue(out var created))
+            {
+                // "Randevunuz alındı" onay sayfası: özet + "Şimdi öde" + "Randevularım".
+                return RedirectToAction(nameof(Confirmation), new { id = created.Id });
+            }
+
+            // 400: program dışı saat / geçmiş; 409: saat dolu; 503: doktor servisi kapalı. Hepsi forma döner, gün ve not korunur.
+            ModelState.AddBookingProblem(result, "Randevu oluşturulamadı.");
         }
 
-        if (!ModelState.IsValid || utc is null) return View(model);
-
-        var result = await appointments.CreateAsync(new CreateAppointmentRequest(doctor.Id, doctor.BranchId, utc.Value), ct);
-        if (!result.TryGetValue(out var created))
-        {
-            // 409: doktorun o saati dolu; 400: tarih geçmişte vb. İkisi de forma döner, girilen tarih korunur.
-            ModelState.AddApiProblem(result, "Randevu oluşturulamadı.");
-            return View(model);
-        }
-
-        // "Randevunuz alındı" onay sayfası: özet + "Şimdi öde" + "Randevularım".
-        return RedirectToAction(nameof(Confirmation), new { id = created.Id });
+        await FillPickerAsync(model, ct);
+        return View(model);
     }
 
     [HttpGet]
@@ -109,7 +109,7 @@ public class AppointmentsController(
 
     // Yeniden planlama: yalnız bekleyen / onaylı randevu. Sahiplik ve son durum kuralı API'dedir (404 / 409).
     [HttpGet]
-    public async Task<IActionResult> Reschedule(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Reschedule(Guid id, string? date, CancellationToken ct)
     {
         var appointment = (await appointments.GetAsync(id, ct)).Value!;
         if (appointment.Status is not ("Pending" or "Confirmed"))
@@ -118,7 +118,7 @@ public class AppointmentsController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        return View(await BuildRescheduleAsync(appointment, new RescheduleViewModel { Id = id }, ct));
+        return View(await BuildRescheduleAsync(appointment, new RescheduleViewModel { Id = id, Date = date }, ct));
     }
 
     [HttpPost]
@@ -127,7 +127,7 @@ public class AppointmentsController(
         // Şube, doktor ve durum formdan değil API'den alınır.
         var appointment = (await appointments.GetAsync(id, ct)).Value!;
         model.Id = id;
-        var utc = AppointmentTime.LocalToFutureUtc(model.AppointmentLocal, ModelState, nameof(model.AppointmentLocal));
+        var utc = AppointmentTime.ParseSlot(model.SlotStart, ModelState, nameof(model.SlotStart));
 
         if (ModelState.IsValid && utc is { } newDate)
         {
@@ -138,8 +138,8 @@ public class AppointmentsController(
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // 409: o saat dolu ya da randevu artık değiştirilemez; girilen tarih formda kalır.
-            ModelState.AddApiProblem(result, "Randevu yeniden planlanamadı.");
+            // 400: program dışı saat; 409: o saat dolu ya da randevu artık değiştirilemez; 503: doktor servisi kapalı.
+            ModelState.AddBookingProblem(result, "Randevu yeniden planlanamadı.");
         }
 
         return View(await BuildRescheduleAsync(appointment, model, ct));
@@ -150,6 +150,9 @@ public class AppointmentsController(
         var names = await DoctorNameLookup.LoadAsync(doctors, [appointment.DoctorId], ct);
         model.PartyLabel = names.NameOf(appointment.DoctorId);
         model.CurrentDate = appointment.AppointmentDate;
+        model.Picker = await AppointmentTime.BuildPickerAsync(availability, appointment.DoctorId, model.Date,
+            day => Url.Action(nameof(Reschedule), new { id = model.Id, date = AppointmentTime.DateText(day) })!, ct);
+        model.Picker.SelectedStart = model.SlotStart;
         return model;
     }
 
@@ -161,6 +164,13 @@ public class AppointmentsController(
         if (result.IsSuccess) SetSuccess("Randevunuz iptal edildi.");
         else SetWarning(result.Problem?.Detail ?? "Randevu iptal edilemedi.");
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    private async Task FillPickerAsync(CreateAppointmentViewModel model, CancellationToken ct)
+    {
+        model.Picker = await AppointmentTime.BuildPickerAsync(availability, model.DoctorId, model.Date,
+            day => Url.Action(nameof(Create), new { doctorId = model.DoctorId, date = AppointmentTime.DateText(day) })!, ct);
+        model.Picker.SelectedStart = model.SlotStart;
     }
 
     private async Task<DoctorDetailApiModel> FillDoctorAsync(CreateAppointmentViewModel model, CancellationToken ct)

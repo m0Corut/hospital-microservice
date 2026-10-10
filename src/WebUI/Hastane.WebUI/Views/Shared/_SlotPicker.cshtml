@@ -1,0 +1,40 @@
+@model SlotPickerViewModel
+@* Saat seçici: gün düğmeleri GET bağlantısı (sunucu yeniden çizer), saatler radio. Form alanları: Date (gizli) ve SlotStart. *@
+<fieldset class="slot-picker mb-3">
+    <legend class="form-label fs-6">Gün seçin</legend>
+    <div class="d-flex flex-wrap gap-2 mb-3" role="group" aria-label="Gün seçimi">
+        @foreach (var day in Model.Days)
+        {
+            <a href="@day.Url" class="btn btn-sm @(day.Selected ? "btn-primary" : "btn-outline-primary")" aria-current="@(day.Selected ? "date" : null)">@day.Label</a>
+        }
+    </div>
+    <input type="hidden" name="Date" value="@Model.SelectedDateText" />
+
+    <div class="form-label">Saat seçin <span class="text-muted small">(Türkiye saati)</span></div>
+    @if (Model.Unavailable)
+    {
+        <div class="alert alert-warning py-2 small" role="alert">Doktorun boş saatleri şu an alınamıyor. Lütfen biraz sonra tekrar deneyin.</div>
+    }
+    else if (Model.Slots.Count == 0)
+    {
+        <div class="alert alert-light border py-2 small" role="status">
+            Bu gün için boş saat yok.
+            @if (Model.NextDay is { } next)
+            {
+                <a href="@next.Url" class="ms-1">Sonraki gün (@next.Label)</a>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2" role="radiogroup" aria-label="Boş saatler">
+            @foreach (var (slot, i) in Model.Slots.Select((s, i) => (s, i)))
+            {
+                <div>
+                    <input type="radio" class="btn-check" name="SlotStart" id="slot-@i" value="@slot.Value" checked="@(slot.Value == Model.SelectedStart)" autocomplete="off" />
+                    <label class="btn btn-outline-primary btn-sm" for="slot-@i" title="@slot.ClinicName">@slot.Text</label>
+                </div>
+            }
+        </div>
+    }
+</fieldset>

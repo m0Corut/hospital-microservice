@@ -13,5 +13,5 @@ public interface IAppointmentRescheduleClient
 public sealed class AppointmentRescheduleClient(IGatewayClient gateway) : IAppointmentRescheduleClient
 {
     public Task<ApiResult<AppointmentApiModel>> RescheduleAsync(Guid id, string branchId, DateTime appointmentUtc, CancellationToken ct)
-        => gateway.PutAsync<AppointmentApiModel>($"/gateway/appointments/{id}", new { id, branchId, appointmentDate = appointmentUtc }, ct: ct);
+        => gateway.PutAsync<AppointmentApiModel>($"/gateway/appointments/{id}", new { id, branchId, appointmentDate = appointmentUtc }, ApiFailures.Unavailable, ct);
 }
