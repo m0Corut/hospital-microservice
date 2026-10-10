@@ -1,0 +1,55 @@
+@model PaymentListViewModel
+@{
+    ViewData["Title"] = "Ödemelerim";
+}
+
+<partial name="_PatientNav" />
+
+<h1 class="h4 mb-3">Ödemelerim</h1>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="panel-card p-4 text-muted">Henüz ödemeniz yok.</div>
+}
+else
+{
+    <div class="panel-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr><th>Tarih</th><th>Doktor</th><th>Tutar</th><th>Durum</th><th>Fatura</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Items)
+                    {
+                        var p = row.Payment;
+                        <tr>
+                            <td>@DisplayText.DateTimeLocal(p.CreatedAt)</td>
+                            <td>@row.DoctorName</td>
+                            <td>@DisplayText.Money(p.Amount, p.Currency)</td>
+                            <td><span class="badge @DisplayText.PaymentBadge(p.Status)">@DisplayText.PaymentStatus(p.Status)</span></td>
+                            <td>
+                                @if (p.InvoiceId is { } invoiceId)
+                                {
+                                    <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoiceId">@p.InvoiceNumber</a>
+                                }
+                            </td>
+                            <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@p.Id">Ayrıntı</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-3" aria-label="Sayfalar">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)">Önceki</a></li>
+                <li class="page-item disabled"><span class="page-link">@Model.Page / @Model.TotalPages</span></li>
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)">Sonraki</a></li>
+            </ul>
+        </nav>
+    }
+}
