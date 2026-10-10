@@ -31,6 +31,9 @@
   <Folder Name="/src/WebUI/">
     <Project Path="src/WebUI/Hastane.WebUI/Hastane.WebUI.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Hastane.DevSeed/Hastane.DevSeed.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hastane.Appointment.Tests/Hastane.Appointment.Tests.csproj" />
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
