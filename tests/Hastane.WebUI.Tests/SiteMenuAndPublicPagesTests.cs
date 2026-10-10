@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.RegularExpressions;
 using Hastane.TestSupport;
 
@@ -50,7 +50,9 @@ public class SiteMenuAndPublicPagesTests
             Assert.Contains($"href=\"{href}\"", html);
 
         // Favoriler ve Mesajlar artık gerçek bağlantı: "yakında" rozeti ve devre dışı öğe yok.
-        Assert.Matches(new Regex("<a class=\"dropdown-item\" href=\"/Messages\"><i class=\"bi bi-chat-dots\" aria-hidden=\"true\"></i>Mesajlar"), html);
+        Assert.Matches(new Regex("<a class=\"dropdown-item\" href=\"/Messages\"><i class=\"bi bi-chat-dots\" aria-hidden=\"true\"></i><span>Mesajlar</span>"), html);
+        // Razor "Mesajlar@await" yazımını e-posta sanıp kodu düz metin basıyordu; sayfada çiğ Razor kalmamalı.
+        Assert.DoesNotContain("@await", html);
         Assert.DoesNotContain("yakında", html);
         Assert.DoesNotContain("dropdown-item disabled", html);
 
