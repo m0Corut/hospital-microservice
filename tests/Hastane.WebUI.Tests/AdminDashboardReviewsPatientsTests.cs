@@ -326,7 +326,8 @@ public class AdminReviewsTests
         Assert.DoesNotContain("<b>Zararlı", raw);
         Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", raw);
         Assert.Contains("Dr. Ali Veli", raw);
-        Assert.Contains("★★★<span class=\"off\">☆☆</span>", raw);
+        // Razor ★/☆ karakterlerini &#x2605; gibi kodlar (tarayıcıda yine yıldız); yıldızları çözülmüş metinde ara.
+        Assert.Contains("★★★<span class=\"off\">☆☆</span>", System.Net.WebUtility.HtmlDecode(raw));
         Assert.Contains("/Admin/Reviews/Delete/rev1", raw);
         Assert.StartsWith("Bearer ", Last(host, "GET", "/gateway/reviews").Authorization);
     }
@@ -417,7 +418,8 @@ public class AdminReviewsTests
         await using var host = await WebUiTestHost.StartAsync();
         var client = await AdminClientAsync(host);
 
-        var html = await HtmlAsync(await client.GetAsync("/Admin/Users"));
+        // /Admin her servis kapalıyken de açılır (sahte gateway'de kullanıcı ucu tanımlı değil); kenar menüsü _AdminLayout'tan.
+        var html = await HtmlAsync(await client.GetAsync("/Admin"));
 
         Assert.Contains("href=\"/Admin/Reviews\"", html);
         Assert.Contains("href=\"/Admin/Patients\"", html);

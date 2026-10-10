@@ -27,3 +27,7 @@
         @RenderBody()
     </div>
 </div>
+
+@* İç içe düzen: sayfaların Styles/Scripts bölümlerini ana _Layout'a iletir (yoksa bölüm tanımlayan sayfa 500 verir). *@
+@section Styles { @await RenderSectionAsync("Styles", required: false) }
+@section Scripts { @await RenderSectionAsync("Scripts", required: false) }
