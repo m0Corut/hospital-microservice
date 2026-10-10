@@ -1,8 +1,11 @@
+using Hastane.Notification.Api.Messaging;
 using Hastane.Notification.Api.Settings;
 using Hastane.Notification.Api.Services;
 using Hastane.TestSupport;
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MongoDB.Driver;
@@ -39,6 +42,14 @@ public class NotificationApiFactory : WebApplicationFactory<Program>, IAsyncLife
             services.AddSingleton<IEmailSender>(Email);
             // user-secrets'taki gerçek anahtar testi etkilemesin: seçenek son söz olarak sabit değere çekilir.
             services.PostConfigure<InternalOptions>(o => o.ApiKey = InternalKey);
+        });
+        // Üretimdeki tüketici yapılandırması + MassTransit test harness (bellek içi taşıma). HER Notification fabrikası için:
+        // aksi halde Program.cs, user-secrets'taki RabbitMq:Host'u (kayıt anında, UseSetting'den önce) okuyup testi GERÇEK
+        // RabbitMQ'ya bağlar (geliştirici ortamındaki olayları tüketir; kapanışta "Failed to stop bus" uyarısı -> temizlik hatası).
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveMassTransit();
+            services.AddMassTransitTestHarness(x => NotificationMessaging.Configure(x));
         });
     }
 

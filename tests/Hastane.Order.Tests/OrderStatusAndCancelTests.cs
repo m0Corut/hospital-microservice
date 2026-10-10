@@ -2,6 +2,7 @@ using System.Net;
 using Hastane.Contracts;
 using Hastane.Order.Api.Dtos;
 using Hastane.Order.Api.Entities;
+using Hastane.TestSupport;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 
@@ -106,7 +107,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var cancelled = await ReadAsync<GetByIdOrderDto>(response);
         Assert.Equal(OrderStatus.Cancelled, cancelled.Status);
         Assert.False(cancelled.StockReleasePending);
-        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
         Assert.NotNull(published);
         Assert.Equal(order.OrderNumber, published.Context.Message.OrderNumber);
         Assert.Equal(order.PatientUserId, published.Context.Message.PatientUserId);
@@ -128,7 +129,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         Assert.Equal(OrderStatus.Cancelled, cancelled.Status);
         Assert.Equal("Vazgeçtim", cancelled.CancelReason);
         Assert.False(cancelled.StockReleasePending);
-        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
         Assert.NotNull(published);
         Assert.Equal("Vazgeçtim", published.Context.Message.Reason);
         Assert.NotEqual(Guid.Empty, published.Context.Message.EventId);
@@ -157,7 +158,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var response = await ClientFor(PatientToken(sub)).PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.False(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
+        Assert.False(await Harness.AnyConsumedAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct, OutboxHarnessExtensions.QuietPeriod));
     }
 
     [Fact]
@@ -170,7 +171,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var response = await admin.PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
+        Assert.True(await Harness.AnyConsumedAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
     [Fact]
@@ -185,8 +186,9 @@ public class OrderStatusAndCancelTests : OrderTestBase
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-        await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
-        Assert.Single(Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
+        await Harness.AnyConsumedAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
+        await OutboxHarnessExtensions.WaitQuietPeriodAsync(Ct);
+        Assert.Single(Harness.Consumed.Select<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
     // ÖĞRETİM: eski senkron yolda Market kapalıysa iade "bekliyor" işaretiyle kalırdı. Şimdi iptal Market'ten bağımsız kaydolur,
@@ -204,7 +206,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var stored = await WithDbAsync(db => db.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id, Ct));
         Assert.Equal(OrderStatus.Cancelled, stored.Status);
         Assert.False(stored.StockReleasePending);
-        Assert.True(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
+        Assert.True(await Harness.AnyConsumedAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
     [Fact]
     public async Task ConcurrentCancelAndStatusChange_OnlyOneWins_NoLostUpdate()

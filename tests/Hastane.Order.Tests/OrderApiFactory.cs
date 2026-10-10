@@ -1,3 +1,4 @@
+using Hastane.Contracts;
 using Hastane.Order.Api.Messaging;
 using Hastane.TestSupport;
 using MassTransit;
@@ -32,9 +33,15 @@ public class OrderApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(() => Market.CreateHandler()));
             // Üretimdeki outbox yapılandırması (MariaDB) + MassTransit test harness (bellek içi taşıma; RabbitMQ yok).
-            // Olaylar OutboxMessage tablosundan teslim servisiyle yayınlanır; harness.Published'da görünür.
+            // Olaylar OutboxMessage tablosundan teslim servisiyle taşımaya gönderilir (Send); harness.Published'da DEĞİL,
+            // test dinleyicisi sayesinde harness.Consumed'da görünür (bkz. OutboxTapConsumer).
             services.RemoveMassTransit();
-            services.AddMassTransitTestHarness(x => OrderMessaging.Configure(x));
+            services.AddMassTransitTestHarness(x =>
+            {
+                OrderMessaging.Configure(x, o => o.QueryDelay = OutboxTapExtensions.TestQueryDelay);
+                x.AddOutboxTap<OrderPlaced>();
+                x.AddOutboxTap<OrderCancelled>();
+            });
         });
     }
 

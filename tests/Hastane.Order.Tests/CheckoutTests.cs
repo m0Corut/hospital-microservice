@@ -4,6 +4,7 @@ using Hastane.Contracts;
 using Hastane.Order.Api.Dtos;
 using Hastane.Order.Api.Entities;
 using Hastane.Order.Api.Services;
+using Hastane.TestSupport;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 
@@ -124,8 +125,8 @@ public class CheckoutTests : OrderTestBase
         Assert.False(Market.CartIsEmpty(sub));
         Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release")); // Market hiçbir şey düşmedi
         // Stok hiç ayrılmadığı için iade olayı da yok (ve sipariş "alındı" sayılmadığından OrderPlaced da yok).
-        Assert.False(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
-        Assert.False(await Harness.Published.Any<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct));
+        Assert.False(await Harness.AnyConsumedAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct, OutboxHarnessExtensions.QuietPeriod));
+        Assert.False(await Harness.AnyConsumedAsync<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct, OutboxHarnessExtensions.QuietPeriod));
     }
 
     [Theory]
@@ -173,7 +174,7 @@ public class CheckoutTests : OrderTestBase
         Assert.Equal(OrderStatus.Cancelled, order.Status);
         Assert.False(order.StockReleasePending); // eski "iade bekliyor" işareti yok: iade olayla, outbox garantisiyle
         // Reserve yanıtı kaybolmuş olabilir (Market stoğu düşmüş olabilir): OrderCancelled yayınlanır, Market idempotent iade eder.
-        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
         Assert.NotNull(published);
         Assert.Equal(OrderService.ReserveUnavailableReason, published.Context.Message.Reason);
         Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release")); // senkron iade çağrısı artık yok

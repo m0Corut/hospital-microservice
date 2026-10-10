@@ -43,5 +43,12 @@ dotnet user-secrets set "RabbitMq:Username" "guest"
 dotnet user-secrets set "RabbitMq:Password" "guest"
 ```
 
-`RabbitMq:Host` boşsa (testler, RabbitMQ'suz çalışma) MassTransit **bellek içi** taşıma kullanır: olaylar yalnız aynı süreç içinde teslim edilir, servisler arası bildirim akmaz.
+`RabbitMq:Host` boşsa (RabbitMQ'suz çalışma) MassTransit **bellek içi** taşıma kullanır: olaylar yalnız aynı süreç içinde teslim edilir, servisler arası bildirim akmaz.
 Notification servisinde ek olarak `Scheduling:TimeZone` (varsayılan `Europe/Istanbul`) bildirim saatini klinik saatine çevirir.
+
+## Testler
+
+- Testler `RabbitMq:Host` ayarına **güvenmez**: `Program.cs` bu ayarı kayıt anında user-secrets'tan okur (WebApplicationFactory'nin `UseSetting`'inden önce). Bu yüzden olay kullanan her servisin test fabrikası `RemoveMassTransit()` + `AddMassTransitTestHarness(...)` ile bellek içi harness kurar; aksi halde test geliştiricinin gerçek RabbitMQ'suna bağlanır.
+- **Outbox + harness:** EF bus outbox açıkken teslim servisi olayı önceden serileştirilmiş gövdeyle **Send** eder; `harness.Published` bu yüzden boş kalır (MassTransit'te bilinen sınırlama). Yayıncı testleri olay türüne bağlı boş bir dinleyici (`OutboxTapConsumer<T>`, `AddOutboxTap<T>()`) ekler ve olayı `harness.Consumed`'da arar: olay gerçekten outbox'a yazılmış, commit sonrası teslim edilmiş ve taşımadan geçmiş olur.
+- Harness'ın `SelectAsync/Any` beklemesi bus hareketsizliğine bağlıdır ve paylaşılan fixture'da ilk dolumdan sonra anında döner; outbox teslimi ise HTTP yanıtından sonra gelir. Bu yüzden `ConsumedEventAsync` / `AnyConsumedAsync` (TestSupport) açık zaman aşımıyla yoklar; "olay yok" iddiaları `QuietPeriod` (2 sn) boyunca gözler. Testte outbox `QueryDelay` 50 ms'ye çekilir (üretim varsayılanı korunur).
+- **Order (MySQL/MariaDB):** `OrderDbContext` `AutoTransactionBehavior.Always` kullanır. Oracle MySQL sağlayıcısı iş verisi + OutboxState + OutboxMessage grubunu işlemsiz gönderebiliyordu; bu, outbox atomikliğini bozuyor ve teslim servisiyle yarışta FK hatasına (500) yol açıyordu.

@@ -1,4 +1,5 @@
 using Hastane.Appointment.Api.Messaging;
+using Hastane.Contracts;
 using Hastane.TestSupport;
 using MassTransit;
 using Microsoft.AspNetCore.Hosting;
@@ -36,12 +37,19 @@ public class AppointmentApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         });
     }
 
-    // Varsayılan: üretimdeki outbox yapılandırması + MassTransit TEST HARNESS (bellek içi taşıma). RabbitMQ yok; yayınlanan her olay
-    // harness.Published'da görünür. Olay yine EF outbox üzerinden gider: randevu SaveChanges -> OutboxMessage -> teslim servisi -> yayın.
+    // Varsayılan: üretimdeki outbox yapılandırması + MassTransit TEST HARNESS (bellek içi taşıma). RabbitMQ yok.
+    // Olay yine EF outbox üzerinden gider: randevu SaveChanges -> OutboxMessage -> teslim servisi -> taşıma -> test dinleyicisi.
+    // Outbox teslimi Send olduğundan olay harness.Published'da DEĞİL, harness.Consumed'da görünür (bkz. OutboxTapConsumer).
     protected virtual void ConfigureMessaging(IServiceCollection services)
     {
         services.RemoveMassTransit();
-        services.AddMassTransitTestHarness(x => AppointmentMessaging.Configure(x));
+        services.AddMassTransitTestHarness(x =>
+        {
+            AppointmentMessaging.Configure(x, o => o.QueryDelay = OutboxTapExtensions.TestQueryDelay);
+            x.AddOutboxTap<AppointmentCreated>();
+            x.AddOutboxTap<AppointmentStatusChanged>();
+            x.AddOutboxTap<AppointmentRescheduled>();
+        });
     }
 
     public override async ValueTask DisposeAsync()
