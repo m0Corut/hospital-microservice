@@ -23,9 +23,14 @@ $apps = [ordered]@{
     'Appointment'  = @{ Path = 'src/Services/Appointment/Hastane.Appointment.Api'; Port = 5104 }
     'Prescription' = @{ Path = 'src/Services/Prescription/Hastane.Prescription.Api'; Port = 5105 }
     'Patient'      = @{ Path = 'src/Services/Patient/Hastane.Patient.Api'; Port = 5106 }
+    'Queue'        = @{ Path = 'src/Services/Queue/Hastane.Queue.Api'; Port = 5107 }
+    'Pharmacy'     = @{ Path = 'src/Services/Pharmacy/Hastane.Pharmacy.Api'; Port = 5108 }
+    'Market'       = @{ Path = 'src/Services/Market/Hastane.Market.Api'; Port = 5109 }
+    'Order'        = @{ Path = 'src/Services/Order/Hastane.Order.Api'; Port = 5110 }
     'Payment'      = @{ Path = 'src/Services/Payment/Hastane.Payment.Api'; Port = 5111 }
     'Notification' = @{ Path = 'src/Services/Notification/Hastane.Notification.Api'; Port = 5112 }
     'Chat'         = @{ Path = 'src/Services/Chat/Hastane.Chat.Api'; Port = 5114 }
+    'Analytics'    = @{ Path = 'src/Services/Analytics/Hastane.Analytics.Api'; Port = 5115 }
     'Gateway'      = @{ Path = 'src/Gateway/Hastane.Gateway'; Port = 5000 }
     'WebUI'        = @{ Path = 'src/WebUI/Hastane.WebUI'; Port = 5010 }
 }

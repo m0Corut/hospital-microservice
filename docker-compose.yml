@@ -36,6 +36,8 @@ services:
     container_name: hastane-mariadb
     ports:
       - "3307:3306"   # bilgisayarda 3306 başka bir MySQL tarafından kullanılıyor olabilir
+    # Türkçe karakterler için sunucu varsayılanı utf8mb4 (yoksa yeni tablolar latin1 açılabilir).
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
     environment:
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
     volumes:

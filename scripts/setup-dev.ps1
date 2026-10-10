@@ -3,7 +3,8 @@
   Geliştirme ortamını tek komutla kurar: altyapı konteynerleri, tüm servislerin user-secrets'ı, JWT anahtarları, derleme.
 .DESCRIPTION
   1. .env yoksa .env.example'dan oluşturur (yerel geliştirme için varsayılanlar yeterli).
-  2. docker compose ile MongoDB, SQL Server, Seq ve MailHog'u açar.
+  2. docker compose ile MongoDB, SQL Server, MariaDB, Redis, RabbitMQ, Seq ve MailHog'u açar
+     (-Extra ile Elasticsearch ve Kafka da; ikisi ~1,5 GB RAM ister, kapalıyken servisler yedek yolla çalışır).
   3. Her servisin user-secrets'ına bağlantı cümlesini, servisler arası iç anahtarı (Internal:ApiKey) ve ilk Admin
      bilgisini yazar. Var olan değerlere dokunmaz (-Force ile üzerine yazar). Değerler ekrana basılmaz.
   4. Identity'de JWT özel anahtarı yoksa yeni bir anahtar çifti üretir (scripts/new-jwt-keys.ps1).
@@ -11,13 +12,15 @@
 .EXAMPLE
   pwsh -File scripts/setup-dev.ps1
   pwsh -File scripts/setup-dev.ps1 -DryRun     # yalnız ne yapacağını söyler, hiçbir şey yazmaz
+  pwsh -File scripts/setup-dev.ps1 -Extra      # Elasticsearch + Kafka da
 #>
 [CmdletBinding()]
 param(
     [switch]$Force,
     [switch]$DryRun,
     [switch]$SkipDocker,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$Extra
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,7 +48,7 @@ $source = if (Test-Path $envFile) { $envFile } else { Join-Path $root '.env.exam
 foreach ($line in Get-Content $source) {
     if ($line -match '^\s*([A-Z_]+)\s*=\s*(.*)\s*$') { $cfg[$Matches[1]] = $Matches[2] }
 }
-foreach ($k in 'MONGO_USER', 'MONGO_PASSWORD', 'SQL_SA_PASSWORD') {
+foreach ($k in 'MONGO_USER', 'MONGO_PASSWORD', 'SQL_SA_PASSWORD', 'MARIADB_ROOT_PASSWORD', 'REDIS_PASSWORD', 'RABBITMQ_USER', 'RABBITMQ_PASSWORD') {
     if (-not $cfg[$k]) { throw ".env içinde $k eksik." }
 }
 $adminEmail = if ($cfg['ADMIN_EMAIL']) { $cfg['ADMIN_EMAIL'] } else { 'admin@hastane.local' }
@@ -53,9 +56,10 @@ $adminPassword = if ($cfg['ADMIN_PASSWORD']) { $cfg['ADMIN_PASSWORD'] } else { '
 
 # --- 2. Altyapı
 if (-not $SkipDocker) {
-    Step 'Altyapı konteynerleri (MongoDB, SQL Server, Seq, MailHog)'
-    if ($DryRun) { Write-Host 'docker compose up -d çalıştırılacaktı.' }
-    else { docker compose up -d; if ($LASTEXITCODE -ne 0) { throw 'docker compose başarısız. Docker Desktop açık mı?' } }
+    Step 'Altyapı konteynerleri'
+    $composeArgs = if ($Extra) { @('--profile', 'extra', 'up', '-d') } else { @('up', '-d') }
+    if ($DryRun) { Write-Host "docker compose $($composeArgs -join ' ') çalıştırılacaktı." }
+    else { docker compose @composeArgs; if ($LASTEXITCODE -ne 0) { throw 'docker compose başarısız. Docker Desktop açık mı?' } }
 }
 
 # --- 3. user-secrets
@@ -91,20 +95,44 @@ Set-Secret (& $svc 'Appointment')  'ConnectionStrings:DefaultConnection'  (& $sq
 Set-Secret (& $svc 'Prescription') 'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_prescription')
 Set-Secret (& $svc 'Payment')      'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_payment')
 Set-Secret (& $svc 'Patient')      'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_patient')
+Set-Secret (& $svc 'Queue')        'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_queue')
+Set-Secret (& $svc 'Pharmacy')     'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_pharmacy')
+Set-Secret (& $svc 'Market')       'ConnectionStrings:DefaultConnection'  (& $sql 'hastane_market')
+
+# Redis (Market: sepet + ürün önbelleği), MariaDB (Order; bilgisayardaki olası MySQL ile çakışmasın diye 3307)
+Set-Secret (& $svc 'Market') 'ConnectionStrings:Redis' "localhost:6379,password=$($cfg['REDIS_PASSWORD'])"
+Set-Secret (& $svc 'Order')  'ConnectionStrings:DefaultConnection' "Server=localhost;Port=3307;Database=hastane_order;User=root;Password=$($cfg['MARIADB_ROOT_PASSWORD'])"
 
 # MongoDB servisleri (veritabanı adları appsettings.json'da)
-foreach ($n in 'Branch', 'Doctor', 'Review', 'Notification', 'Chat') {
+foreach ($n in 'Branch', 'Doctor', 'Review', 'Notification', 'Chat', 'Analytics') {
     Set-Secret (& $svc $n) 'DatabaseSettings:ConnectionString' $mongo
 }
 
-# Servisler arası iç anahtar: Identity, Appointment ve Notification AYNI değeri kullanır
-$internalKey = @('Identity', 'Appointment', 'Notification') | ForEach-Object { Get-Secret (& $svc $_) 'Internal:ApiKey' } | Where-Object { $_ } | Select-Object -First 1
+# Servisler arası iç anahtar: Identity→Notification (e-posta) ve Order→Market (stok) AYNI değeri kullanır
+$internalKey = @('Identity', 'Notification', 'Market', 'Order') | ForEach-Object { Get-Secret (& $svc $_) 'Internal:ApiKey' } | Where-Object { $_ } | Select-Object -First 1
 if (-not $internalKey -or $Force) {
     $bytes = New-Object byte[] 32
     [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
     $internalKey = [Convert]::ToBase64String($bytes)
 }
-foreach ($n in 'Identity', 'Appointment', 'Notification') { Set-Secret (& $svc $n) 'Internal:ApiKey' $internalKey }
+foreach ($n in 'Identity', 'Notification', 'Market', 'Order') { Set-Secret (& $svc $n) 'Internal:ApiKey' $internalKey }
+
+# RabbitMQ (olaylar: randevu → bildirim/sıra, sipariş → bildirim/stok). Boş kalırsa servis bellek içi taşımaya düşer.
+foreach ($n in 'Appointment', 'Notification', 'Queue', 'Market', 'Order') {
+    Set-Secret (& $svc $n) 'RabbitMq:Host' 'localhost'
+    Set-Secret (& $svc $n) 'RabbitMq:Username' $cfg['RABBITMQ_USER']
+    Set-Secret (& $svc $n) 'RabbitMq:Password' $cfg['RABBITMQ_PASSWORD']
+}
+
+# Elasticsearch + Kafka yalnız -Extra ile (boşken Doctor araması MongoDB'ye düşer, etkinlik akışı yazılmaz)
+if ($Extra) {
+    Set-Secret (& $svc 'Doctor') 'Elasticsearch:Url' 'http://localhost:9200'
+    Set-Secret (& $svc 'Doctor') 'Kafka:BootstrapServers' 'localhost:9092'
+    Set-Secret (& $svc 'Analytics') 'Kafka:BootstrapServers' 'localhost:9092'
+}
+
+# Mağaza demo ürünleri (yalnız geliştirme; boş tabloya bir kez eklenir)
+Set-Secret (& $svc 'Market') 'Market:SeedDemoData' 'true'
 
 # İlk Admin: Identity açılışta, sistemde hiç Admin yoksa bu hesabı oluşturur
 Set-Secret (& $svc 'Identity') 'Seed:AdminEmail' $adminEmail

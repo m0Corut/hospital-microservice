@@ -8,7 +8,7 @@ namespace Hastane.Order.Api.Migrations
 {
     // Model değişmedi (Designer/snapshot güncellemesi yok): yalnız karakter kümesi düzeltmesi.
     // MariaDB sunucusunun varsayılanı latin1 ise tablolar latin1 oluşuyor ve Türkçe karakterler ("ş", "ı") ya
-    // kayboluyor ya da "Incorrect string value" hatası veriyordu. Üç tabloyu utf8mb4 yapar.
+    // kayboluyor ya da "Incorrect string value" hatası veriyordu. Sipariş ve outbox tablolarını utf8mb4 yapar.
     [DbContext(typeof(OrderDbContext))]
     [Migration("20261010150000_EnsureUtf8mb4")]
     public partial class EnsureUtf8mb4 : Migration
@@ -27,6 +27,25 @@ namespace Hastane.Order.Api.Migrations
                 principalTable: "Orders",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.Cascade);
+
+            // MassTransit outbox tabloları (önceki migration) da: olay gövdesi/hata başlıkları Türkçe metin taşıyabilir.
+            migrationBuilder.DropForeignKey(name: "FK_OutboxMessage_InboxState_InboxMessageId_InboxConsumerId", table: "OutboxMessage");
+            migrationBuilder.DropForeignKey(name: "FK_OutboxMessage_OutboxState_OutboxId", table: "OutboxMessage");
+            migrationBuilder.Sql("ALTER TABLE `InboxState` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+            migrationBuilder.Sql("ALTER TABLE `OutboxState` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+            migrationBuilder.Sql("ALTER TABLE `OutboxMessage` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;");
+            migrationBuilder.AddForeignKey(
+                name: "FK_OutboxMessage_InboxState_InboxMessageId_InboxConsumerId",
+                table: "OutboxMessage",
+                columns: new[] { "InboxMessageId", "InboxConsumerId" },
+                principalTable: "InboxState",
+                principalColumns: new[] { "MessageId", "ConsumerId" });
+            migrationBuilder.AddForeignKey(
+                name: "FK_OutboxMessage_OutboxState_OutboxId",
+                table: "OutboxMessage",
+                column: "OutboxId",
+                principalTable: "OutboxState",
+                principalColumn: "OutboxId");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

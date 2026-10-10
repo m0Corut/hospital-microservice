@@ -50,6 +50,7 @@
     <Project Path="src/Services/Review/Hastane.Review.Api/Hastane.Review.Api.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/Hastane.Contracts/Hastane.Contracts.csproj" />
     <Project Path="src/Shared/Hastane.Shared/Hastane.Shared.csproj" />
   </Folder>
   <Folder Name="/src/WebUI/">
