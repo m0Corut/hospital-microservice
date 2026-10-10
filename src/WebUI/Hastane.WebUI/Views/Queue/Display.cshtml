@@ -26,6 +26,7 @@
         .now .label { font-size: clamp(1.2rem, 2.5vw, 2rem); color: #9bd1f0; letter-spacing: .05em; text-transform: uppercase; }
         .now .number { font-size: clamp(6rem, 22vw, 18rem); font-weight: 800; line-height: 1; color: #2dd4bf; }
         .now .name { font-size: clamp(2rem, 6vw, 5rem); font-weight: 600; }
+        .now .number.idle { font-size: clamp(3rem, 8vw, 6rem); color: #3b6a8c; } /* kimse çağrılmamışken dev tire yerine soluk işaret */
         .now.flash { animation: flash 1.2s ease-in-out 3; }
         @@keyframes flash { 50% { background: #1e6b8f; } }
         .next { background: #0f2538; border-radius: 1.5rem; padding: 2rem; }
@@ -82,7 +83,7 @@
                 }
                 else
                 {
-                    <div class="number" id="now-number">–</div>
+                    <div class="number idle" id="now-number">–</div>
                     <div class="name" id="now-name">@(Model.Unavailable ? "Bilgi alınamıyor" : "Henüz çağrılan yok")</div>
                 }
             </section>

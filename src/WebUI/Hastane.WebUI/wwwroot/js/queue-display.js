@@ -30,7 +30,7 @@
     function render(data) {
         var current = data.current;
         if (current) {
-            nowNumber.textContent = String(current.number);
+            nowNumber.textContent = String(current.number); nowNumber.classList.remove('idle');
             nowName.textContent = current.displayName;
             // Yeni çağrıda ekranı kısa süre vurgula.
             var key = current.number + '|' + current.calledAt;
@@ -41,7 +41,7 @@
             }
             lastCalledKey = key;
         } else {
-            nowNumber.textContent = '–';
+            nowNumber.textContent = '–'; nowNumber.classList.add('idle');
             nowName.textContent = 'Henüz çağrılan yok';
             lastCalledKey = null;
         }

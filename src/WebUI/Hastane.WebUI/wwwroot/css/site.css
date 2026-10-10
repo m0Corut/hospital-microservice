@@ -270,7 +270,7 @@ a:hover { text-decoration: underline; }
 .site-footer a:hover { color: #fff; }
 .site-footer ul { list-style: none; padding: 0; margin: 0; }
 .site-footer li { margin-bottom: .5rem; }
-.site-footer .footer-brand img { height: 38px; filter: brightness(0) invert(1); }
+.site-footer .footer-brand img { height: 38px; } /* koyu zemin için ayrı dosya: logo-light.svg (işaret renkli, yazı beyaz) */
 .site-footer .footer-note { border-top: 1px solid rgba(255, 255, 255, .12); font-size: .85rem; }
 
 /* ---------- Yazdırma ---------- */
