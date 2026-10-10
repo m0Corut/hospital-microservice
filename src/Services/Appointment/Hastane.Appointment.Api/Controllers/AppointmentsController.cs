@@ -32,6 +32,20 @@ public class AppointmentsController : ControllerBase
         [FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
         => Ok(await _service.GetAllAsync(doctorId, patientId, status, from, to, ct));
 
+    // Doktorun o gün için boş slotları (UTC): Doctor'ın haftalık programı - dolu randevular - geçmiş saatler.
+    // "availability" sabit bir parça: {id:guid} rotasıyla çakışmaz (Guid değil).
+    [HttpGet("availability")]
+    [Authorize(Policy = HastanePolicies.AuthenticatedUser)]
+    public async Task<ActionResult<List<AvailableSlotDto>>> GetAvailability(
+        [FromQuery] string? doctorId, [FromQuery] DateOnly? date, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(doctorId)) ModelState.AddModelError(nameof(doctorId), "doctorId zorunludur.");
+        if (date is null) ModelState.AddModelError(nameof(date), "date zorunludur (yyyy-MM-dd).");
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        return ToActionResult(await _service.GetAvailabilityAsync(doctorId!, date!.Value, ct));
+    }
+
     // {id:guid} kısıtı: Guid biçiminde olmayan yol (".../abc") hiçbir rotayla eşleşmez, 500 yerine 404 döner.
     [HttpGet("{id:guid}")]
     [Authorize(Roles = AnyAppointmentRole)]
@@ -101,6 +115,9 @@ public class AppointmentsController : ControllerBase
         OperationStatus.Ok or OperationStatus.Created => Ok(result.Value),
         OperationStatus.NotFound => NotFound(),
         OperationStatus.Forbidden => Forbid(),
+        OperationStatus.Invalid => BadRequest(new ProblemDetails { Status = StatusCodes.Status400BadRequest, Title = "Geçersiz istek", Detail = result.Error }),
+        OperationStatus.Unavailable => StatusCode(StatusCodes.Status503ServiceUnavailable,
+            new ProblemDetails { Status = StatusCodes.Status503ServiceUnavailable, Title = "Servis kullanılamıyor", Detail = result.Error }),
         _ => Conflict(new ProblemDetails { Status = StatusCodes.Status409Conflict, Title = "Çakışma", Detail = result.Error }),
     };
 }

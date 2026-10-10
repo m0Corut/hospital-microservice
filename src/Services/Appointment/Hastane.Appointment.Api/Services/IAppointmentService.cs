@@ -11,5 +11,6 @@ public interface IAppointmentService
     Task<OperationResult<ResultAppointmentDto>> CreateAsync(CreateAppointmentDto dto, CancellationToken ct);
     Task<OperationResult<ResultAppointmentDto>> RescheduleAsync(UpdateAppointmentDto dto, CancellationToken ct);
     Task<OperationResult<ResultAppointmentDto>> UpdateStatusAsync(Guid id, AppointmentStatus newStatus, CancellationToken ct);
+    Task<OperationResult<List<AvailableSlotDto>>> GetAvailabilityAsync(string doctorId, DateOnly date, CancellationToken ct);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct);
 }

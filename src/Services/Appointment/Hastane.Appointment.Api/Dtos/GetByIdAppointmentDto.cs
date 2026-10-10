@@ -11,6 +11,7 @@ public class GetByIdAppointmentDto
     public DateTime AppointmentDate { get; set; }
     public AppointmentStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? Note { get; set; }
     // Muayene detayı henüz girilmediyse null.
     public AppointmentDetailDto? Detail { get; set; }
 }

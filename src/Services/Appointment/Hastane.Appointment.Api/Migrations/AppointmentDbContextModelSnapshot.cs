@@ -43,6 +43,10 @@ namespace Hastane.Appointment.Api.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
                     b.Property<string>("PatientId")
                         .IsRequired()
                         .HasMaxLength(64)

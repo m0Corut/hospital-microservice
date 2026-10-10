@@ -7,6 +7,8 @@ public enum OperationStatus
     NotFound,
     Conflict,
     Forbidden,
+    Invalid,     // 400: istek geçerli biçimde ama iş kuralına aykırı
+    Unavailable, // 503: bağımlı servis (Doctor) yanıt vermedi
 }
 
 // Servis HTTP bilmez; sonucu bu zarfla bildirir, hangi koda çevrileceğine controller karar verir.
@@ -16,5 +18,7 @@ public record OperationResult<T>(OperationStatus Status, T? Value = default, str
     public static OperationResult<T> Created(T value) => new(OperationStatus.Created, value);
     public static OperationResult<T> NotFound() => new(OperationStatus.NotFound);
     public static OperationResult<T> Forbidden() => new(OperationStatus.Forbidden);
+    public static OperationResult<T> Invalid(string error) => new(OperationStatus.Invalid, default, error);
+    public static OperationResult<T> Unavailable(string error) => new(OperationStatus.Unavailable, default, error);
     public static OperationResult<T> Conflict(string error) => new(OperationStatus.Conflict, default, error);
 }

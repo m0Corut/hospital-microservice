@@ -31,6 +31,7 @@ public class AuthorizationCoverageTests : IClassFixture<AppointmentApiFactory>
         var expected = new SortedDictionary<string, string>
         {
             ["GET api/appointments"] = "Roles:Admin,Doctor,Patient",
+            ["GET api/appointments/availability"] = "Policy:AuthenticatedUser",
             ["GET api/appointments/{id:guid}"] = "Roles:Admin,Doctor,Patient",
             ["POST api/appointments"] = "Roles:Patient,Admin",
             ["PUT api/appointments/{id:guid}"] = "Roles:Admin,Doctor,Patient",

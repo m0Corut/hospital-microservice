@@ -17,6 +17,8 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Entities.Appoin
         builder.Property(a => a.PatientId).IsRequired().HasMaxLength(64);
         builder.Property(a => a.BranchId).IsRequired().HasMaxLength(64);
 
+        builder.Property(a => a.Note).HasMaxLength(500);
+
         builder.Property(a => a.AppointmentDate).HasColumnType("datetime2").HasConversion<UtcDateTimeConverter>();
         builder.Property(a => a.CreatedAt).HasColumnType("datetime2").HasConversion<UtcDateTimeConverter>();
 

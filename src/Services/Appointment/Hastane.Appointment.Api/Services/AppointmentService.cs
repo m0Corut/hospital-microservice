@@ -1,10 +1,13 @@
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
+using Hastane.Appointment.Api.Integration;
+using Hastane.Appointment.Api.Settings;
 using Hastane.Shared.Security;
 using MapsterMapper;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using AppointmentEntity = Hastane.Appointment.Api.Entities.Appointment;
 
 namespace Hastane.Appointment.Api.Services;
@@ -14,13 +17,50 @@ public class AppointmentService : IAppointmentService
     private readonly AppointmentDbContext _db;
     private readonly IMapper _mapper;
     private readonly ICurrentUser _user;
+    private readonly IDoctorScheduleLookup _schedules;
+    private readonly IOptions<SchedulingOptions> _scheduling;
 
     // DbContext Scoped: istek başına bir tane. Değişiklik izleyicisi ve bağlantı o isteğe aittir, istekler arası paylaşılmaz.
-    public AppointmentService(AppointmentDbContext db, IMapper mapper, ICurrentUser user)
+    public AppointmentService(
+        AppointmentDbContext db, IMapper mapper, ICurrentUser user,
+        IDoctorScheduleLookup schedules, IOptions<SchedulingOptions> scheduling)
     {
         _db = db;
         _mapper = mapper;
         _user = user;
+        _schedules = schedules;
+        _scheduling = scheduling;
+    }
+
+    private const string NotInScheduleMessage = "Seçilen saat doktorun çalışma programında değil";
+    private const string DoctorUnavailableMessage = "Doktor servisine ulaşılamadı; doktorun programı doğrulanamadı.";
+
+    // Ayardaki kimlik yanlışsa ilk kullanımda patlar; yanlış ayar sessizce yanlış saat üretmesin.
+    private TimeZoneInfo Zone => TimeZoneInfo.FindSystemTimeZoneById(_scheduling.Value.TimeZone);
+
+    public async Task<OperationResult<List<AvailableSlotDto>>> GetAvailabilityAsync(
+        string doctorId, DateOnly date, CancellationToken ct)
+    {
+        var lookup = await _schedules.GetScheduleAsync(doctorId, ct);
+        if (lookup.Outcome == LookupOutcome.NotFound) return OperationResult<List<AvailableSlotDto>>.NotFound();
+        if (lookup.Outcome != LookupOutcome.Found) return OperationResult<List<AvailableSlotDto>>.Unavailable(DoctorUnavailableMessage);
+
+        var slots = SlotCalculator.SlotsForLocalDate(lookup.Value!, date, Zone);
+        if (slots.Count == 0) return OperationResult<List<AvailableSlotDto>>.Ok(slots);
+
+        // Dolu saatler: o doktorun iptal edilmemiş randevuları (slot kuralıyla aynı: Cancelled işgal etmez).
+        var first = slots[0].Start;
+        var last = slots[^1].Start;
+        var taken = (await _db.Appointments.AsNoTracking()
+                .Where(a => a.DoctorId == doctorId && a.Status != AppointmentStatus.Cancelled
+                            && a.AppointmentDate >= first && a.AppointmentDate <= last)
+                .Select(a => a.AppointmentDate)
+                .ToListAsync(ct))
+            .Select(UtcDateTimeConverter.NormalizeToMinute)
+            .ToHashSet();
+
+        var now = DateTime.UtcNow;
+        return OperationResult<List<AvailableSlotDto>>.Ok(slots.Where(s => s.Start > now && !taken.Contains(s.Start)).ToList());
     }
 
     public async Task<List<ResultAppointmentDto>> GetAllAsync(
@@ -92,6 +132,19 @@ public class AppointmentService : IAppointmentService
         return await query.AnyAsync(ct);
     }
 
+    // POST ve PUT aynı kuralı paylaşır: null = saat programda; aksi halde hazır hata sonucu (400 / 503).
+    private async Task<OperationResult<T>?> CheckScheduleAsync<T>(string doctorId, DateTime slot, CancellationToken ct)
+    {
+        var lookup = await _schedules.GetScheduleAsync(doctorId, ct);
+        if (lookup.Outcome == LookupOutcome.NotFound) return OperationResult<T>.Invalid("Doktor bulunamadı.");
+        if (lookup.Outcome != LookupOutcome.Found) return OperationResult<T>.Unavailable(DoctorUnavailableMessage);
+        var zone = Zone;
+        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(slot, zone));
+        return SlotCalculator.SlotsForLocalDate(lookup.Value!, localDate, zone).Any(sl => sl.Start == slot)
+            ? null
+            : OperationResult<T>.Invalid(NotInScheduleMessage);
+    }
+
     public async Task<OperationResult<ResultAppointmentDto>> CreateAsync(CreateAppointmentDto dto, CancellationToken ct)
     {
         var entity = _mapper.Map<AppointmentEntity>(dto);
@@ -107,6 +160,13 @@ public class AppointmentService : IAppointmentService
         entity.Status = AppointmentStatus.Pending;
         entity.CreatedAt = DateTime.UtcNow;
         entity.AppointmentDate = UtcDateTimeConverter.NormalizeToMinute(entity.AppointmentDate);
+
+        entity.Note = string.IsNullOrWhiteSpace(dto.Note) ? null : dto.Note.Trim();
+
+        // Program kontrolü (Admin dahil herkes): saat doktorun haftalık programındaki bir slot başlangıcı olmalı.
+        // Doctor servisi cevap vermezse randevu AÇILMAZ (503): doğrulanamayan saat kabul edilmez.
+        var scheduleError = await CheckScheduleAsync<ResultAppointmentDto>(entity.DoctorId, entity.AppointmentDate, ct);
+        if (scheduleError is not null) return scheduleError;
 
         // Katman 1: güzel hata mesajı için önce bak.
         if (await IsSlotTakenAsync(entity.DoctorId, entity.AppointmentDate, null, ct))
@@ -136,6 +196,8 @@ public class AppointmentService : IAppointmentService
 
         // Yalnız iki alan değişir; DoctorId, PatientId, Status, CreatedAt'e dokunulmaz.
         var slot = UtcDateTimeConverter.NormalizeToMinute(dto.AppointmentDate);
+        var scheduleError = await CheckScheduleAsync<ResultAppointmentDto>(entity.DoctorId, slot, ct);
+        if (scheduleError is not null) return scheduleError;
         if (await IsSlotTakenAsync(entity.DoctorId, slot, entity.Id, ct))
             return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
 

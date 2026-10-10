@@ -11,4 +11,5 @@ public class ResultAppointmentDto
     public DateTime AppointmentDate { get; set; }
     public AppointmentStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? Note { get; set; }
 }

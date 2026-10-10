@@ -1,10 +1,13 @@
 using System.Text.Json.Serialization;
 using Hastane.Appointment.Api.Data;
+using Hastane.Appointment.Api.Integration;
 using Hastane.Appointment.Api.Mapping;
 using Hastane.Appointment.Api.Services;
+using Hastane.Appointment.Api.Settings;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,24 @@ builder.Services.AddDbContext<AppointmentDbContext>((sp, options) =>
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
 builder.Services.AddHastaneAuthorization();
 builder.Services.AddHastaneCurrentUser();
+
+// Doktorun haftalık programı Doctor servisinden (typed HttpClient). Gelen Authorization başlığı IHttpContextAccessor ile
+// aynen iletilir; adres ve zaman aşımı "Services", saat dilimi "Scheduling" ayarından okunur.
+builder.Services.AddOptions<DownstreamServicesOptions>()
+    .BindConfiguration(DownstreamServicesOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddOptions<SchedulingOptions>()
+    .BindConfiguration(SchedulingOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient<IDoctorScheduleLookup, DoctorScheduleLookup>((sp, client) =>
+{
+    var o = sp.GetRequiredService<IOptions<DownstreamServicesOptions>>().Value;
+    client.BaseAddress = new Uri(o.DoctorBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
+});
 
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentDetailService, AppointmentDetailService>();

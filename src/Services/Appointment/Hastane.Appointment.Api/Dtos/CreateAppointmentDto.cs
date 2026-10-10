@@ -16,4 +16,7 @@ public class CreateAppointmentDto
     public string BranchId { get; set; } = string.Empty;
     [FutureDate]
     public DateTime AppointmentDate { get; set; }
+    // Hasta şikâyeti / not (opsiyonel).
+    [StringLength(500)]
+    public string? Note { get; set; }
 }
