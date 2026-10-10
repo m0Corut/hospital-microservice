@@ -12,6 +12,11 @@ namespace Hastane.Identity.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private const int MaxIds = 100;
+    private const int DefaultPageSize = 20;
+    private const int MaxPageSize = 100;
+    private const int MaxPage = 10000;
+    private const int MaxSearchLength = 100;
+    private const int MaxRoleLength = 50;
     private readonly IUserService _users;
     private readonly IRoleService _roles;
     private readonly ICurrentUser _currentUser;
@@ -37,9 +42,33 @@ public class UsersController : ControllerBase
     }
 
     // Diğer servisler (Patient, Appointment) birden çok kullanıcıyı tek istekte ister: ?ids=a,b,c
+    // İki kullanım, tek yol:
+    //  - ?ids= VERİLDİYSE (boş bile olsa) eski toplu getirme: Doctor ya da Admin, düz liste.
+    //  - ids YOKSA admin listesi: yalnız Admin, sayfalı { items, totalCount, page, pageSize }; Doctor 403.
     [HttpGet]
     [Authorize(Policy = HastanePolicies.DoctorOrAdmin)]
-    public async Task<ActionResult<List<UserSummaryDto>>> GetByIds([FromQuery] string? ids, CancellationToken ct)
+    public async Task<IActionResult> GetUsers([FromQuery] string? ids, [FromQuery] int page = 1,
+        [FromQuery] int pageSize = DefaultPageSize, [FromQuery] string? search = null, [FromQuery] string? role = null,
+        CancellationToken ct = default)
+    {
+        if (Request.Query.ContainsKey("ids")) return await GetByIds(ids, ct);
+
+        if (!_currentUser.IsAdmin) return Forbid();
+
+        if (page < 1 || page > MaxPage)
+            ModelState.AddModelError(nameof(page), $"page 1 ile {MaxPage} arasında olmalı.");
+        if (pageSize < 1 || pageSize > MaxPageSize)
+            ModelState.AddModelError(nameof(pageSize), $"pageSize 1 ile {MaxPageSize} arasında olmalı.");
+        if (search is { Length: > MaxSearchLength })
+            ModelState.AddModelError(nameof(search), $"search en çok {MaxSearchLength} karakter olabilir.");
+        if (role is { Length: > MaxRoleLength })
+            ModelState.AddModelError(nameof(role), $"role en çok {MaxRoleLength} karakter olabilir.");
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        return Ok(await _users.ListAsync(page, pageSize, search, role, ct));
+    }
+
+    private async Task<IActionResult> GetByIds(string? ids, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(ids)) return Ok(new List<UserSummaryDto>());
 
@@ -69,6 +98,18 @@ public class UsersController : ControllerBase
     [Authorize(Policy = HastanePolicies.AdminOnly)]
     public async Task<ActionResult<UserSummaryDto>> LinkDoctor(string id, LinkDoctorDto dto, CancellationToken ct)
         => ToResult(await _roles.LinkDoctorAsync(id, dto.DoctorId, ct));
+
+    // Bağ yoksa da 204 (idempotent): istenen durum ("bu kullanıcının doktor bağı olmasın") zaten sağlanmışsa 404 vermek
+    // ağ kopması sonrası yeniden denemeyi hataya çevirir. Yalnız KULLANICI yoksa 404.
+    [HttpDelete("{id}/doctor-link")]
+    [Authorize(Policy = HastanePolicies.AdminOnly)]
+    public async Task<IActionResult> UnlinkDoctor(string id, CancellationToken ct)
+    {
+        var outcome = await _roles.UnlinkDoctorAsync(id, ct);
+        return outcome.Status == UserOpStatus.Ok
+            ? NoContent()
+            : Problem(statusCode: StatusCodes.Status404NotFound, title: "Bulunamadı", detail: "Kullanıcı bulunamadı.");
+    }
 
     private ActionResult<UserSummaryDto> ToResult(UserOpOutcome outcome) => outcome.Status switch
     {

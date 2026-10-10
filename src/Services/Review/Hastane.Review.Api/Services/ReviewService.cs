@@ -22,26 +22,34 @@ public class ReviewService : IReviewService
         _reviews = database.GetCollection<ReviewEntity>(settings.ReviewCollectionName);
     }
 
-    public async Task<List<ResultReviewDto>> GetAllAsync(CancellationToken ct)
+    public async Task<List<ResultReviewDto>> GetAllAsync(string? viewerId, CancellationToken ct)
     {
         var list = await _reviews.Find(_ => true).ToListAsync(ct);
-        return _mapper.Map<List<ResultReviewDto>>(list);
+        return list.Select(r => ToDto(r, viewerId)).ToList();
     }
 
-    public async Task<List<ResultReviewDto>> GetByDoctorIdAsync(string doctorId, CancellationToken ct)
+    public async Task<List<ResultReviewDto>> GetByDoctorIdAsync(string doctorId, string? viewerId, CancellationToken ct)
     {
         var list = await _reviews.Find(r => r.DoctorId == doctorId)
             .SortByDescending(r => r.CreatedAt)
             .ToListAsync(ct);
-        return _mapper.Map<List<ResultReviewDto>>(list);
+        return list.Select(r => ToDto(r, viewerId)).ToList();
     }
 
-    public async Task<ResultReviewDto?> GetByIdAsync(string id, CancellationToken ct)
+    public async Task<ResultReviewDto?> GetByIdAsync(string id, string? viewerId, CancellationToken ct)
     {
         // Geçersiz biçimli id Mongo'da hata fırlatır; baştan "yok" sayıyoruz (500 yerine 404).
         if (!ObjectId.TryParse(id, out _)) return null;
         var entity = await _reviews.Find(r => r.Id == id).FirstOrDefaultAsync(ct);
-        return entity is null ? null : _mapper.Map<ResultReviewDto>(entity);
+        return entity is null ? null : ToDto(entity, viewerId);
+    }
+
+    // Eşleme + IsMine. ReviewerId'si olmayan eski yorum ya da anonim çağıran (viewerId boş) hiçbir zaman "benim" olmaz.
+    private ResultReviewDto ToDto(ReviewEntity entity, string? viewerId)
+    {
+        var dto = _mapper.Map<ResultReviewDto>(entity);
+        dto.IsMine = !string.IsNullOrEmpty(viewerId) && entity.ReviewerId == viewerId;
+        return dto;
     }
 
     public async Task<ResultReviewDto> CreateAsync(CreateReviewDto dto, string reviewerId, string reviewerName, CancellationToken ct)
@@ -54,7 +62,7 @@ public class ReviewService : IReviewService
         var now = DateTime.UtcNow;
         entity.CreatedAt = new DateTime(now.Ticks - now.Ticks % TimeSpan.TicksPerMillisecond, DateTimeKind.Utc);
         await _reviews.InsertOneAsync(entity, cancellationToken: ct);
-        return _mapper.Map<ResultReviewDto>(entity);
+        return ToDto(entity, reviewerId);
     }
 
     public async Task<bool> UpdateAsync(UpdateReviewDto dto, string? ownerId, CancellationToken ct)

@@ -7,6 +7,8 @@ public interface IDoctorService
     Task<List<ResultDoctorDto>> GetAllAsync(CancellationToken ct);
     Task<List<ResultDoctorDto>> GetByBranchIdAsync(string branchId, CancellationToken ct);
     Task<GetByIdDoctorDto?> GetByIdAsync(string id, CancellationToken ct);
+    /// <summary>Herkese açık profil: telefon ve e-posta YOK. Bozuk id ya da kayıt yoksa null.</summary>
+    Task<PublicDoctorDto?> GetPublicByIdAsync(string id, CancellationToken ct);
     /// <summary>Geçersiz girdide DoctorValidationException fırlatır (controller 400'e çevirir).</summary>
     Task<ResultDoctorDto> CreateAsync(CreateDoctorDto dto, CancellationToken ct);
     /// <summary>Kayıt yoksa false döner. Geçersiz girdide DoctorValidationException.</summary>

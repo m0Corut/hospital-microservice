@@ -73,6 +73,25 @@ public class AuthService : IAuthService
         return new RegisterOutcome(RegisterStatus.Created, summary);
     }
 
+    public async Task<ChangePasswordOutcome> ChangePasswordAsync(string userId, ChangePasswordDto dto, CancellationToken ct)
+    {
+        var user = Guid.TryParse(userId, out var guid) ? await _userManager.FindByIdAsync(guid.ToString()) : null;
+        if (user is null) return new ChangePasswordOutcome(ChangePasswordStatus.UserNotFound);
+
+        // Çalınmış bir token ile mevcut şifre kaba kuvvetle denenemesin: login ile AYNI kilit sayacı işler
+        // (yanlış denemede sayaç artar, 5'te hesap kilitlenir; doğruysa sayaç sıfırlanır).
+        var check = await _signInManager.CheckPasswordSignInAsync(user, dto.CurrentPassword, lockoutOnFailure: true);
+        if (check.IsLockedOut) return new ChangePasswordOutcome(ChangePasswordStatus.LockedOut);
+        if (!check.Succeeded) return new ChangePasswordOutcome(ChangePasswordStatus.WrongCurrentPassword);
+
+        if (dto.NewPassword == dto.CurrentPassword) return new ChangePasswordOutcome(ChangePasswordStatus.SamePassword);
+
+        var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+        return result.Succeeded
+            ? new ChangePasswordOutcome(ChangePasswordStatus.Success)
+            : new ChangePasswordOutcome(ChangePasswordStatus.Invalid, result.Errors.ToList());
+    }
+
     public async Task<LoginOutcome> LoginAsync(LoginDto dto, CancellationToken ct)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email.Trim());

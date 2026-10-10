@@ -26,19 +26,24 @@ public class ReviewsController : ControllerBase
         _currentUser = currentUser;
     }
 
+    // Okuma uçları anonim ([AllowAnonymous]) ama token VARSA kimlik yine okunur: UseAuthentication varsayılan şemayla her
+    // istekte çalışır ve geçerli token'da User'ı doldurur (AllowAnonymous yalnız YETKİ kontrolünü atlar). Token yoksa ya da
+    // geçersizse (süresi dolmuş, imza bozuk) User anonim kalır: 401 DÖNMEZ, istek anonim gibi işlenir, IsMine = false.
+    private string? ViewerId => _currentUser.UserId;
+
     // GET api/reviews?doctorId=... ile doktora göre süzülür (yeniden eskiye).
     [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult<List<ResultReviewDto>>> GetAll([FromQuery] string? doctorId, CancellationToken ct)
         => Ok(string.IsNullOrWhiteSpace(doctorId)
-            ? await _service.GetAllAsync(ct)
-            : await _service.GetByDoctorIdAsync(doctorId, ct));
+            ? await _service.GetAllAsync(ViewerId, ct)
+            : await _service.GetByDoctorIdAsync(doctorId, ViewerId, ct));
 
     [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<ActionResult<ResultReviewDto>> GetById(string id, CancellationToken ct)
     {
-        var review = await _service.GetByIdAsync(id, ct);
+        var review = await _service.GetByIdAsync(id, ViewerId, ct);
         return review is null ? NotFound() : Ok(review);
     }
 

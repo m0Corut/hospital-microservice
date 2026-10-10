@@ -129,6 +129,22 @@ public class RoleService : IRoleService
         return await OkAsync(user.Id, ct);
     }
 
+    public async Task<UserOpOutcome> UnlinkDoctorAsync(string userId, CancellationToken ct)
+    {
+        var user = await FindUserAsync(userId);
+        if (user is null) return new UserOpOutcome(UserOpStatus.UserNotFound);
+
+        if (user.DoctorId is not null)
+        {
+            user.DoctorId = null;
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                throw new InvalidOperationException("Doktor bağı çözülemedi.");
+        }
+
+        return await OkAsync(user.Id, ct);
+    }
+
     // Identity id'leri Guid metnidir; bozuk id veritabanına hiç gitmeden "yok".
     private async Task<AppUser?> FindUserAsync(string id)
         => Guid.TryParse(id, out var guid) ? await _userManager.FindByIdAsync(guid.ToString()) : null;
