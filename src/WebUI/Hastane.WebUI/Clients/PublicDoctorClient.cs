@@ -11,7 +11,11 @@ public sealed record DoctorSearchCriteria(
 
 public interface IPublicDoctorClient
 {
-    Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria criteria, CancellationToken ct);
+    Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria criteria, CancellationToken ct)
+        => SearchAsync(criteria, ApiFailures.None, ct);
+
+    // Ana sayfa "öne çıkan doktorlar" gibi yardımcı bölümler servis kapalıyken sayfayı düşürmesin diye hata kümesi verilebilir.
+    Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria criteria, ApiFailures handle, CancellationToken ct);
 
     // Ayrıntı uç noktası giriş ister (telefon + e-posta içerir): anonimde istemci 401 fırlatır, filtre girişe yönlendirir.
     Task<ApiResult<DoctorDetailApiModel>> GetAsync(string id, CancellationToken ct);
@@ -22,7 +26,7 @@ public interface IPublicDoctorClient
 
 public sealed class PublicDoctorClient(IGatewayClient gateway) : IPublicDoctorClient
 {
-    public Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria c, CancellationToken ct)
+    public Task<ApiResult<PagedApiModel<DoctorSearchItemApiModel>>> SearchAsync(DoctorSearchCriteria c, ApiFailures handle, CancellationToken ct)
     {
         var query = new List<string>();
         Add(query, "text", c.Text);
@@ -35,7 +39,7 @@ public sealed class PublicDoctorClient(IGatewayClient gateway) : IPublicDoctorCl
         Add(query, "sort", c.Sort);
         query.Add("page=" + c.Page.ToString(CultureInfo.InvariantCulture));
         query.Add("pageSize=" + c.PageSize.ToString(CultureInfo.InvariantCulture));
-        return gateway.GetAsync<PagedApiModel<DoctorSearchItemApiModel>>("/gateway/doctors/search?" + string.Join('&', query), ct: ct);
+        return gateway.GetAsync<PagedApiModel<DoctorSearchItemApiModel>>("/gateway/doctors/search?" + string.Join('&', query), handle, ct);
     }
 
     public Task<ApiResult<DoctorDetailApiModel>> GetAsync(string id, CancellationToken ct)

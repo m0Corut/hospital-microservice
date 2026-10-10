@@ -25,16 +25,21 @@ public class HomeController(IDoctorPanelAppointmentClient appointments) : Doctor
         AppointmentRow Row(DoctorPanelAppointmentApiModel a)
             => new(a.Id, a.AppointmentDate, patientLabel(a.PatientId), branchLabel(a.BranchId), a.Status);
 
+        var todayAll = upcoming
+            .Where(a => DoctorPanelFormat.ToLocal(a.AppointmentDate).Date == todayStart && a.Status != DoctorPanelAppointmentStatus.Cancelled)
+            .OrderBy(a => a.AppointmentDate).ToList();
+        var upcomingAll = upcoming
+            .Where(a => DoctorPanelFormat.ToLocal(a.AppointmentDate).Date > todayStart
+                        && a.Status is DoctorPanelAppointmentStatus.Pending or DoctorPanelAppointmentStatus.Confirmed)
+            .OrderBy(a => a.AppointmentDate).ToList();
+
         var model = new DoctorHomeViewModel
         {
-            Today = upcoming
-                .Where(a => DoctorPanelFormat.ToLocal(a.AppointmentDate).Date == todayStart && a.Status != DoctorPanelAppointmentStatus.Cancelled)
-                .OrderBy(a => a.AppointmentDate).Select(Row).ToList(),
-            Upcoming = upcoming
-                .Where(a => DoctorPanelFormat.ToLocal(a.AppointmentDate).Date > todayStart
-                            && a.Status is DoctorPanelAppointmentStatus.Pending or DoctorPanelAppointmentStatus.Confirmed)
-                .OrderBy(a => a.AppointmentDate).Take(8).Select(Row).ToList(),
+            Today = todayAll.Select(Row).ToList(),
+            Upcoming = upcomingAll.Take(8).Select(Row).ToList(),
             Pending = pending.OrderBy(a => a.AppointmentDate).Take(8).Select(Row).ToList(),
+            UpcomingCount = upcomingAll.Count,
+            PendingCount = pending.Count,
         };
         return View(model);
     }

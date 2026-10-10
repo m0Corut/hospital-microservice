@@ -1,243 +1,295 @@
 @using Hastane.WebUI.ViewModels.Public
+@using System.Globalization
 @model DoctorProfileViewModel
 @{
     var d = Model.Doctor;
     ViewData["Title"] = Model.FullName;
+    // Yorum formu hatayla dönerse "Yorumlar" sekmesi açık gelsin.
+    var reviewsOpen = !ViewData.ModelState.IsValid;
+    var photos = d.Gallery.Select(UiKit.SafeImageUrl).Where(u => u is not null).ToList();
 }
 
-<div class="panel-card p-4 mb-4">
-    <div class="row g-3 align-items-center">
-        <div class="col-md-8">
-            <h1 class="h3 mb-1">@Model.FullName</h1>
-            @if (!string.IsNullOrWhiteSpace(d.Degrees))
+<section class="panel-card profile-head mb-4">
+    <partial name="_Avatar" model="@(new AvatarViewModel(d.ImageUrl, d.FirstName + " " + d.LastName, "xl"))" />
+    <div class="ph-main">
+        <h1>@Model.FullName</h1>
+        @if (!string.IsNullOrWhiteSpace(d.Degrees))
+        {
+            <div class="dc-degrees">@d.Degrees</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.BranchName))
+        {
+            <div class="dc-branch">@Model.BranchName</div>
+        }
+        <div class="mt-2">
+            @if (Model.Summary is { ReviewCount: > 0 } s)
             {
-                <div class="text-muted">@d.Degrees</div>
-            }
-            <div class="mt-1">
-                @if (!string.IsNullOrWhiteSpace(Model.BranchName))
-                {
-                    <span class="badge text-bg-info me-1">@Model.BranchName</span>
-                }
-                @if (!string.IsNullOrEmpty(DisplayText.Gender(d.Gender)))
-                {
-                    <span class="badge text-bg-light border me-1">@DisplayText.Gender(d.Gender)</span>
-                }
-                @if (!string.IsNullOrWhiteSpace(d.PrimaryCity))
-                {
-                    <span class="badge text-bg-light border">@d.PrimaryCity</span>
-                }
-            </div>
-            <div class="mt-2">
-                @if (Model.Summary is { ReviewCount: > 0 } s)
-                {
-                    <span class="text-warning" aria-hidden="true">&#9733;</span>
-                    <strong>@s.AverageRating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</strong>
-                    <span class="text-muted">(@s.ReviewCount yorum, %@s.RecommendationPercent tavsiye)</span>
-                }
-                else
-                {
-                    <span class="text-muted">Henüz yorum yok</span>
-                }
-            </div>
-            <div class="mt-1">@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</div>
-        </div>
-        <div class="col-md-4 text-md-end">
-            @if (Model.IsPatient)
-            {
-                <a class="btn btn-accent btn-lg" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu al</a>
+                <partial name="_Stars" model="s.AverageRating" />
+                <strong class="ms-1">@s.AverageRating.ToString("0.0", CultureInfo.InvariantCulture)</strong>
+                <span class="text-muted">(@s.ReviewCount yorum, %@s.RecommendationPercent tavsiye)</span>
             }
             else
             {
-                <span class="small text-muted">Randevu almak için hasta hesabıyla giriş yapın.</span>
+                <span class="text-muted">Henüz yorum yok</span>
             }
         </div>
+        <div class="dc-meta">
+            @if (!string.IsNullOrWhiteSpace(d.PrimaryCity))
+            {
+                <span><i class="bi bi-geo-alt" aria-hidden="true"></i>@d.PrimaryCity</span>
+            }
+            @if (!string.IsNullOrEmpty(DisplayText.Gender(d.Gender)))
+            {
+                <span><i class="bi bi-person" aria-hidden="true"></i>@DisplayText.Gender(d.Gender)</span>
+            }
+            <span><i class="bi bi-cash-coin" aria-hidden="true"></i>@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</span>
+        </div>
+        @if (d.Services.Count > 0)
+        {
+            <div class="service-tags">
+                @foreach (var service in d.Services)
+                {
+                    <span class="service-tag">@service</span>
+                }
+            </div>
+        }
     </div>
-</div>
+</section>
 
 <div class="row g-4">
     <div class="col-lg-8">
-        @if (!string.IsNullOrWhiteSpace(d.Biography))
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">Hakkında</h2>
-                <p class="mb-0 text-break">@d.Biography</p>
-            </section>
-        }
-
-        @if (d.Services.Count > 0)
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">Hizmetler</h2>
-                @foreach (var service in d.Services)
-                {
-                    <span class="badge text-bg-light border me-1 mb-1">@service</span>
-                }
-            </section>
-        }
-
-        @if (d.Educations.Count > 0)
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">Eğitim</h2>
-                <ul class="list-unstyled mb-0">
-                    @foreach (var e in d.Educations)
+        <div class="panel-card">
+            <ul class="nav profile-tabs px-3" role="tablist">
+                <li class="nav-item" role="presentation"><button class="nav-link @(reviewsOpen ? "" : "active")" id="tab-overview-btn" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button" role="tab" aria-controls="tab-overview" aria-selected="@(reviewsOpen ? "false" : "true")">Genel bakış</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link" id="tab-locations-btn" data-bs-toggle="tab" data-bs-target="#tab-locations" type="button" role="tab" aria-controls="tab-locations" aria-selected="false">Konumlar</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link @(reviewsOpen ? "active" : "")" id="tab-reviews-btn" data-bs-toggle="tab" data-bs-target="#tab-reviews" type="button" role="tab" aria-controls="tab-reviews" aria-selected="@(reviewsOpen ? "true" : "false")">Yorumlar</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link" id="tab-hours-btn" data-bs-toggle="tab" data-bs-target="#tab-hours" type="button" role="tab" aria-controls="tab-hours" aria-selected="false">Çalışma saatleri</button></li>
+            </ul>
+            <div class="tab-content p-4">
+                <div class="tab-pane fade @(reviewsOpen ? "" : "show active")" id="tab-overview" role="tabpanel" aria-labelledby="tab-overview-btn" tabindex="0">
+                    @if (!string.IsNullOrWhiteSpace(d.Biography))
                     {
-                        <li class="mb-2"><strong>@e.School</strong> <span class="text-muted">@e.Department, @e.StartYear - @e.EndYear</span></li>
+                        <h2 class="h5">Hakkında</h2>
+                        <p class="text-break">@d.Biography</p>
                     }
-                </ul>
-            </section>
-        }
-
-        @if (d.Experiences.Count > 0)
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">Deneyim</h2>
-                <ul class="list-unstyled mb-0">
-                    @foreach (var x in d.Experiences)
+                    @if (photos.Count > 0)
                     {
-                        <li class="mb-2"><strong>@x.Place</strong> <span class="text-muted">@x.Position, @x.StartYear - @(x.EndYear?.ToString() ?? "devam ediyor")</span></li>
-                    }
-                </ul>
-            </section>
-        }
-
-        @if (d.Awards.Count > 0)
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">Ödüller</h2>
-                <ul class="list-unstyled mb-0">
-                    @foreach (var a in d.Awards)
-                    {
-                        <li class="mb-2"><strong>@a.Title</strong> <span class="text-muted">@a.Year</span>
-                            @if (!string.IsNullOrWhiteSpace(a.Description))
+                        <h2 class="h5">Klinik görselleri</h2>
+                        <div class="clinic-gallery mb-3">
+                            @foreach (var photo in photos)
                             {
-                                <div class="small">@a.Description</div>
+                                <img src="@photo" alt="Klinik fotoğrafı" loading="lazy" />
                             }
-                        </li>
+                        </div>
                     }
-                </ul>
-            </section>
-        }
-
-        <section class="panel-card p-4 mb-4" id="reviews">
-            <h2 class="h5">Hasta yorumları</h2>
-
-            @if (Model.ReviewsUnavailable)
-            {
-                <div class="alert alert-warning" role="alert">Yorumlar şu anda yüklenemiyor.</div>
-            }
-            else if (Model.Reviews.Count == 0)
-            {
-                <p class="text-muted">Bu doktor için henüz yorum yok.</p>
-            }
-
-            @foreach (var row in Model.Reviews)
-            {
-                var r = row.Review;
-                <div class="border-bottom py-3">
-                    <div class="d-flex justify-content-between">
-                        <strong>@r.ReviewerName</strong>
-                        <span class="small text-muted">@DisplayText.DateLocal(r.CreatedAt)</span>
-                    </div>
-                    <div class="text-warning" aria-label="@r.Rating üzerinden 5">@(new string('★', Math.Clamp(r.Rating, 0, 5)))<span class="text-muted">@(new string('☆', 5 - Math.Clamp(r.Rating, 0, 5)))</span></div>
-                    @if (!string.IsNullOrWhiteSpace(r.Comment))
+                    @if (d.Educations.Count > 0)
                     {
-                        <p class="mb-1 text-break">@r.Comment</p>
+                        <h2 class="h5">Eğitim</h2>
+                        <ul class="timeline mb-3">
+                            @foreach (var e in d.Educations)
+                            {
+                                <li><div class="tl-title">@e.School</div><div class="tl-sub">@e.Department, @e.StartYear - @e.EndYear</div></li>
+                            }
+                        </ul>
+                    }
+                    @if (d.Experiences.Count > 0)
+                    {
+                        <h2 class="h5">Deneyim</h2>
+                        <ul class="timeline mb-3">
+                            @foreach (var x in d.Experiences)
+                            {
+                                <li><div class="tl-title">@x.Place</div><div class="tl-sub">@x.Position, @x.StartYear - @(x.EndYear?.ToString() ?? "devam ediyor")</div></li>
+                            }
+                        </ul>
+                    }
+                    @if (d.Awards.Count > 0)
+                    {
+                        <h2 class="h5">Ödüller</h2>
+                        <ul class="timeline mb-0">
+                            @foreach (var a in d.Awards)
+                            {
+                                <li>
+                                    <div class="tl-title">@a.Title</div>
+                                    <div class="tl-sub">@a.Year</div>
+                                    @if (!string.IsNullOrWhiteSpace(a.Description))
+                                    {
+                                        <div class="small">@a.Description</div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    @if (string.IsNullOrWhiteSpace(d.Biography) && d.Educations.Count == 0 && d.Experiences.Count == 0 && d.Awards.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Bu doktor henüz ayrıntılı bilgi eklememiş.</p>
+                    }
+                </div>
+
+                <div class="tab-pane fade" id="tab-locations" role="tabpanel" aria-labelledby="tab-locations-btn" tabindex="0">
+                    @if (d.ClinicLocations.Count == 0)
+                    {
+                        <p class="text-muted mb-0">Klinik bilgisi yok.</p>
+                    }
+                    @foreach (var clinic in d.ClinicLocations)
+                    {
+                        <div class="border rounded-3 p-3 mb-3">
+                            <h2 class="h5 mb-1"><i class="bi bi-hospital text-primary me-1" aria-hidden="true"></i>@clinic.ClinicName</h2>
+                            <div class="text-muted small mb-1">@clinic.City@(string.IsNullOrWhiteSpace(clinic.District) ? "" : ", " + clinic.District)</div>
+                            @if (!string.IsNullOrWhiteSpace(clinic.Address))
+                            {
+                                <div class="small">@clinic.Address@(string.IsNullOrWhiteSpace(clinic.Floor) ? "" : ", " + clinic.Floor)</div>
+                            }
+                            @if (clinic.HourlyFee is { } fee)
+                            {
+                                <div class="mt-1">Muayene ücreti: <strong>@DisplayText.Money(fee, clinic.Currency)</strong></div>
+                            }
+                            @if (clinic.Schedule.Count > 0)
+                            {
+                                <div class="table-responsive mt-2">
+                                    <table class="table table-sm schedule-table mb-0">
+                                        <thead><tr><th>Gün</th><th>Saat</th><th>Randevu süresi</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var slot in clinic.Schedule)
+                                            {
+                                                <tr><td>@DisplayText.Day(slot.DayOfWeek)</td><td>@slot.StartTime - @slot.EndTime</td><td>@slot.SlotMinutes dk</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="tab-pane fade @(reviewsOpen ? "show active" : "")" id="tab-reviews" role="tabpanel" aria-labelledby="tab-reviews-btn" tabindex="0">
+                    <h2 class="h5">Hasta yorumları</h2>
+
+                    @if (Model.ReviewsUnavailable)
+                    {
+                        <div class="alert alert-warning" role="alert">Yorumlar şu anda yüklenemiyor.</div>
+                    }
+                    else if (Model.Reviews.Count == 0)
+                    {
+                        <p class="text-muted">Bu doktor için henüz yorum yok.</p>
                     }
 
-                    @if (Model.IsPatient && row.LooksOwned)
+                    @foreach (var row in Model.Reviews)
                     {
-                        <details class="mt-2">
-                            <summary class="small text-primary" role="button">Düzenle</summary>
-                            <form asp-controller="Doctors" asp-action="UpdateReview" asp-route-id="@d.Id" asp-route-reviewId="@r.Id" method="post" class="mt-2">
-                                <div class="mb-2">
-                                    <label class="form-label small" for="edit-rating-@r.Id">Puan</label>
-                                    <select id="edit-rating-@r.Id" name="EditForm.Rating" class="form-select form-select-sm w-auto">
-                                        @for (var i = 5; i >= 1; i--)
-                                        {
-                                            <option value="@i" selected="@(i == r.Rating)">@i</option>
-                                        }
-                                    </select>
-                                </div>
-                                <div class="mb-2">
-                                    <label class="form-label small" for="edit-comment-@r.Id">Yorum</label>
-                                    <textarea id="edit-comment-@r.Id" name="EditForm.Comment" class="form-control form-control-sm" rows="3" maxlength="1000">@r.Comment</textarea>
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
-                            </form>
-                        </details>
-                        <form asp-controller="Doctors" asp-action="DeleteReview" asp-route-id="@d.Id" asp-route-reviewId="@r.Id" method="post" class="d-inline">
-                            <button type="submit" class="btn btn-link btn-sm text-danger p-0 mt-1">Sil</button>
+                        var r = row.Review;
+                        <div class="border-bottom py-3">
+                            <div class="d-flex justify-content-between">
+                                <span class="d-flex align-items-center gap-2">
+                                    <partial name="_Avatar" model="@(new AvatarViewModel(null, r.ReviewerName, "sm"))" />
+                                    <strong>@r.ReviewerName</strong>
+                                </span>
+                                <span class="small text-muted">@DisplayText.DateLocal(r.CreatedAt)</span>
+                            </div>
+                            <div class="mt-1" aria-label="@r.Rating üzerinden 5"><partial name="_Stars" model="(double)r.Rating" /></div>
+                            @if (!string.IsNullOrWhiteSpace(r.Comment))
+                            {
+                                <p class="mb-1 text-break">@r.Comment</p>
+                            }
+
+                            @if (Model.IsPatient && row.LooksOwned)
+                            {
+                                <details class="mt-2">
+                                    <summary class="small text-primary" role="button">Düzenle</summary>
+                                    <form asp-controller="Doctors" asp-action="UpdateReview" asp-route-id="@d.Id" asp-route-reviewId="@r.Id" method="post" class="mt-2">
+                                        <div class="mb-2">
+                                            <label class="form-label small" for="edit-rating-@r.Id">Puan</label>
+                                            <select id="edit-rating-@r.Id" name="EditForm.Rating" class="form-select form-select-sm w-auto">
+                                                @for (var i = 5; i >= 1; i--)
+                                                {
+                                                    <option value="@i" selected="@(i == r.Rating)">@i</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small" for="edit-comment-@r.Id">Yorum</label>
+                                            <textarea id="edit-comment-@r.Id" name="EditForm.Comment" class="form-control form-control-sm" rows="3" maxlength="1000">@r.Comment</textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary btn-sm">Kaydet</button>
+                                    </form>
+                                </details>
+                                <form asp-controller="Doctors" asp-action="DeleteReview" asp-route-id="@d.Id" asp-route-reviewId="@r.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-link btn-sm text-danger p-0 mt-1">Sil</button>
+                                </form>
+                            }
+                        </div>
+                    }
+
+                    @if (Model.IsPatient)
+                    {
+                        <h3 class="h6 mt-4">Yorum yaz</h3>
+                        <form asp-controller="Doctors" asp-action="CreateReview" asp-route-id="@d.Id" method="post" novalidate>
+                            <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+                            <div class="mb-3">
+                                <label asp-for="ReviewForm.Rating" class="form-label"></label>
+                                <select asp-for="ReviewForm.Rating" class="form-select w-auto">
+                                    @for (var i = 5; i >= 1; i--)
+                                    {
+                                        <option value="@i" selected="@(i == Model.ReviewForm.Rating)">@i</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="ReviewForm.Rating" class="text-danger small"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label asp-for="ReviewForm.Comment" class="form-label"></label>
+                                <textarea asp-for="ReviewForm.Comment" class="form-control" rows="3" maxlength="1000"></textarea>
+                                <span asp-validation-for="ReviewForm.Comment" class="text-danger small"></span>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Yorumu gönder</button>
                         </form>
                     }
                 </div>
-            }
 
-            @if (Model.IsPatient)
-            {
-                <h3 class="h6 mt-4">Yorum yaz</h3>
-                <form asp-controller="Doctors" asp-action="CreateReview" asp-route-id="@d.Id" method="post" novalidate>
-                    <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
-                    <div class="mb-3">
-                        <label asp-for="ReviewForm.Rating" class="form-label"></label>
-                        <select asp-for="ReviewForm.Rating" class="form-select w-auto">
-                            @for (var i = 5; i >= 1; i--)
+                <div class="tab-pane fade" id="tab-hours" role="tabpanel" aria-labelledby="tab-hours-btn" tabindex="0">
+                    @if (!d.ClinicLocations.Any(c => c.Schedule.Count > 0))
+                    {
+                        <p class="text-muted mb-0">Çalışma saatleri belirtilmemiş.</p>
+                    }
+                    @foreach (var clinic in d.ClinicLocations.Where(c => c.Schedule.Count > 0))
+                    {
+                        <h2 class="h6">@clinic.ClinicName</h2>
+                        <ul class="list-unstyled mb-3">
+                            @foreach (var slot in clinic.Schedule)
                             {
-                                <option value="@i" selected="@(i == Model.ReviewForm.Rating)">@i</option>
+                                <li>@DisplayText.Day(slot.DayOfWeek): @slot.StartTime - @slot.EndTime</li>
                             }
-                        </select>
-                        <span asp-validation-for="ReviewForm.Rating" class="text-danger small"></span>
-                    </div>
-                    <div class="mb-3">
-                        <label asp-for="ReviewForm.Comment" class="form-label"></label>
-                        <textarea asp-for="ReviewForm.Comment" class="form-control" rows="3" maxlength="1000"></textarea>
-                        <span asp-validation-for="ReviewForm.Comment" class="text-danger small"></span>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Yorumu gönder</button>
-                </form>
-            }
-        </section>
+                        </ul>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="col-lg-4">
-        <section class="panel-card p-4 mb-4">
-            <h2 class="h5">İletişim</h2>
-            @if (!string.IsNullOrWhiteSpace(d.Phone))
-            {
-                <div class="small">Telefon: @d.Phone</div>
-            }
-            @if (!string.IsNullOrWhiteSpace(d.Email))
-            {
-                <div class="small">E-posta: @d.Email</div>
-            }
-        </section>
-
-        @foreach (var clinic in d.ClinicLocations)
-        {
-            <section class="panel-card p-4 mb-4">
-                <h2 class="h5">@clinic.ClinicName</h2>
-                <div class="small text-muted mb-1">
-                    @clinic.City@(string.IsNullOrWhiteSpace(clinic.District) ? "" : ", " + clinic.District)
+        <section class="panel-card booking-box mb-4">
+            <div class="bb-head"><i class="bi bi-calendar-plus me-2 text-primary" aria-hidden="true"></i>Randevu</div>
+            <div class="bb-body">
+                <div class="mb-3">
+                    <div class="small text-muted">Muayene ücreti</div>
+                    <div class="h5 mb-0">@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</div>
                 </div>
-                @if (!string.IsNullOrWhiteSpace(clinic.Address))
+                @if (Model.IsPatient)
                 {
-                    <div class="small">@clinic.Address@(string.IsNullOrWhiteSpace(clinic.Floor) ? "" : ", " + clinic.Floor)</div>
+                    <a class="btn btn-accent btn-lg w-100" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu al</a>
                 }
-                @if (clinic.HourlyFee is { } fee)
+                else
                 {
-                    <div class="small mt-1">Muayene ücreti: @DisplayText.Money(fee, clinic.Currency)</div>
+                    <p class="small text-muted mb-0">Randevu almak için hasta hesabıyla giriş yapın.</p>
                 }
-                @if (clinic.Schedule.Count > 0)
+                <hr />
+                <h2 class="h6">İletişim</h2>
+                @if (!string.IsNullOrWhiteSpace(d.Phone))
                 {
-                    <h3 class="h6 mt-3">Çalışma programı</h3>
-                    <ul class="list-unstyled small mb-0">
-                        @foreach (var slot in clinic.Schedule)
-                        {
-                            <li>@DisplayText.Day(slot.DayOfWeek): @slot.StartTime - @slot.EndTime</li>
-                        }
-                    </ul>
+                    <div class="small"><i class="bi bi-telephone me-1 text-primary" aria-hidden="true"></i>Telefon: @d.Phone</div>
                 }
-            </section>
-        }
+                @if (!string.IsNullOrWhiteSpace(d.Email))
+                {
+                    <div class="small"><i class="bi bi-envelope me-1 text-primary" aria-hidden="true"></i>E-posta: @d.Email</div>
+                }
+            </div>
+        </section>
     </div>
 </div>

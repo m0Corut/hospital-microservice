@@ -3,56 +3,113 @@
     ViewData["Title"] = "Ana sayfa";
 }
 
-<section class="page-hero mb-4">
-    <h1 class="h3 mb-1">
-        @if (User.Identity?.IsAuthenticated == true)
-        {
-            <text>Hoş geldiniz, @User.Identity.Name</text>
-        }
-        else
-        {
-            <text>Hastane'ye hoş geldiniz</text>
-        }
-    </h1>
-    <p class="mb-3 opacity-75">Branşınıza göre doktor arayın, randevunuzu çevrimiçi alın.</p>
-    <form method="get" action="~/Doctors" class="row g-2">
-        <div class="col-md-9">
-            <input type="search" name="q" class="form-control form-control-lg" placeholder="Doktor adı ya da uzmanlık ara" aria-label="Doktor ara" maxlength="100" />
+<section class="page-hero mb-5">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <h1>
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <text>Hoş geldiniz, <span class="hl">@User.Identity.Name</span></text>
+                }
+                else
+                {
+                    <text>Doktorunuzu bulun, <span class="hl">randevunuzu</span> çevrimiçi alın</text>
+                }
+            </h1>
+            <p class="lead mb-4">Branşa, şehre ya da doktor adına göre arayın; yorumları okuyun, size uygun saati seçin.</p>
+            <form method="get" action="~/Doctors" class="hero-search" role="search">
+                <div class="row g-0 align-items-center">
+                    <div class="col-md-4 field">
+                        <i class="bi bi-geo-alt" aria-hidden="true"></i>
+                        <input type="text" name="city" class="form-control" placeholder="Şehir" aria-label="Şehir" maxlength="100" />
+                    </div>
+                    <div class="col-md field">
+                        <i class="bi bi-search" aria-hidden="true"></i>
+                        <input type="search" name="q" class="form-control" placeholder="Doktor adı ya da uzmanlık ara" aria-label="Doktor ara" maxlength="100" />
+                    </div>
+                    <div class="col-md-auto p-1 d-grid">
+                        <button type="submit" class="btn btn-accent btn-lg">Doktor ara</button>
+                    </div>
+                </div>
+            </form>
         </div>
-        <div class="col-md-3 d-grid">
-            <button type="submit" class="btn btn-accent btn-lg">Doktor ara</button>
+        <div class="col-lg-5 text-center">
+            <img class="hero-art" src="~/img/hero.svg" alt="Hastane binası ve doktor çizimi" width="480" height="377" />
         </div>
-    </form>
+    </div>
 </section>
 
-<h2 class="h5 mb-3">Branşlar</h2>
-@if (Model.BranchesUnavailable)
-{
-    <div class="alert alert-warning" role="alert">Branş listesi şu anda yüklenemiyor. Lütfen biraz sonra tekrar deneyin.</div>
-}
-else if (Model.Branches.Count == 0)
-{
-    <p class="text-muted">Henüz tanımlı branş yok.</p>
-}
-else
-{
-    <div class="row g-3">
-        @foreach (var branch in Model.Branches)
-        {
-            <div class="col-6 col-md-4 col-lg-3">
-                <a class="text-decoration-none" href="~/Doctors?branchId=@Uri.EscapeDataString(branch.Id)">
-                    <div class="card card-branch">
-                        <div class="card-body text-center">
-                            <span class="branch-icon mb-2" aria-hidden="true">@(branch.Name.Length > 0 ? branch.Name[..1].ToUpperInvariant() : "?")</span>
-                            <div class="fw-semibold text-body">@branch.Name</div>
-                            @if (!string.IsNullOrWhiteSpace(branch.Description))
-                            {
-                                <div class="small text-muted text-truncate">@branch.Description</div>
-                            }
-                        </div>
-                    </div>
-                </a>
-            </div>
-        }
+<section class="mb-5" aria-labelledby="branches-title">
+    <div class="section-head">
+        <h2 id="branches-title">Branşlar</h2>
+        <p>Bir branş seçin, o branştaki doktorları görün.</p>
+        <span class="bar"></span>
     </div>
-}
+    @if (Model.BranchesUnavailable)
+    {
+        <div class="alert alert-warning" role="alert">Branş listesi şu anda yüklenemiyor. Lütfen biraz sonra tekrar deneyin.</div>
+    }
+    else if (Model.Branches.Count == 0)
+    {
+        <p class="text-muted text-center">Henüz tanımlı branş yok.</p>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var branch in Model.Branches)
+            {
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a class="text-decoration-none" href="~/Doctors?branchId=@Uri.EscapeDataString(branch.Id)">
+                        <div class="card card-branch">
+                            <div class="card-body text-center">
+                                <span class="branch-icon mb-2" aria-hidden="true"><img src="@UiKit.BranchIcon(branch.Name)" alt="" /></span>
+                                <div class="fw-semibold text-body">@branch.Name</div>
+                                @if (!string.IsNullOrWhiteSpace(branch.Description))
+                                {
+                                    <div class="small text-muted text-truncate">@branch.Description</div>
+                                }
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<section class="mb-5" aria-labelledby="featured-title">
+    <div class="section-head">
+        <h2 id="featured-title">Öne çıkan doktorlar</h2>
+        <p>Hastalarımızın en çok tercih ettiği uzmanlar.</p>
+        <span class="bar"></span>
+    </div>
+    @if (Model.FeaturedUnavailable)
+    {
+        <div class="alert alert-warning" role="alert">Doktor listesi şu anda yüklenemiyor.</div>
+    }
+    else if (Model.FeaturedDoctors.Count == 0)
+    {
+        <partial name="_EmptyState" model="@("Henüz listelenecek doktor yok.")" />
+    }
+    else
+    {
+        @foreach (var card in Model.FeaturedDoctors)
+        {
+            <partial name="_DoctorCard" model="card" />
+        }
+        <div class="text-center"><a class="btn btn-outline-primary" href="~/Doctors">Tüm doktorları gör</a></div>
+    }
+</section>
+
+<section class="mb-2" aria-labelledby="how-title">
+    <div class="section-head">
+        <h2 id="how-title">Nasıl çalışır?</h2>
+        <p>Üç adımda randevunuz hazır.</p>
+        <span class="bar"></span>
+    </div>
+    <div class="row g-3">
+        <div class="col-md-4"><div class="panel-card step-card h-100"><span class="step-no"><i class="bi bi-search" aria-hidden="true"></i></span><h3 class="h6">1. Doktor bulun</h3><p class="text-muted small mb-0">Branş, şehir ve ücrete göre süzün; puan ve yorumları inceleyin.</p></div></div>
+        <div class="col-md-4"><div class="panel-card step-card h-100"><span class="step-no"><i class="bi bi-calendar-check" aria-hidden="true"></i></span><h3 class="h6">2. Randevu alın</h3><p class="text-muted small mb-0">Doktorun çalışma günlerinden size uygun tarih ve saati seçin.</p></div></div>
+        <div class="col-md-4"><div class="panel-card step-card h-100"><span class="step-no"><i class="bi bi-credit-card" aria-hidden="true"></i></span><h3 class="h6">3. Ödeyin, muayene olun</h3><p class="text-muted small mb-0">Randevu ücretini çevrimiçi ödeyin; faturanız ve reçeteniz panelinizde.</p></div></div>
+    </div>
+</section>

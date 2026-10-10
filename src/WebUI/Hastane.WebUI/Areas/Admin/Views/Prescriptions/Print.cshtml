@@ -1,0 +1,36 @@
+@model PrescriptionDetailsViewModel
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+    var p = Model.Prescription;
+    ViewData["Title"] = "Reçete";
+    ViewData["DocTitle"] = "Reçete";
+    ViewData["BackUrl"] = Url.Action("Details", "Prescriptions", new { area = "Admin", id = p.Id });
+}
+
+<h1 class="h4 mb-1">Reçete</h1>
+<div class="mb-3">
+    <div><span class="text-muted">Doktor:</span> <strong>@Model.Lookups.Doctor(p.DoctorId)</strong></div>
+    <div><span class="text-muted">Hasta Id:</span> <code>@p.PatientId</code></div>
+    <div><span class="text-muted">Tarih:</span> @AdminDisplay.Date(p.IssuedAt)</div>
+</div>
+
+<table class="table align-middle">
+    <thead><tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre (gün)</th><th>Kullanım</th></tr></thead>
+    <tbody>
+        @foreach (var item in p.Items.OrderBy(i => i.LineNo))
+        {
+            <tr>
+                <td>@item.LineNo</td>
+                <td>@item.MedicineName</td>
+                <td>@item.Dosage</td>
+                <td>@item.Frequency</td>
+                <td>@item.DurationDays</td>
+                <td>@item.Instructions</td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (!string.IsNullOrWhiteSpace(p.Notes))
+{
+    <p class="mb-0"><strong>Doktor notu:</strong> @p.Notes</p>
+}

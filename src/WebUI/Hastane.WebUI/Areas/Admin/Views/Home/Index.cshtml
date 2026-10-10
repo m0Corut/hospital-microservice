@@ -1,33 +1,56 @@
+@using Hastane.WebUI.Clients
+@model AdminSummary
 @{
     ViewData["Title"] = "Yönetim";
+    var tiles = new List<(string Icon, string Tone, string Label, long Value)>();
+    if (Model.Doctors is { } doctors) tiles.Add(("person-badge", "tone-teal", "Doktor", doctors));
+    if (Model.Payments is { } payments) tiles.Add(("credit-card", "tone-blue", "Ödeme", payments));
+    if (Model.Invoices is { } invoices) tiles.Add(("receipt", "tone-violet", "Fatura", invoices));
 }
 
-<div class="panel-card p-4 mb-4">
-    <h1 class="h4">Yönetim paneli</h1>
-    <p class="text-muted mb-0">Branş, doktor, kullanıcı, randevu, ödeme ve reçete kayıtlarını buradan yönetirsiniz. Toplu sayılar (kaç randevu, kaç doktor gibi) yakında; servisler henüz özet sayı vermiyor.</p>
-</div>
+<h1 class="page-title">Yönetim paneli</h1>
+
+@if (tiles.Count > 0)
+{
+    <div class="row g-3 mb-4">
+        @foreach (var t in tiles)
+        {
+            <div class="col-sm-6 col-xl-4">
+                <div class="panel-card stat-tile">
+                    <span class="st-icon @t.Tone"><i class="bi bi-@t.Icon" aria-hidden="true"></i></span>
+                    <div><div class="st-value">@t.Value</div><div class="st-label">@t.Label</div></div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<p class="text-muted small mb-4">Randevu ve reçete sayıları yakında: bu servisler henüz özet sayı vermiyor, o yüzden burada uydurma bir rakam göstermiyoruz.</p>
 
 <div class="row g-3">
     @{
-        var sections = new (string Controller, string Title, string Text)[]
+        var sections = new (string Controller, string Icon, string Title, string Text)[]
         {
-            ("Branches", "Branşlar", "Branş ekle, düzenle, sil."),
-            ("Doctors", "Doktorlar", "Doktor kayıtları, eğitim, deneyim, klinik ve çalışma programı."),
-            ("Users", "Kullanıcılar", "Kullanıcıyı Id ile bul, rol ver, doktor kaydına bağla."),
-            ("Roles", "Roller", "Rolleri listele, yeni rol oluştur."),
-            ("Appointments", "Randevular", "Tüm randevular, ayrıntı ve silme."),
-            ("Payments", "Ödemeler", "Ödeme listesi, ayrıntı ve iade."),
-            ("Invoices", "Faturalar", "Fatura listesi ve ayrıntısı."),
-            ("Prescriptions", "Reçeteler", "Reçeteleri salt okunur görüntüle."),
+            ("Branches", "grid", "Branşlar", "Branş ekle, düzenle, sil."),
+            ("Doctors", "person-badge", "Doktorlar", "Doktor kayıtları, eğitim, deneyim, klinik ve çalışma programı."),
+            ("Users", "people", "Kullanıcılar", "Kullanıcıyı Id ile bul, rol ver, doktor kaydına bağla."),
+            ("Roles", "shield-lock", "Roller", "Rolleri listele, yeni rol oluştur."),
+            ("Appointments", "calendar-check", "Randevular", "Tüm randevular, ayrıntı, durum ve silme."),
+            ("Payments", "credit-card", "Ödemeler", "Ödeme listesi, ayrıntı ve iade."),
+            ("Invoices", "receipt", "Faturalar", "Fatura listesi ve ayrıntısı."),
+            ("Prescriptions", "file-earmark-medical", "Reçeteler", "Reçeteleri görüntüle, düzenle, sil, yazdır."),
         };
     }
     @foreach (var s in sections)
     {
         <div class="col-md-6">
             <a class="card card-branch text-decoration-none text-body" asp-area="Admin" asp-controller="@s.Controller" asp-action="Index">
-                <div class="card-body">
-                    <h2 class="h6 text-primary">@s.Title</h2>
-                    <p class="small text-muted mb-0">@s.Text</p>
+                <div class="card-body d-flex gap-3 align-items-start">
+                    <span class="branch-icon flex-shrink-0"><i class="bi bi-@s.Icon" aria-hidden="true"></i></span>
+                    <div>
+                        <h2 class="h6 text-primary mb-1">@s.Title</h2>
+                        <p class="small text-muted mb-0">@s.Text</p>
+                    </div>
                 </div>
             </a>
         </div>

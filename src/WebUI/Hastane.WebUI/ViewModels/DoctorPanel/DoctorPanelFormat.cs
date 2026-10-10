@@ -51,6 +51,10 @@ public static class DoctorPanelFormat
     public static bool CanWritePrescription(DoctorPanelAppointmentStatus status)
         => status is DoctorPanelAppointmentStatus.Confirmed or DoctorPanelAppointmentStatus.Completed;
 
+    // Backend: son durumdaki (Completed / Cancelled) randevu yeniden planlanamaz (409).
+    public static bool CanReschedule(DoctorPanelAppointmentStatus status)
+        => status is DoctorPanelAppointmentStatus.Pending or DoctorPanelAppointmentStatus.Confirmed;
+
     public static string DayName(DayOfWeek day) => day switch
     {
         DayOfWeek.Monday => "Pazartesi",

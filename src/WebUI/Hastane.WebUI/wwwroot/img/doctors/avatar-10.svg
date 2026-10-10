@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Doktor avatarı 10">
+<rect width="200" height="200" fill="#ece3fb"/>
+<circle cx="100" cy="100" r="96" fill="#fff" opacity=".35"/>
+<path d="M62 78c-6 36-2 66 8 78h60c10-12 14-42 8-78z" fill="#2b3a55"/>
+<path d="M30 200c0-46 30-70 70-70s70 24 70 70z" fill="#fff"/>
+<path d="M100 130l-20 24 20 46 20-46z" fill="#7a55d1" opacity=".9"/>
+<path d="M70 135c-10 14-12 36-4 50" stroke="#0b2a5b" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>
+<path d="M130 135c10 14 12 36 4 50" stroke="#0b2a5b" stroke-width="4" fill="none" stroke-linecap="round" opacity=".75"/>
+<rect x="86" y="108" width="28" height="26" rx="10" fill="#c98f66"/>
+<ellipse cx="100" cy="86" rx="30" ry="34" fill="#c98f66"/>
+<path d="M62 74c0-26 16-40 38-40s38 14 38 40c-8-16-22-22-38-22s-30 6-38 22z" fill="#2b3a55"/>
+<circle cx="89" cy="90" r="2.6" fill="#0b2a5b"/><circle cx="111" cy="90" r="2.6" fill="#0b2a5b"/>
+<path d="M92 103q8 6 16 0" stroke="#a85c3f" stroke-width="3" fill="none" stroke-linecap="round"/>
+<path d="M92 152h16M100 144v16" stroke="#7a55d1" stroke-width="0" />
+</svg>

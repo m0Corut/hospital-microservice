@@ -1,0 +1,33 @@
+@model InvoiceDetailViewModel
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+    var i = Model.Invoice;
+    ViewData["Title"] = "Fatura " + i.InvoiceNumber;
+    ViewData["DocTitle"] = "Fatura";
+    ViewData["BackUrl"] = Url.Action("Details", "Invoices", new { area = "Patient", id = i.Id });
+}
+
+<h1 class="h4 mb-1">Fatura @i.InvoiceNumber</h1>
+<div class="text-muted mb-3">@Model.DoctorName · @DisplayText.DateLocal(i.IssuedAt)</div>
+
+<table class="table align-middle">
+    <thead>
+        <tr><th>Açıklama</th><th class="text-end">Adet</th><th class="text-end">Birim fiyat</th><th class="text-end">Tutar</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var line in i.Lines)
+        {
+            <tr>
+                <td>@line.Description</td>
+                <td class="text-end">@line.Quantity</td>
+                <td class="text-end">@DisplayText.Money(line.UnitPrice, i.Currency)</td>
+                <td class="text-end">@DisplayText.Money(line.LineTotal, i.Currency)</td>
+            </tr>
+        }
+    </tbody>
+    <tfoot>
+        <tr><td colspan="3" class="text-end">Ara toplam</td><td class="text-end">@DisplayText.Money(i.Subtotal, i.Currency)</td></tr>
+        <tr><td colspan="3" class="text-end">KDV (%@i.TaxPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))</td><td class="text-end">@DisplayText.Money(i.TaxAmount, i.Currency)</td></tr>
+        <tr class="fw-bold"><td colspan="3" class="text-end">Toplam</td><td class="text-end">@DisplayText.Money(i.Total, i.Currency)</td></tr>
+    </tfoot>
+</table>

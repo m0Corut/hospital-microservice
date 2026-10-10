@@ -23,6 +23,7 @@ public sealed class AppointmentDetailViewModel
     public PaymentApiModel? Payment { get; init; }
     public bool CanCancel => Appointment.Status is "Pending" or "Confirmed";
     public bool CanPay => Appointment.Status != "Cancelled" && Payment is not { Status: "Paid" };
+    public bool CanReschedule => Appointment.Status is "Pending" or "Confirmed";
 }
 
 public sealed class CreateAppointmentViewModel
@@ -37,6 +38,10 @@ public sealed class CreateAppointmentViewModel
 
     // Yalnız gösterim için; POST'ta yeniden doldurulur (formdan alınmaz).
     public string DoctorName { get; set; } = string.Empty;
+    public string? DoctorImageUrl { get; set; }
+    public string? DoctorDegrees { get; set; }
+    public string? DoctorCity { get; set; }
+    public string FeeText { get; set; } = string.Empty;
     public List<ScheduleSlotApiModel> Schedule { get; set; } = [];
 }
 
@@ -132,4 +137,8 @@ public sealed class PatientHomeViewModel
     public List<PrescriptionRowViewModel> Prescriptions { get; init; } = [];
     public bool AppointmentsUnavailable { get; init; }
     public bool PrescriptionsUnavailable { get; init; }
+
+    // Özet kutuları: listeler panelde kısaltılır (ilk 5), sayılar kısaltılmamış listeden gelir.
+    public int UpcomingCount { get; init; }
+    public int PrescriptionCount { get; init; }
 }

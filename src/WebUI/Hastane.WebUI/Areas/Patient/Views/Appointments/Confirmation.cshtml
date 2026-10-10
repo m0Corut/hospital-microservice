@@ -1,0 +1,44 @@
+@model AppointmentDetailViewModel
+@{
+    ViewData["Title"] = "Randevunuz alındı";
+    var a = Model.Appointment;
+}
+
+<ol class="stepper" aria-label="Randevu adımları">
+    <li class="done"><span>Doktor</span></li>
+    <li class="done"><span>Tarih ve saat</span></li>
+    <li class="done"><span>Onay</span></li>
+</ol>
+
+<div class="panel-card p-4 p-md-5 text-center mx-auto" style="max-width: 640px;">
+    <span class="success-mark mb-3"><i class="bi bi-check-lg" aria-hidden="true"></i></span>
+    <h1 class="h3">Randevunuz alındı</h1>
+    <p class="text-muted">Doktor onayladığında randevunuzun durumu güncellenecek.</p>
+
+    <ul class="summary-list text-start my-4">
+        <li><span class="k">Doktor</span><span class="v">@Model.DoctorName</span></li>
+        <li><span class="k">Tarih ve saat</span><span class="v">@DisplayText.DateTimeLocal(a.AppointmentDate)</span></li>
+        <li><span class="k">Durum</span><span class="v"><span class="badge @DisplayText.AppointmentBadge(a.Status)">@DisplayText.AppointmentStatus(a.Status)</span></span></li>
+        <li>
+            <span class="k">Ödeme</span>
+            <span class="v">
+                @if (Model.Payment is { } p)
+                {
+                    <span class="badge @DisplayText.PaymentBadge(p.Status)">@DisplayText.PaymentStatus(p.Status)</span>
+                }
+                else
+                {
+                    <span class="text-muted fw-normal">Ödeme yapılmadı</span>
+                }
+            </span>
+        </li>
+    </ul>
+
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+        @if (Model.CanPay)
+        {
+            <a class="btn btn-accent" asp-controller="Payments" asp-action="Create" asp-route-appointmentId="@a.Id">Şimdi öde</a>
+        }
+        <a class="btn btn-outline-primary" asp-controller="Appointments" asp-action="Index">Randevularım</a>
+    </div>
+</div>

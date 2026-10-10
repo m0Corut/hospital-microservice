@@ -1,11 +1,9 @@
 @model AppointmentListViewModel
 @{
     ViewData["Title"] = "Randevularım";
-    ViewData["Tab"] = "appointments";
 }
 
 <h1 class="h4 mb-3">Randevularım</h1>
-<partial name="_PanelNav" />
 
 <form method="get" asp-area="Doctor" asp-controller="Appointments" asp-action="Index" class="panel-card p-3 mb-3">
     <div class="row g-2 align-items-end">

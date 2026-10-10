@@ -4,9 +4,16 @@
     var p = Model.Prescription;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h1 class="h4 mb-0">Reçete</h1>
-    <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+        <a class="btn btn-outline-primary btn-sm" asp-action="Print" asp-route-id="@p.Id"><i class="bi bi-printer me-1" aria-hidden="true"></i>Yazdır</a>
+        <a class="btn btn-outline-primary btn-sm" asp-action="Edit" asp-route-id="@p.Id">Düzenle</a>
+        <form method="post" asp-area="Admin" asp-controller="Prescriptions" asp-action="Delete" asp-route-id="@p.Id">
+            <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Reçete silinsin mi? Bu işlem geri alınamaz.');">Sil</button>
+        </form>
+        <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+    </div>
 </div>
 
 <div class="panel-card p-4 mb-3">

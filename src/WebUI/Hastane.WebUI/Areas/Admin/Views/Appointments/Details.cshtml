@@ -36,4 +36,20 @@
     }
 </div>
 
-<a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@a.Id">Randevuyu sil</a>
+<div class="d-flex flex-wrap gap-2">
+    @foreach (var next in AdminDisplay.NextStatuses(a.Status))
+    {
+        <form method="post" asp-area="Admin" asp-controller="Appointments" asp-action="SetStatus" asp-route-id="@a.Id">
+            <input type="hidden" name="status" value="@next" />
+            @if (next == "Cancelled")
+            {
+                <button type="submit" class="btn btn-outline-warning btn-sm" onclick="return confirm('Bu randevu iptal edilsin mi? Bu işlem geri alınamaz.');">@AdminDisplay.StatusAction(next)</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-primary btn-sm">@AdminDisplay.StatusAction(next)</button>
+            }
+        </form>
+    }
+    <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@a.Id">Randevuyu sil</a>
+</div>

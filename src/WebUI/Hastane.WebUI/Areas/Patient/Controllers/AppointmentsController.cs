@@ -4,12 +4,14 @@ using Hastane.WebUI.Models.Api.Patient;
 using Hastane.WebUI.Models.Api.Public;
 using Hastane.WebUI.ViewModels.Patient;
 using Hastane.WebUI.ViewModels.Public;
+using Hastane.WebUI.ViewModels.Shared;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Areas.Patient.Controllers;
 
 public class AppointmentsController(
-    IPatientAppointmentClient appointments, IPatientPaymentClient payments, IPublicDoctorClient doctors) : PatientAreaController
+    IPatientAppointmentClient appointments, IPatientPaymentClient payments, IPublicDoctorClient doctors,
+    IAppointmentRescheduleClient reschedule) : PatientAreaController
 {
     private static readonly string[] Statuses = ["Pending", "Confirmed", "Cancelled", "Completed"];
 
@@ -84,8 +86,71 @@ public class AppointmentsController(
             return View(model);
         }
 
-        SetSuccess("Randevunuz oluşturuldu. Doktor onayladığında durumu güncellenecek.");
-        return RedirectToAction(nameof(Details), new { id = created.Id });
+        // "Randevunuz alındı" onay sayfası: özet + "Şimdi öde" + "Randevularım".
+        return RedirectToAction(nameof(Confirmation), new { id = created.Id });
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Confirmation(Guid id, CancellationToken ct)
+    {
+        var appointment = (await appointments.GetAsync(id, ct)).Value!;
+        var names = await DoctorNameLookup.LoadAsync(doctors, [appointment.DoctorId], ct);
+        // Ödeme durumu "Şimdi öde" düğmesi içindir; Payment servisi kapalıysa sayfa yine açılır.
+        var paymentList = await payments.ListPaymentsAsync(1, 10, id, null, ApiFailures.All, ct);
+        var payment = paymentList.Value?.Items.OrderByDescending(p => p.Status == "Paid").FirstOrDefault();
+
+        return View(new AppointmentDetailViewModel
+        {
+            Appointment = appointment,
+            DoctorName = names.NameOf(appointment.DoctorId),
+            Payment = payment,
+        });
+    }
+
+    // Yeniden planlama: yalnız bekleyen / onaylı randevu. Sahiplik ve son durum kuralı API'dedir (404 / 409).
+    [HttpGet]
+    public async Task<IActionResult> Reschedule(Guid id, CancellationToken ct)
+    {
+        var appointment = (await appointments.GetAsync(id, ct)).Value!;
+        if (appointment.Status is not ("Pending" or "Confirmed"))
+        {
+            SetWarning("Yalnız bekleyen ya da onaylanmış randevu yeniden planlanabilir.");
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        return View(await BuildRescheduleAsync(appointment, new RescheduleViewModel { Id = id }, ct));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Reschedule(Guid id, RescheduleViewModel model, CancellationToken ct)
+    {
+        // Şube, doktor ve durum formdan değil API'den alınır.
+        var appointment = (await appointments.GetAsync(id, ct)).Value!;
+        model.Id = id;
+        var utc = AppointmentTime.LocalToFutureUtc(model.AppointmentLocal, ModelState, nameof(model.AppointmentLocal));
+
+        if (ModelState.IsValid && utc is { } newDate)
+        {
+            var result = await reschedule.RescheduleAsync(id, appointment.BranchId, newDate, ct);
+            if (result.IsSuccess)
+            {
+                SetSuccess("Randevunuz yeniden planlandı.");
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            // 409: o saat dolu ya da randevu artık değiştirilemez; girilen tarih formda kalır.
+            ModelState.AddApiProblem(result, "Randevu yeniden planlanamadı.");
+        }
+
+        return View(await BuildRescheduleAsync(appointment, model, ct));
+    }
+
+    private async Task<RescheduleViewModel> BuildRescheduleAsync(AppointmentDetailApiModel appointment, RescheduleViewModel model, CancellationToken ct)
+    {
+        var names = await DoctorNameLookup.LoadAsync(doctors, [appointment.DoctorId], ct);
+        model.PartyLabel = names.NameOf(appointment.DoctorId);
+        model.CurrentDate = appointment.AppointmentDate;
+        return model;
     }
 
     // Hastanın yapabildiği tek durum değişikliği: iptal (API: hasta yalnız Cancelled'a geçirebilir; Pending/Confirmed'dan).
@@ -103,6 +168,10 @@ public class AppointmentsController(
         var result = await doctors.GetAsync(model.DoctorId, ct);
         var doctor = result.Value!;
         model.DoctorName = DisplayText.DoctorName(doctor.Title, doctor.FirstName, doctor.LastName);
+        model.DoctorImageUrl = doctor.ImageUrl;
+        model.DoctorDegrees = doctor.Degrees;
+        model.DoctorCity = doctor.PrimaryCity;
+        model.FeeText = DisplayText.FeeRange(doctor.MinFee, doctor.MaxFee, doctor.Currency);
         model.Schedule = doctor.ClinicLocations.SelectMany(c => c.Schedule).ToList();
         return doctor;
     }

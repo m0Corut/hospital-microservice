@@ -1,11 +1,9 @@
 @model List<PrescriptionListRow>
 @{
     ViewData["Title"] = "Reçeteler";
-    ViewData["Tab"] = "prescriptions";
 }
 
 <h1 class="h4 mb-3">Reçeteler</h1>
-<partial name="_PanelNav" />
 
 <div class="panel-card p-4">
     @if (Model.Count == 0)

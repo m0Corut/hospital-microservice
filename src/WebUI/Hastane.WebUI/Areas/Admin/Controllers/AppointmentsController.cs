@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Areas.Admin.Controllers;
 
-// Admin tüm randevuları görür (API rol + sahiplik kuralı: Admin hepsini). Düzenleme/durum değiştirme bu ekranda yok.
+// Admin tüm randevuları görür (API rol + sahiplik kuralı: Admin hepsini), durumunu değiştirir ve siler.
 public class AppointmentsController(IAdminAppointmentClient appointments, IAdminDoctorClient doctors, IAdminBranchClient branches) : AdminAreaController
 {
     private static readonly string[] Statuses = ["Pending", "Confirmed", "Cancelled", "Completed"];
@@ -38,6 +38,22 @@ public class AppointmentsController(IAdminAppointmentClient appointments, IAdmin
             Appointment = appointment,
             Lookups = await AdminLookups.LoadAsync(doctors, branches, ct),
         });
+    }
+
+    // Admin her randevunun durumunu değiştirebilir (API: Admin hepsi); geçiş kuralları API'de, 409 mesajı ekranda gösterilir.
+    [HttpPost]
+    public async Task<IActionResult> SetStatus(Guid id, string status, CancellationToken ct)
+    {
+        if (!Statuses.Contains(status))
+        {
+            SetWarning("Geçersiz durum.");
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var result = await appointments.SetStatusAsync(id, status, ct);
+        if (result.IsSuccess) SetSuccess("Randevu durumu güncellendi.");
+        else SetWarning(AdminDisplay.ProblemText(result, "Durum değiştirilemedi."));
+        return RedirectToAction(nameof(Details), new { id });
     }
 
     // Onay sayfası: yalnız gösterir, silmez.

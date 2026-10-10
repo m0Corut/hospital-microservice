@@ -1,11 +1,9 @@
 @model ReviewsViewModel
 @{
     ViewData["Title"] = "Yorumlarım";
-    ViewData["Tab"] = "reviews";
 }
 
 <h1 class="h4 mb-3">Yorumlarım</h1>
-<partial name="_PanelNav" />
 
 <div class="row g-3 mb-3">
     <div class="col-md-4"><div class="panel-card p-3 h-100"><div class="text-muted small">Yorum sayısı</div><div class="display-6">@Model.ReviewCount</div></div></div>

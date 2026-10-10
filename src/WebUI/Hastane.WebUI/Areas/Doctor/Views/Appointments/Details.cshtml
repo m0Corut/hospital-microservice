@@ -1,11 +1,9 @@
 @model AppointmentDetailViewModel
 @{
     ViewData["Title"] = "Randevu";
-    ViewData["Tab"] = "appointments";
 }
 
 <h1 class="h4 mb-3">Randevu</h1>
-<partial name="_PanelNav" />
 
 <div class="panel-card p-4 mb-3">
     <div class="d-flex flex-wrap justify-content-between gap-2">
@@ -31,6 +29,10 @@
                     <button type="submit" class="btn btn-primary btn-sm">@DoctorPanelFormat.ActionText(next)</button>
                 }
             </form>
+        }
+        @if (DoctorPanelFormat.CanReschedule(Model.Status))
+        {
+            <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Reschedule" asp-route-id="@Model.Id">Yeniden planla</a>
         }
         @if (DoctorPanelFormat.CanWritePrescription(Model.Status))
         {

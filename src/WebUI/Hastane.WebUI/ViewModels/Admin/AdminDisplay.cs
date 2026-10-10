@@ -32,6 +32,22 @@ public static class AdminDisplay
         _ => status,
     };
 
+    // Backend durum makinesi: Pending -> Confirmed / Cancelled, Confirmed -> Completed / Cancelled; Completed ve Cancelled son durumdur.
+    public static IReadOnlyList<string> NextStatuses(string current) => current switch
+    {
+        "Pending" => ["Confirmed", "Cancelled"],
+        "Confirmed" => ["Completed", "Cancelled"],
+        _ => [],
+    };
+
+    public static string StatusAction(string target) => target switch
+    {
+        "Confirmed" => "Onayla",
+        "Completed" => "Tamamla",
+        "Cancelled" => "İptal et",
+        _ => target,
+    };
+
     public static string StatusBadge(string status) => status switch
     {
         "Confirmed" or "Paid" or "Completed" => "text-bg-success",

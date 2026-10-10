@@ -1,65 +1,67 @@
 @model DoctorHomeViewModel
 @{
     ViewData["Title"] = "Doktor Paneli";
-    ViewData["Tab"] = "home";
 }
 
-<h1 class="h4 mb-3">Doktor paneli</h1>
-<partial name="_PanelNav" />
+<h1 class="page-title">Doktor paneli</h1>
 
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-4">
     <div class="col-md-4">
-        <div class="panel-card p-3 h-100">
-            <div class="text-muted small">Bugünkü randevu</div>
-            <div class="display-6">@Model.Today.Count</div>
+        <div class="panel-card stat-tile">
+            <span class="st-icon tone-teal"><i class="bi bi-calendar-day" aria-hidden="true"></i></span>
+            <div><div class="st-value">@Model.Today.Count</div><div class="st-label">Bugünkü randevu</div></div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="panel-card p-3 h-100">
-            <div class="text-muted small">Onay bekleyen</div>
-            <div class="display-6">@Model.Pending.Count</div>
+        <div class="panel-card stat-tile">
+            <span class="st-icon tone-amber"><i class="bi bi-hourglass-split" aria-hidden="true"></i></span>
+            <div><div class="st-value">@Model.PendingCount</div><div class="st-label">Onay bekleyen</div></div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="panel-card p-3 h-100">
-            <div class="text-muted small">Yaklaşan randevu</div>
-            <div class="display-6">@Model.Upcoming.Count</div>
+        <div class="panel-card stat-tile">
+            <span class="st-icon tone-blue"><i class="bi bi-calendar-check" aria-hidden="true"></i></span>
+            <div><div class="st-value">@Model.UpcomingCount</div><div class="st-label">Yaklaşan randevu</div></div>
         </div>
     </div>
 </div>
 
-<div class="panel-card p-4 mb-3">
-    <h2 class="h5">Bugün</h2>
-    @if (Model.Today.Count == 0)
-    {
-        <p class="text-muted mb-0">Bugün için randevunuz yok.</p>
-    }
-    else
-    {
-        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Today)" />
-    }
-</div>
-
-<div class="panel-card p-4 mb-3">
-    <h2 class="h5">Onay bekleyenler</h2>
-    @if (Model.Pending.Count == 0)
-    {
-        <p class="text-muted mb-0">Onay bekleyen randevu yok.</p>
-    }
-    else
-    {
-        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Pending)" />
-    }
-</div>
-
-<div class="panel-card p-4">
-    <h2 class="h5">Yaklaşan randevular</h2>
-    @if (Model.Upcoming.Count == 0)
-    {
-        <p class="text-muted mb-0">Yaklaşan randevu yok.</p>
-    }
-    else
-    {
-        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Upcoming)" />
-    }
-</div>
+<section class="panel-card p-4">
+    <ul class="nav panel-tabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" id="tab-today-btn" data-bs-toggle="tab" data-bs-target="#tab-today" type="button" role="tab" aria-controls="tab-today" aria-selected="true">Bugün</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="tab-pending-btn" data-bs-toggle="tab" data-bs-target="#tab-pending" type="button" role="tab" aria-controls="tab-pending" aria-selected="false">Onay bekleyenler</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" id="tab-upcoming-btn" data-bs-toggle="tab" data-bs-target="#tab-upcoming" type="button" role="tab" aria-controls="tab-upcoming" aria-selected="false">Yaklaşan randevular</button></li>
+    </ul>
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-today" role="tabpanel" aria-labelledby="tab-today-btn" tabindex="0">
+            @if (Model.Today.Count == 0)
+            {
+                <p class="text-muted mb-0">Bugün için randevunuz yok.</p>
+            }
+            else
+            {
+                <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Today)" />
+            }
+        </div>
+        <div class="tab-pane fade" id="tab-pending" role="tabpanel" aria-labelledby="tab-pending-btn" tabindex="0">
+            @if (Model.Pending.Count == 0)
+            {
+                <p class="text-muted mb-0">Onay bekleyen randevu yok.</p>
+            }
+            else
+            {
+                <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Pending)" />
+            }
+        </div>
+        <div class="tab-pane fade" id="tab-upcoming" role="tabpanel" aria-labelledby="tab-upcoming-btn" tabindex="0">
+            @if (Model.Upcoming.Count == 0)
+            {
+                <p class="text-muted mb-0">Yaklaşan randevu yok.</p>
+            }
+            else
+            {
+                <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Upcoming)" />
+            }
+        </div>
+    </div>
+</section>
