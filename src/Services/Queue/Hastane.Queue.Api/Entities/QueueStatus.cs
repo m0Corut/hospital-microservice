@@ -7,4 +7,7 @@ public enum QueueStatus
     Called,
     Completed,
     NoShow,
+
+    // Randevu iptal edildiği için bekleyen sıra kaydı kapatıldı (AppointmentStatusChanged olayı, bkz. Messaging).
+    Cancelled,
 }

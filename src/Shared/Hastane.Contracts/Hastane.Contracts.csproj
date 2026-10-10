@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Yalnız olay (message) sözleşmeleri: iş mantığı, paket, servis kodu YOK. Ortak ayarlar Directory.Build.props'tan gelir. -->
+
+</Project>

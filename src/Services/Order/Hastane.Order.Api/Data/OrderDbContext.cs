@@ -1,4 +1,5 @@
 using Hastane.Order.Api.Entities;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using OrderEntity = Hastane.Order.Api.Entities.Order;
 
@@ -15,5 +16,12 @@ public class OrderDbContext : DbContext
     public DbSet<OrderCounter> OrderCounters => Set<OrderCounter>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
+
+        // MassTransit outbox tabloları (OutboxMessage, OutboxState, InboxState): olay siparişle aynı işlemde bu tabloya yazılır.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+    }
 }

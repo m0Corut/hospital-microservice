@@ -11,11 +11,12 @@ public class NotificationMappingConfig : IRegister
         // UserId/DoctorId bilerek DTO'da yok: alıcı kimliği listede dönmez.
         config.NewConfig<AppNotification, ResultNotificationDto>()
             .Map(d => d.Id, s => s.Id ?? string.Empty);
-        // Id'yi Mongo, CreatedAt'i servis atar; boş Kind "info" olur.
+        // Id'yi Mongo, CreatedAt'i servis atar (SourceKey'i yalnız olay tüketicisi atar); boş Kind "info" olur.
         config.NewConfig<CreateNotificationDto, AppNotification>()
             .Ignore(n => n.Id!)
             .Ignore(n => n.CreatedAt)
             .Ignore(n => n.ReadAt!)
+            .Ignore(n => n.SourceKey!)
             .Map(n => n.Kind, d => string.IsNullOrEmpty(d.Kind) ? "info" : d.Kind);
     }
 }

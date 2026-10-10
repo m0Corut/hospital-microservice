@@ -1,4 +1,5 @@
 using Hastane.Appointment.Api.Entities;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hastane.Appointment.Api.Data;
@@ -13,5 +14,12 @@ public class AppointmentDbContext : DbContext
     public DbSet<AppointmentDetail> AppointmentDetails => Set<AppointmentDetail>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppointmentDbContext).Assembly);
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppointmentDbContext).Assembly);
+
+        // MassTransit outbox tabloları: olay randevuyla aynı işlemde OutboxMessage tablosuna yazılır.
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
+    }
 }

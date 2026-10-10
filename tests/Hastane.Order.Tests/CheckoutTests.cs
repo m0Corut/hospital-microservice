@@ -1,7 +1,10 @@
 using System.Net;
 using System.Text.RegularExpressions;
+using Hastane.Contracts;
 using Hastane.Order.Api.Dtos;
 using Hastane.Order.Api.Entities;
+using Hastane.Order.Api.Services;
+using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hastane.Order.Tests;
@@ -120,6 +123,9 @@ public class CheckoutTests : OrderTestBase
         Assert.Equal(0, Market.CallCount("DELETE", "/api/cart")); // sepet korunur: hasta miktarı düzeltip tekrar deneyebilir
         Assert.False(Market.CartIsEmpty(sub));
         Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release")); // Market hiçbir şey düşmedi
+        // Stok hiç ayrılmadığı için iade olayı da yok (ve sipariş "alındı" sayılmadığından OrderPlaced da yok).
+        Assert.False(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
+        Assert.False(await Harness.Published.Any<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
     [Theory]
@@ -154,20 +160,23 @@ public class CheckoutTests : OrderTestBase
     [Theory]
     [InlineData(MarketMode.Down)]
     [InlineData(MarketMode.Timeout)]
-    public async Task ReserveUnavailable_Returns503_OrderCancelled_ReleaseAttempted_AndMarkedPending(MarketMode mode)
+    public async Task ReserveUnavailable_Returns503_OrderCancelled_AndCancelledEventPublishedForRelease(MarketMode mode)
     {
         var product = Market.AddProduct("Gazlı bez", 15m);
         var (client, sub) = PatientWithCart((product, 1));
         Market.ReserveMode = mode;
-        Market.ReleaseMode = MarketMode.Down; // Market tamamen kapalı: iade de ulaşamaz
 
         var response = await CheckoutAsync(client);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         var order = Assert.Single(await WithDbAsync(db => db.Orders.Where(o => o.PatientUserId == sub).ToListAsync(Ct)));
         Assert.Equal(OrderStatus.Cancelled, order.Status);
-        Assert.True(order.StockReleasePending);
-        Assert.Equal(1, Market.CallCount("POST", "/api/internal/stock/release"));
+        Assert.False(order.StockReleasePending); // eski "iade bekliyor" işareti yok: iade olayla, outbox garantisiyle
+        // Reserve yanıtı kaybolmuş olabilir (Market stoğu düşmüş olabilir): OrderCancelled yayınlanır, Market idempotent iade eder.
+        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        Assert.NotNull(published);
+        Assert.Equal(OrderService.ReserveUnavailableReason, published.Context.Message.Reason);
+        Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release")); // senkron iade çağrısı artık yok
         Assert.False(Market.CartIsEmpty(sub));
     }
 

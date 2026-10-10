@@ -41,9 +41,6 @@ public interface IMarketClient
     // İç uç (X-Internal-Key). Aynı orderId ikinci kez gelirse Market 200 verir (idempotent).
     Task<ReserveOutcome> ReserveAsync(Guid orderId, IReadOnlyList<ReserveItem> items, CancellationToken ct);
 
-    // İç uç. true = Market iadeyi onayladı (idempotent). false = ulaşılamadı: çağıran "stok iadesi bekliyor" işaretler.
-    Task<bool> ReleaseAsync(Guid orderId, CancellationToken ct);
-
     // Başarılı siparişten sonra sepeti boşaltır. false = boşaltılamadı (sipariş yine başarılı sayılır).
     Task<bool> ClearCartAsync(CancellationToken ct);
 }

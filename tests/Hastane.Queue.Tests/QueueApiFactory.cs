@@ -1,4 +1,6 @@
+using Hastane.Queue.Api.Messaging;
 using Hastane.TestSupport;
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -22,7 +24,12 @@ public class QueueApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("Services:TimeoutSeconds", "2");
         // Appointment servisi sahte: gerçek ağ yok (bkz. FakeDownstream).
         builder.ConfigureTestServices(services =>
-            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(FakeDownstream.CreateHandler)));
+        {
+            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(FakeDownstream.CreateHandler));
+            // Üretimdeki tüketici yapılandırması + MassTransit test harness (bellek içi taşıma; RabbitMQ yok).
+            services.RemoveMassTransit();
+            services.AddMassTransitTestHarness(x => QueueMessaging.Configure(x));
+        });
     }
 
     public override async ValueTask DisposeAsync()

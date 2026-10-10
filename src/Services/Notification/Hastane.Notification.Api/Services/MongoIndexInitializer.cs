@@ -1,6 +1,7 @@
 using Hastane.Notification.Api.Entities;
 using Hastane.Notification.Api.Settings;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace Hastane.Notification.Api.Services;
@@ -22,6 +23,14 @@ public class MongoIndexInitializer(
             [
                 new CreateIndexModel<AppNotification>(keys.Ascending(n => n.UserId).Descending(n => n.CreatedAt)),
                 new CreateIndexModel<AppNotification>(keys.Ascending(n => n.DoctorId).Descending(n => n.CreatedAt)),
+                // İdempotent olay tüketimi: SourceKey yalnız dolu belgelerde tekil (REST ile oluşan bildirimlerde alan null).
+                new CreateIndexModel<AppNotification>(keys.Ascending(n => n.SourceKey), new CreateIndexOptions<AppNotification>
+                {
+                    Unique = true,
+                    Name = "UX_Notifications_SourceKey",
+                    PartialFilterExpression = new BsonDocumentFilterDefinition<AppNotification>(
+                        new BsonDocument("SourceKey", new BsonDocument("$type", "string"))),
+                }),
             ], cancellationToken);
         }
         catch (Exception ex)

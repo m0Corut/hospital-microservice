@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Hastane.Order.Api.Data;
 using Hastane.Order.Api.Integration;
 using Hastane.Order.Api.Mapping;
+using Hastane.Order.Api.Messaging;
 using Hastane.Order.Api.Services;
 using Hastane.Order.Api.Settings;
 using Hastane.Shared.Security;
@@ -45,6 +46,9 @@ builder.Services.AddHttpClient<IMarketClient, MarketClient>((sp, client) =>
 });
 
 builder.Services.AddScoped<IOrderService, OrderService>();
+
+// Olay yayını (RabbitMQ + EF outbox). RabbitMq:Host boşsa bellek içi taşıma.
+builder.Services.AddOrderMessaging(builder.Configuration);
 
 var app = builder.Build();
 

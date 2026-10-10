@@ -1,11 +1,14 @@
 using System.Net;
+using Hastane.Contracts;
 using Hastane.Order.Api.Dtos;
 using Hastane.Order.Api.Entities;
+using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Hastane.Order.Tests;
 
-// Durum makinesi (Admin) ve iptal (hasta/Admin) + Market'e stok iadesi (release).
+// Durum makinesi (Admin) ve iptal (hasta/Admin) + stok iadesi: artık Market'e senkron HTTP değil, OrderCancelled olayı
+// (Market tüketicisi iade eder; tüketici testi Market.Tests/MarketEventTests). Burada Order'ın sorumluluğu sınanır: doğru olay, bir kez, iptal kaydıyla birlikte.
 [Collection(OrderCollection.Name)]
 public class OrderStatusAndCancelTests : OrderTestBase
 {
@@ -91,7 +94,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
     }
 
     [Fact]
-    public async Task Admin_CancelViaStatus_ReleasesStock()
+    public async Task Admin_CancelViaStatus_PublishesOrderCancelled()
     {
         var order = await PlaceOrderAsync(Unique("pat"));
         var admin = ClientFor(AdminToken());
@@ -103,15 +106,17 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var cancelled = await ReadAsync<GetByIdOrderDto>(response);
         Assert.Equal(OrderStatus.Cancelled, cancelled.Status);
         Assert.False(cancelled.StockReleasePending);
-        var release = Assert.Single(Market.Calls, c => c.Path == "/api/internal/stock/release");
-        Assert.Equal(FakeMarket.InternalKey, release.InternalKey);
-        Assert.Contains(order.Id.ToString(), release.Body);
+        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        Assert.NotNull(published);
+        Assert.Equal(order.OrderNumber, published.Context.Message.OrderNumber);
+        Assert.Equal(order.PatientUserId, published.Context.Message.PatientUserId);
+        Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release")); // senkron iade çağrısı yok
     }
 
     // --- iptal ---
 
     [Fact]
-    public async Task Patient_CancelsOwnReceivedOrder_AndMarketReleaseIsCalled()
+    public async Task Patient_CancelsOwnReceivedOrder_AndOrderCancelledIsPublished()
     {
         var sub = Unique("pat");
         var order = await PlaceOrderAsync(sub);
@@ -123,9 +128,11 @@ public class OrderStatusAndCancelTests : OrderTestBase
         Assert.Equal(OrderStatus.Cancelled, cancelled.Status);
         Assert.Equal("Vazgeçtim", cancelled.CancelReason);
         Assert.False(cancelled.StockReleasePending);
-        var release = Assert.Single(Market.Calls, c => c.Path == "/api/internal/stock/release");
-        Assert.Equal(FakeMarket.InternalKey, release.InternalKey);
-        Assert.Contains(order.Id.ToString(), release.Body);
+        var published = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        Assert.NotNull(published);
+        Assert.Equal("Vazgeçtim", published.Context.Message.Reason);
+        Assert.NotEqual(Guid.Empty, published.Context.Message.EventId);
+        Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release"));
     }
 
     [Fact]
@@ -150,7 +157,7 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var response = await ClientFor(PatientToken(sub)).PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.Equal(0, Market.CallCount("POST", "/api/internal/stock/release"));
+        Assert.False(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
     [Fact]
@@ -163,11 +170,11 @@ public class OrderStatusAndCancelTests : OrderTestBase
         var response = await admin.PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(1, Market.CallCount("POST", "/api/internal/stock/release"));
+        Assert.True(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
     [Fact]
-    public async Task CancelTwice_SecondReturns409_AndReleaseIsCalledOnce()
+    public async Task CancelTwice_SecondReturns409_AndOrderCancelledIsPublishedOnce()
     {
         var sub = Unique("pat");
         var order = await PlaceOrderAsync(sub);
@@ -178,30 +185,27 @@ public class OrderStatusAndCancelTests : OrderTestBase
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
-        Assert.Equal(1, Market.CallCount("POST", "/api/internal/stock/release"));
+        await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
+        Assert.Single(Harness.Published.Select<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
 
-    [Theory]
-    [InlineData(MarketMode.Down)]
-    [InlineData(MarketMode.Timeout)]
-    [InlineData(MarketMode.Error500)]
-    public async Task ReleaseFails_OrderIsStillCancelled_AndMarkedPending(MarketMode mode)
+    // ÖĞRETİM: eski senkron yolda Market kapalıysa iade "bekliyor" işaretiyle kalırdı. Şimdi iptal Market'ten bağımsız kaydolur,
+    // olay outbox'ta durur ve Market geri gelince tüketilir; Order'ın Market'e ulaşabilmesi gerekmez.
+    [Fact]
+    public async Task Cancel_WhenMarketIsDown_StillSucceeds_AndEventIsPublished()
     {
         var sub = Unique("pat");
         var order = await PlaceOrderAsync(sub);
-        Market.ReleaseMode = mode;
+        Market.CartMode = Market.ProductMode = Market.ReserveMode = Market.ClearMode = MarketMode.Down;
 
         var response = await ClientFor(PatientToken(sub)).PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var cancelled = await ReadAsync<GetByIdOrderDto>(response);
-        Assert.Equal(OrderStatus.Cancelled, cancelled.Status);
-        Assert.True(cancelled.StockReleasePending);
         var stored = await WithDbAsync(db => db.Orders.AsNoTracking().SingleAsync(o => o.Id == order.Id, Ct));
         Assert.Equal(OrderStatus.Cancelled, stored.Status);
-        Assert.True(stored.StockReleasePending);
+        Assert.False(stored.StockReleasePending);
+        Assert.True(await Harness.Published.Any<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct));
     }
-
     [Fact]
     public async Task ConcurrentCancelAndStatusChange_OnlyOneWins_NoLostUpdate()
     {

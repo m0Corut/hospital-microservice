@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Hastane.Market.Api.Caching;
 using Hastane.Market.Api.Data;
+using Hastane.Market.Api.Messaging;
 using Hastane.Market.Api.Mapping;
 using Hastane.Market.Api.Services;
 using Hastane.Market.Api.Settings;
@@ -38,6 +39,9 @@ builder.Services.AddSingleton<ICartStore, RedisCartStore>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IStockService, StockService>();
+
+// Olay tüketicisi (RabbitMQ): OrderCancelled -> stok iadesi. RabbitMq:Host boşsa bellek içi taşıma.
+builder.Services.AddMarketMessaging(builder.Configuration);
 
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
 builder.Services.AddHastaneAuthorization();

@@ -6,6 +6,7 @@ using Hastane.Order.Api.Data;
 using Hastane.Order.Api.Dtos;
 using Hastane.Shared.Security;
 using Hastane.TestSupport;
+using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -28,6 +29,9 @@ public abstract class OrderTestBase : IDisposable
     }
 
     public void Dispose() => Market.Reset();
+
+    // MassTransit test harness: Order'ın yayınladığı olaylar burada görünür (outbox -> teslim servisi -> bellek içi bus).
+    protected ITestHarness Harness => Factory.Services.GetTestHarness();
 
     protected static CancellationToken Ct => TestContext.Current.CancellationToken;
 

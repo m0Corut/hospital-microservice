@@ -1,11 +1,12 @@
-using System.Globalization;
 using Hastane.Appointment.Api.Data;
 using Hastane.Appointment.Api.Dtos;
 using Hastane.Appointment.Api.Entities;
 using Hastane.Appointment.Api.Integration;
 using Hastane.Appointment.Api.Settings;
+using Hastane.Contracts;
 using Hastane.Shared.Security;
 using MapsterMapper;
+using MassTransit;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -20,22 +21,20 @@ public class AppointmentService : IAppointmentService
     private readonly ICurrentUser _user;
     private readonly IDoctorScheduleLookup _schedules;
     private readonly IOptions<SchedulingOptions> _scheduling;
-    private readonly INotificationClient _notifications;
-    private readonly ILogger<AppointmentService> _logger;
+    private readonly IPublishEndpoint _events;
 
     // DbContext Scoped: istek başına bir tane. Değişiklik izleyicisi ve bağlantı o isteğe aittir, istekler arası paylaşılmaz.
     public AppointmentService(
         AppointmentDbContext db, IMapper mapper, ICurrentUser user,
         IDoctorScheduleLookup schedules, IOptions<SchedulingOptions> scheduling,
-        INotificationClient notifications, ILogger<AppointmentService> logger)
+        IPublishEndpoint events)
     {
         _db = db;
         _mapper = mapper;
         _user = user;
         _schedules = schedules;
         _scheduling = scheduling;
-        _notifications = notifications;
-        _logger = logger;
+        _events = events;
     }
 
     private const string NotInScheduleMessage = "Seçilen saat doktorun çalışma programında değil";
@@ -179,17 +178,25 @@ public class AppointmentService : IAppointmentService
             return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
 
         _db.Appointments.Add(entity);
+        // Olay randevuyla AYNI SaveChanges'te (aynı transaction) outbox tablosuna yazılır: ya ikisi birden kaydolur ya hiçbiri.
+        // RabbitMQ kapalıysa da randevu alınır; olay tabloda bekler ve teslim servisi bağlantı gelince taşır.
+        await _events.Publish(new AppointmentCreated
+        {
+            EventId = Guid.NewGuid(),
+            AppointmentId = entity.Id,
+            PatientUserId = entity.PatientId,
+            DoctorId = entity.DoctorId,
+            AppointmentDate = entity.AppointmentDate,
+        }, ct);
         try
         {
             await _db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
-            // Katman 2: iki istek kontrolü aynı anda geçtiyse tekil indeks ikincisini reddetti.
+            // Katman 2: iki istek kontrolü aynı anda geçtiyse tekil indeks ikincisini reddetti (outbox satırı da geri alınır).
             return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
         }
-        // Kayıt tamam: bildirim en son, hatası isteği bozmaz.
-        await NotifyAsync(() => CreatedNotifications(entity));
         return OperationResult<ResultAppointmentDto>.Created(_mapper.Map<ResultAppointmentDto>(entity));
     }
 
@@ -209,8 +216,19 @@ public class AppointmentService : IAppointmentService
         if (await IsSlotTakenAsync(entity.DoctorId, slot, entity.Id, ct))
             return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
 
+        var oldDate = entity.AppointmentDate;
         entity.BranchId = dto.BranchId;
         entity.AppointmentDate = slot;
+        await _events.Publish(new AppointmentRescheduled
+        {
+            EventId = Guid.NewGuid(),
+            AppointmentId = entity.Id,
+            PatientUserId = entity.PatientId,
+            DoctorId = entity.DoctorId,
+            AppointmentDate = slot,
+            OldDate = oldDate,
+            NewDate = slot,
+        }, ct);
         try
         {
             await _db.SaveChangesAsync(ct);
@@ -219,7 +237,6 @@ public class AppointmentService : IAppointmentService
         {
             return OperationResult<ResultAppointmentDto>.Conflict(SlotTakenMessage);
         }
-        await NotifyAsync(() => RescheduledNotifications(entity));
         return OperationResult<ResultAppointmentDto>.Ok(_mapper.Map<ResultAppointmentDto>(entity));
     }
 
@@ -236,79 +253,31 @@ public class AppointmentService : IAppointmentService
             return OperationResult<ResultAppointmentDto>.Conflict(
                 $"{entity.Status} durumundan {newStatus} durumuna geçilemez.");
 
+        var oldStatus = entity.Status;
         entity.Status = newStatus;
+        await _events.Publish(new AppointmentStatusChanged
+        {
+            EventId = Guid.NewGuid(),
+            AppointmentId = entity.Id,
+            PatientUserId = entity.PatientId,
+            DoctorId = entity.DoctorId,
+            AppointmentDate = entity.AppointmentDate,
+            OldStatus = oldStatus.ToString(),
+            NewStatus = newStatus.ToString(),
+            ChangedByRole = ChangedByRole(entity),
+        }, ct);
         await _db.SaveChangesAsync(ct);
-        await NotifyAsync(() => StatusNotifications(entity));
         return OperationResult<ResultAppointmentDto>.Ok(_mapper.Map<ResultAppointmentDto>(entity));
     }
 
-    // ---- Bildirimler (kayıttan SONRA; hata yutulur, isteğin sonucu değişmez) ----
-
-    private const string KindCreated = "appointment-created";
-    private const string KindStatus = "appointment-status";
-    private const string KindRescheduled = "appointment-rescheduled";
-
-    private static string PatientLink(AppointmentEntity a) => $"/Patient/Appointments/Details/{a.Id}";
-    private static string DoctorLink(AppointmentEntity a) => $"/Doctor/Appointments/Details/{a.Id}";
-
-    // Mesajlarda gösterilen saat klinik saat dilimindedir (UTC değil).
-    private string LocalDate(AppointmentEntity a)
-        => TimeZoneInfo.ConvertTimeFromUtc(a.AppointmentDate, Zone).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
-
-    // Bildirim kurulumu (saat dilimi, metin) da dahil hiçbir şey isteği düşürmez; istemci zaten ayrıca yutar.
-    private async Task NotifyAsync(Func<IReadOnlyList<NotificationRequest>> build)
+    // Değişikliği yapanın rolü: Notification alıcıyı buna göre seçer (hasta değiştirdiyse doktora, doktor/Admin değiştirdiyse hastaya).
+    // Aynı kişi hem hasta hem doktor olabilir; o durumda "hasta" sayılmaz (eski senkron yoldaki kuralla aynı).
+    private string ChangedByRole(AppointmentEntity a)
     {
-        try
-        {
-            await _notifications.SendAsync(build());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning("Randevu bildirimi hazırlanamadı/gönderilemedi: {ExceptionType}", ex.GetType().Name);
-        }
+        if (_user.IsAdmin) return "Admin";
+        var changedByPatient = AppointmentAccess.IsPatientOf(_user, a) && !AppointmentAccess.IsDoctorOf(_user, a);
+        return changedByPatient ? "Patient" : "Doctor";
     }
-
-    // Hastaya "alındı", doktora "yeni talep" (doktor doctorId ile adreslenir).
-    private IReadOnlyList<NotificationRequest> CreatedNotifications(AppointmentEntity a)
-    {
-        var date = LocalDate(a);
-        return
-        [
-            new(a.PatientId, null, "Randevunuz alındı", $"Randevunuz alındı: {date}", PatientLink(a), KindCreated),
-            new(null, a.DoctorId, "Yeni randevu talebi", $"Yeni randevu talebi: {date}", DoctorLink(a), KindCreated),
-        ];
-    }
-
-    private IReadOnlyList<NotificationRequest> RescheduledNotifications(AppointmentEntity a)
-    {
-        var date = LocalDate(a);
-        return
-        [
-            new(a.PatientId, null, "Randevunuz yeniden planlandı", $"Randevunuz yeniden planlandı: {date}", PatientLink(a), KindRescheduled),
-            new(null, a.DoctorId, "Randevu yeniden planlandı", $"Randevu yeniden planlandı: {date}", DoctorLink(a), KindRescheduled),
-        ];
-    }
-
-    // Karşı tarafa: hasta değiştirdiyse doktora, doktor/Admin değiştirdiyse hastaya.
-    private IReadOnlyList<NotificationRequest> StatusNotifications(AppointmentEntity a)
-    {
-        var date = LocalDate(a);
-        var changedByPatient = AppointmentAccess.IsPatientOf(_user, a) && !_user.IsAdmin && !AppointmentAccess.IsDoctorOf(_user, a);
-        if (changedByPatient)
-        {
-            return [new(null, a.DoctorId, "Randevu durumu değişti", $"Hasta randevuyu iptal etti: {date}", DoctorLink(a), KindStatus)];
-        }
-        return [new(a.PatientId, null, "Randevu durumu değişti", $"Randevunuz {StatusText(a.Status)}: {date}", PatientLink(a), KindStatus)];
-    }
-
-    private static string StatusText(AppointmentStatus status) => status switch
-    {
-        AppointmentStatus.Confirmed => "onaylandı",
-        AppointmentStatus.Completed => "tamamlandı",
-        AppointmentStatus.Cancelled => "iptal edildi",
-        _ => "güncellendi",
-    };
-
     public async Task<bool> DeleteAsync(Guid id, CancellationToken ct)
     {
         // Tek DELETE komutu; detay satırını veritabanındaki ON DELETE CASCADE siler.

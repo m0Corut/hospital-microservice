@@ -1,9 +1,11 @@
+using Hastane.Contracts;
 using Hastane.Order.Api.Data;
 using Hastane.Order.Api.Dtos;
 using Hastane.Order.Api.Entities;
 using Hastane.Order.Api.Integration;
 using Hastane.Shared.Security;
 using Mapster;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using MySql.Data.MySqlClient;
 using OrderEntity = Hastane.Order.Api.Entities.Order;
@@ -21,13 +23,17 @@ public class OrderService : IOrderService
     private readonly OrderDbContext _db;
     private readonly IMarketClient _market;
     private readonly ICurrentUser _user;
+    private readonly IPublishEndpoint _events;
     private readonly ILogger<OrderService> _logger;
 
-    public OrderService(OrderDbContext db, IMarketClient market, ICurrentUser user, ILogger<OrderService> logger)
+    // IPublishEndpoint: MassTransit bus outbox sayesinde Publish, olayı RabbitMQ'ya hemen göndermez; DbContext'e (OutboxMessage)
+    // ekler ve SaveChanges siparişle AYNI işlemde yazar. Teslimi arka plan servisi yapar.
+    public OrderService(OrderDbContext db, IMarketClient market, ICurrentUser user, IPublishEndpoint events, ILogger<OrderService> logger)
     {
         _db = db;
         _market = market;
         _user = user;
+        _events = events;
         _logger = logger;
     }
 
@@ -125,14 +131,35 @@ public class OrderService : IOrderService
         {
             case ReserveOutcome.InsufficientStock:
                 // Market hiçbir şey düşmedi (atomik): iade çağrısı gereksiz.
-                await MarkCancelledAsync(order, InsufficientStockReason, release: false);
+                await MarkCancelledAsync(order, InsufficientStockReason, publishEvent: false);
                 return OperationResult<GetByIdOrderDto>.Conflict("Stok yetersiz. Sepetinizdeki miktarları azaltıp tekrar deneyin.");
 
             case ReserveOutcome.Unavailable:
                 // Karar: Market kapalı/zaman aşımı => sipariş Cancelled (silinmez, iz kalır) ve 503. Yanıt kaybolmuş olabilir
-                // (Market stoğu düşmüş ama biz duymamış), bu yüzden idempotent release da denenir; ulaşamazsak işaret kalır.
-                await MarkCancelledAsync(order, ReserveUnavailableReason, release: true);
+                // (Market stoğu düşmüş ama biz duymamış), bu yüzden OrderCancelled olayı yayınlanır: Market tüketicisi idempotent
+                // iade yapar (rezervasyon yoksa zararsız). Olay outbox'ta olduğundan Market o an kapalı olsa da kaybolmaz.
+                await MarkCancelledAsync(order, ReserveUnavailableReason, publishEvent: true);
                 return OperationResult<GetByIdOrderDto>.ServiceUnavailable(MarketUnavailableMessage);
+        }
+
+        // Sipariş başarıyla oluştu (stok ayrıldı): OrderPlaced olayı. Bildirim servisi hastaya "Siparişiniz alındı" yazar.
+        // Olay yayınlanamazsa (veritabanı hatası) sipariş yine geçerli: hata loglanır, hasta etkilenmez.
+        try
+        {
+            await _events.Publish(new OrderPlaced
+            {
+                EventId = Guid.NewGuid(),
+                OrderId = order.Id,
+                OrderNumber = order.OrderNumber,
+                PatientUserId = order.PatientUserId,
+                TotalAmount = order.TotalAmount,
+                Currency = order.Currency,
+            }, CancellationToken.None);
+            await _db.SaveChangesAsync(CancellationToken.None); // yalnız outbox satırını yazar
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Sipariş {OrderId} oluştu ama OrderPlaced olayı yazılamadı: {ExceptionType}", order.Id, ex.GetType().Name);
         }
 
         // 6) Sepeti boşalt. Başarısızsa sipariş yine başarılı: stok düştü, sipariş yazıldı; hasta sepeti elle boşaltır.
@@ -182,7 +209,7 @@ public class OrderService : IOrderService
         {
             if (target == OrderStatus.Cancelled)
             {
-                await MarkCancelledAsync(order, "Yönetici tarafından iptal edildi", release: true);
+                await MarkCancelledAsync(order, "Yönetici tarafından iptal edildi", publishEvent: true);
             }
             else
             {
@@ -219,7 +246,7 @@ public class OrderService : IOrderService
 
         try
         {
-            await MarkCancelledAsync(order, text, release: true);
+            await MarkCancelledAsync(order, text, publishEvent: true);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -231,29 +258,31 @@ public class OrderService : IOrderService
 
     // --- yardımcılar ---
 
-    // Siparişi iptal eder; release ise Market'e stok iadesini söyler. Sıra bilinçli: ÖNCE iptal kaydedilir (iyimser
-    // eşzamanlılık burada yarışı yakalar; kaybeden iade çağrısına hiç geçmez), SONRA iade denenir. İade çağrısı sürerken
-    // süreç ölürse "iade bekliyor" işareti zaten yazılıdır. İade başarısızsa sipariş YİNE iptaldir (hastanın siparişi,
-    // Market'in kapalı olmasına rehin kalmaz): işaret + log kalır.
-    private async Task MarkCancelledAsync(OrderEntity order, string reason, bool release)
+    // Siparişi iptal eder; publishEvent ise OrderCancelled olayını da yayınlar (Market tüketicisi stoğu iade eder).
+    // ÖĞRETİM: iptal kaydı ve olay TEK SaveChanges'te yazılır (outbox): ya ikisi birden olur ya hiçbiri. Eski senkron yolda
+    // "iptal kaydedildi ama Market'e ulaşılamadı" arası vardı (StockReleasePending işareti); artık o aralık yok, çünkü olay
+    // veritabanında durur ve RabbitMQ/Market geri gelince teslim edilir. İyimser eşzamanlılık yarışı hâlâ burada yakalanır:
+    // kaybeden SaveChanges'te patlar, olayı da yazılmaz.
+    private async Task MarkCancelledAsync(OrderEntity order, string reason, bool publishEvent)
     {
         order.Status = OrderStatus.Cancelled;
         order.CancelReason = Truncate(reason, 300);
-        order.StockReleasePending = release;
+        order.StockReleasePending = false;
         Touch(order);
+
+        if (publishEvent)
+        {
+            await _events.Publish(new OrderCancelled
+            {
+                EventId = Guid.NewGuid(),
+                OrderId = order.Id,
+                OrderNumber = order.OrderNumber,
+                PatientUserId = order.PatientUserId,
+                Reason = order.CancelReason,
+            }, CancellationToken.None);
+        }
+
         await _db.SaveChangesAsync(CancellationToken.None);
-
-        if (!release) return;
-
-        if (await _market.ReleaseAsync(order.Id, CancellationToken.None))
-        {
-            order.StockReleasePending = false;
-            await _db.SaveChangesAsync(CancellationToken.None);
-        }
-        else
-        {
-            _logger.LogWarning("Sipariş {OrderId} iptal edildi ama stok iadesi Market'e ulaşmadı (iade bekliyor).", order.Id);
-        }
     }
     private async Task InsertWithNumberAsync(OrderEntity order, CancellationToken ct)
     {

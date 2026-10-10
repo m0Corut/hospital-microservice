@@ -1,5 +1,6 @@
-using Hastane.Appointment.Api.Settings;
+using Hastane.Appointment.Api.Messaging;
 using Hastane.TestSupport;
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -17,6 +18,8 @@ public class AppointmentApiFactory : WebApplicationFactory<Program>, IAsyncLifet
     // Doctor servisinin sahte hali (gerçek ağ yok). Kayıtsız doktor için geniş program: bkz. FakeDoctorService.
     public FakeDoctorService Doctor { get; } = new();
 
+    protected string ConnectionString => _sql.GetConnectionString();
+
     public async ValueTask InitializeAsync() => await _sql.StartAsync();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -26,26 +29,47 @@ public class AppointmentApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         builder.UseTestJwt();
         // Zaman aşımı testi 1 sn'de biter (üretim varsayılanı 5 sn).
         builder.UseSetting("Services:TimeoutSeconds", "1");
-        // Notification de sahte (varsayılan: hep 201): mevcut testler gerçek ağa çıkmaz, bildirim varlığından etkilenmez.
-        builder.UseSetting("Services:NotificationBaseUrl", $"http://{FakeNotificationService.Host}");
-        builder.UseSetting("Services:NotificationTimeoutSeconds", "1");
         builder.ConfigureTestServices(services =>
         {
-            // user-secrets'taki gerçek anahtar testi etkilemesin: seçenek son söz olarak sabit test değerine çekilir.
-            services.PostConfigure<InternalOptions>(o => o.ApiKey = TestInternalKey);
-            services.ConfigureHttpClientDefaults(b =>
-                b.ConfigurePrimaryHttpMessageHandler(() => new RoutingFakeHandler(Doctor, Notification)));
+            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(() => Doctor.CreateHandler()));
+            ConfigureMessaging(services);
         });
     }
 
-    public const string TestInternalKey = "test-internal-key-appointment";
-
-    // Notification servisinin sahte hali; gönderilen bildirimler Calls'ta, hata kipleri Mode ile.
-    public FakeNotificationService Notification { get; } = new();
+    // Varsayılan: üretimdeki outbox yapılandırması + MassTransit TEST HARNESS (bellek içi taşıma). RabbitMQ yok; yayınlanan her olay
+    // harness.Published'da görünür. Olay yine EF outbox üzerinden gider: randevu SaveChanges -> OutboxMessage -> teslim servisi -> yayın.
+    protected virtual void ConfigureMessaging(IServiceCollection services)
+    {
+        services.RemoveMassTransit();
+        services.AddMassTransitTestHarness(x => AppointmentMessaging.Configure(x));
+    }
 
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
         await _sql.DisposeAsync();
+    }
+}
+
+// RabbitMQ'ya ULAŞILAMAYAN servis: gerçek RabbitMQ taşıması, kapalı bir porta bakar (127.0.0.1:1). Outbox sayesinde randevu işlemleri
+// yine başarılı olmalı; olaylar OutboxMessage tablosunda teslim edilmeyi beklemeli.
+public class RabbitDownAppointmentApiFactory : AppointmentApiFactory
+{
+    protected override void ConfigureMessaging(IServiceCollection services)
+    {
+        services.RemoveMassTransit();
+        services.AddMassTransit(x =>
+        {
+            AppointmentMessaging.Configure(x);
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host("127.0.0.1", 1, "/", h =>
+                {
+                    h.Username("guest");
+                    h.Password("guest");
+                });
+                cfg.ConfigureEndpoints(context);
+            });
+        });
     }
 }

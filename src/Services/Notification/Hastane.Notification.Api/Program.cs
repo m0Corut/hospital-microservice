@@ -1,4 +1,5 @@
 using Hastane.Notification.Api.Mapping;
+using Hastane.Notification.Api.Messaging;
 using Hastane.Notification.Api.Services;
 using Hastane.Notification.Api.Settings;
 using Hastane.Shared.Security;
@@ -20,6 +21,7 @@ builder.Services.AddOptions<SmtpOptions>()
     .ValidateDataAnnotations()
     .ValidateOnStart();
 builder.Services.Configure<InternalOptions>(builder.Configuration.GetSection(InternalOptions.SectionName));
+builder.Services.Configure<SchedulingOptions>(builder.Configuration.GetSection(SchedulingOptions.SectionName));
 
 // MongoClient bağlantı havuzunu içerir, pahalıdır ve iş parçacığı güvenlidir: uygulama boyunca TEK örnek.
 builder.Services.AddSingleton<IMongoClient>(sp =>
@@ -28,6 +30,9 @@ builder.Services.AddHostedService<MongoIndexInitializer>();
 
 builder.Services.AddSingleton<IEmailSender, MailKitEmailSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+
+// Olay tüketicileri (RabbitMQ): Appointment ve Order olaylarından uygulama içi bildirim üretir. RabbitMq:Host boşsa bellek içi taşıma.
+builder.Services.AddNotificationMessaging(builder.Configuration);
 
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
 builder.Services.AddHastaneAuthorization();
