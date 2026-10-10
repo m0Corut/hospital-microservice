@@ -35,6 +35,7 @@ public sealed class GatewayTests : IAsyncLifetime
         ("notifications", "/api/notifications"), ("chat", "/api/chat"),
         ("queue", "/api/queue"), ("medicines", "/api/medicines"), ("pharmacy", "/api/pharmacy"),
         ("products", "/api/products"), ("cart", "/api/cart"), ("orders", "/api/orders"),
+        ("analytics", "/api/analytics"),
     ];
 
     // SignalR için tek WebSocket rotası: ayrı bir şema ("ws") ve yalnız GET (WebSocket el sıkışması GET'tir).

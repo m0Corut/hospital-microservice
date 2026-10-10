@@ -26,6 +26,10 @@
     <!-- StackExchange.Redis 3.4.0: MIT lisanslı, ücretsiz. Market sepeti ve ürün önbelleği. -->
     <PackageVersion Include="StackExchange.Redis" Version="3.4.0" />
   </ItemGroup>
+  <ItemGroup Label="Olay akışı (Kafka)">
+    <!-- Confluent.Kafka (Apache-2.0): librdkafka üzerine resmi .NET istemcisi. Doctor (üretici) ve Analytics (tüketici) kullanır. -->
+    <PackageVersion Include="Confluent.Kafka" Version="2.16.0" />
+  </ItemGroup>
   <ItemGroup Label="Güvenlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>
@@ -53,6 +57,7 @@
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MariaDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Kafka" Version="4.16.0" />
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
   </ItemGroup>

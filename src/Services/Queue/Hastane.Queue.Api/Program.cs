@@ -56,7 +56,9 @@ builder.Services.AddSignalR(o =>
 {
     o.MaximumReceiveMessageSize = 4 * 1024;
     o.EnableDetailedErrors = false;
-});
+})
+    // Hub JSON'u varsayılan olarak enum'u SAYI yazar; REST ile aynı olsun (status: "Called") ve WebUI JS metinle karşılaştırsın.
+    .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddSingleton<IQueueNotifier, QueueNotifier>();
 
 var app = builder.Build();

@@ -4,6 +4,9 @@
     <Project Path="src/Gateway/Hastane.Gateway/Hastane.Gateway.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />
+  <Folder Name="/src/Services/Analytics/">
+    <Project Path="src/Services/Analytics/Hastane.Analytics.Api/Hastane.Analytics.Api.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Appointment/">
     <Project Path="src/Services/Appointment/Hastane.Appointment.Api/Hastane.Appointment.Api.csproj" />
   </Folder>
@@ -64,6 +67,7 @@
     <Project Path="tests/Hastane.Pharmacy.Tests/Hastane.Pharmacy.Tests.csproj" />
     <Project Path="tests/Hastane.Market.Tests/Hastane.Market.Tests.csproj" />
     <Project Path="tests/Hastane.Order.Tests/Hastane.Order.Tests.csproj" />
+    <Project Path="tests/Hastane.Analytics.Tests/Hastane.Analytics.Tests.csproj" />
     <Project Path="tests/Hastane.Branch.Tests/Hastane.Branch.Tests.csproj" />
     <Project Path="tests/Hastane.Doctor.Tests/Hastane.Doctor.Tests.csproj" />
     <Project Path="tests/Hastane.Gateway.Tests/Hastane.Gateway.Tests.csproj" />
