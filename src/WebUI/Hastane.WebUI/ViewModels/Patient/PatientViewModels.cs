@@ -152,4 +152,8 @@ public sealed class PatientHomeViewModel
     // Özet kutuları: listeler panelde kısaltılır (ilk 5), sayılar kısaltılmamış listeden gelir.
     public int UpcomingCount { get; init; }
     public int PrescriptionCount { get; init; }
+
+    // Profil kartı (yaş, kan grubu, şehir). Patient servisi kapalıysa null ve ProfileUnavailable.
+    public PatientProfileApiModel? Profile { get; init; }
+    public bool ProfileUnavailable { get; init; }
 }

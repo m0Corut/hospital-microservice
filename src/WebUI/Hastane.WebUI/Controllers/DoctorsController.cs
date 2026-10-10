@@ -4,6 +4,7 @@ using Hastane.WebUI.Infrastructure.Gateway;
 using Hastane.WebUI.Models.Api;
 using Hastane.WebUI.Models.Api.Public;
 using Hastane.WebUI.ViewModels.Public;
+using Hastane.WebUI.ViewModels.Social;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +13,7 @@ namespace Hastane.WebUI.Controllers;
 // Yollar öznitelikle: /Doctors (arama) ve /Doctors/{id} (profil). Varsayılan rota {controller}/{action}/{id}
 // "/Doctors/d1" adresini Index'e götürürdü.
 public class DoctorsController(
-    IPublicDoctorClient doctors, IPublicReviewClient reviews, IBranchClient branches) : AppController
+    IPublicDoctorClient doctors, IPublicReviewClient reviews, IBranchClient branches, IPatientProfileClient patientProfile) : AppController
 {
     [HttpGet("Doctors"), AllowAnonymous]
     public async Task<IActionResult> Index([FromQuery] DoctorSearchFilter filter, CancellationToken ct)
@@ -51,11 +52,17 @@ public class DoctorsController(
                         foreach (var s in rated.Value) summaries[s.DoctorId] = s;
                 }
 
+                // Favori kalpleri: hasta için sayfa başına TEK çağrı (N+1 yok); hasta değilse hiç çağrılmaz.
+                var favoriteIds = page.Items.Count > 0
+                    ? await FavoriteLookup.LoadAsync(User, patientProfile, ct)
+                    : [];
+
                 cards = page.Items
                     .Select(d => new DoctorCardViewModel
                     {
                         Doctor = d,
                         Rating = summaries.GetValueOrDefault(d.Id),
+                        IsFavorite = favoriteIds.Contains(d.Id),
                         BranchName = branchItems.FirstOrDefault(b => b.Id == d.BranchId)?.Name,
                     })
                     .ToList();
@@ -155,6 +162,7 @@ public class DoctorsController(
             ReviewsUnavailable = !reviewList.IsSuccess,
             IsPatient = User.IsInRole(HastaneRoles.Patient),
             IsSignedIn = signedIn,
+            IsFavorite = (await FavoriteLookup.LoadAsync(User, patientProfile, ct)).Contains(id),
             ReviewForm = form,
         };
     }

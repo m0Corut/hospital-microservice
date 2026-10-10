@@ -1,5 +1,6 @@
 @using Hastane.WebUI.ViewModels.Public
 @using System.Globalization
+@using Hastane.WebUI.ViewModels.Social
 @model DoctorCardViewModel
 @{
     var d = Model.Doctor;
@@ -76,5 +77,6 @@
         {
             <a class="btn btn-accent btn-sm" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu Al</a>
         }
+        <partial name="_FavoriteButton" model="@(new FavoriteButtonViewModel(d.Id, Model.IsFavorite, true))" />
     </div>
 </article>

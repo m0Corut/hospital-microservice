@@ -1,0 +1,126 @@
+@using Hastane.WebUI.ViewModels.Social
+@using Hastane.WebUI.ViewModels.Public
+@model MessagesViewModel
+@{
+    ViewData["Title"] = "Mesajlar";
+    var sel = Model.Selected;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/messages.css" asp-append-version="true" />
+}
+
+<h1 class="page-title">Mesajlar</h1>
+
+<div class="chat-shell">
+    <aside class="panel-card chat-list" aria-label="Konuşmalar">
+        <div class="chat-list-head"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Konuşmalar</div>
+        @if (Model.Conversations.Count == 0)
+        {
+            <div class="p-3 text-muted small">Henüz konuşmanız yok. Randevunuz olan @(User.IsInRole(HastaneRoles.Patient) ? "doktorun profilinden" : "hastanın profilinden") mesaj başlatabilirsiniz.</div>
+        }
+        @foreach (var c in Model.Conversations)
+        {
+            <a class="chat-item @(sel?.Id == c.Id ? "active" : "")" asp-area="" asp-controller="Messages" asp-action="Conversation" asp-route-id="@c.Id">
+                <div class="ci-top">
+                    <span class="ci-name">@c.OtherName</span>
+                    <span class="ci-time">@DisplayText.DateTimeLocal(c.LastMessageAt)</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span class="ci-preview">@(string.IsNullOrWhiteSpace(c.Preview) ? "Henüz mesaj yok" : c.Preview)</span>
+                    @if (c.Unread > 0)
+                    {
+                        <span class="badge rounded-pill text-bg-danger">@c.Unread</span>
+                    }
+                </div>
+            </a>
+        }
+    </aside>
+
+    <section class="panel-card chat-pane" aria-label="Mesajlar">
+        @if (sel is null)
+        {
+            <div class="chat-empty">Bir konuşma seçin.</div>
+        }
+        else
+        {
+            <div class="chat-pane-head">@sel.OtherName</div>
+            <div class="chat-messages" id="msgList" aria-live="polite"
+                 data-since-url="@Url.Action("Since", "Messages", new { area = "", id = sel.Id })"
+                 data-last="@Model.LastSentAtIso">
+                @if (Model.Messages.Count == 0)
+                {
+                    <div class="chat-empty" id="msgEmpty">Henüz mesaj yok. İlk mesajı siz yazın.</div>
+                }
+                @foreach (var m in Model.Messages)
+                {
+                    <div class="msg @(m.Mine ? "msg-mine" : "msg-theirs")" data-id="@m.Id">
+                        <div class="msg-meta">@m.SenderName · @m.TimeText</div>
+                        <div class="msg-text">@m.Text</div>
+                    </div>
+                }
+            </div>
+            <form class="chat-form" asp-area="" asp-controller="Messages" asp-action="Send" asp-route-id="@sel.Id" method="post" novalidate>
+                <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+                <div class="d-flex gap-2 align-items-end">
+                    <textarea asp-for="Form.Text" class="form-control" rows="2" maxlength="2000" placeholder="Mesajınızı yazın" aria-label="Mesaj"></textarea>
+                    <button type="submit" class="btn btn-accent"><i class="bi bi-send me-1" aria-hidden="true"></i>Gönder</button>
+                </div>
+            </form>
+        }
+    </section>
+</div>
+
+@section Scripts {
+    @if (sel is not null)
+    {
+        @* Yoklama: her 5 sn yeni mesajları sorar. JS yoksa sayfa yenilemeyle çalışır. Metin textContent ile yazılır (HTML değil). *@
+        <script>
+            (function () {
+                var box = document.getElementById('msgList');
+                if (!box || !window.fetch) return;
+                var url = box.getAttribute('data-since-url');
+                var last = box.getAttribute('data-last') || '1970-01-01T00:00:00.000Z';
+                var seen = {};
+                Array.prototype.forEach.call(box.querySelectorAll('[data-id]'), function (el) { seen[el.getAttribute('data-id')] = true; });
+                var busy = false;
+                box.scrollTop = box.scrollHeight;
+
+                function add(m) {
+                    if (seen[m.id]) return;
+                    seen[m.id] = true;
+                    var empty = document.getElementById('msgEmpty');
+                    if (empty) empty.remove();
+                    var row = document.createElement('div');
+                    row.className = 'msg ' + (m.mine ? 'msg-mine' : 'msg-theirs');
+                    row.setAttribute('data-id', m.id);
+                    var meta = document.createElement('div');
+                    meta.className = 'msg-meta';
+                    meta.textContent = m.sender + ' · ' + m.time;
+                    var text = document.createElement('div');
+                    text.className = 'msg-text';
+                    text.textContent = m.text;
+                    row.appendChild(meta);
+                    row.appendChild(text);
+                    box.appendChild(row);
+                }
+
+                function poll() {
+                    if (busy || document.hidden) return;
+                    busy = true;
+                    fetch(url + '?after=' + encodeURIComponent(last), { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                        .then(function (r) { return r.ok ? r.json() : null; })
+                        .then(function (data) {
+                            if (!data || !data.messages || data.messages.length === 0) return;
+                            var nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+                            data.messages.forEach(function (m) { add(m); last = m.sentAt; });
+                            if (nearBottom) box.scrollTop = box.scrollHeight;
+                        })
+                        .catch(function () { })
+                        .then(function () { busy = false; });
+                }
+
+                setInterval(poll, 5000);
+            })();
+        </script>
+    }
+}

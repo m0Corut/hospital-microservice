@@ -1,0 +1,23 @@
+/* Mesajlar sayfası: konuşma listesi + balonlar. Tasarım değişkenleri site.css'ten (--h-*). */
+.chat-shell { display: grid; grid-template-columns: 20rem 1fr; gap: 1rem; min-height: 32rem; }
+@media (max-width: 991.98px) { .chat-shell { grid-template-columns: 1fr; } }
+
+.chat-list { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.chat-list-head { padding: .85rem 1rem; font-weight: 650; border-bottom: 1px solid var(--h-line, #e5e9f0); }
+.chat-list a.chat-item { display: block; padding: .75rem 1rem; border-bottom: 1px solid var(--h-line, #e5e9f0); color: inherit; text-decoration: none; }
+.chat-list a.chat-item:hover { background: rgba(30, 111, 217, .06); }
+.chat-list a.chat-item.active { background: rgba(30, 111, 217, .12); }
+.chat-item .ci-top { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.chat-item .ci-name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-item .ci-time { font-size: .75rem; color: #6b7686; white-space: nowrap; }
+.chat-item .ci-preview { font-size: .85rem; color: #6b7686; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.chat-pane { padding: 0; display: flex; flex-direction: column; min-height: 28rem; }
+.chat-pane-head { padding: .85rem 1rem; font-weight: 650; border-bottom: 1px solid var(--h-line, #e5e9f0); }
+.chat-messages { flex: 1 1 auto; padding: 1rem; overflow-y: auto; max-height: 30rem; display: flex; flex-direction: column; gap: .6rem; }
+.msg { max-width: 78%; padding: .55rem .8rem; border-radius: 1rem; background: #eef1f6; align-self: flex-start; }
+.msg.msg-mine { align-self: flex-end; background: #1e6fd9; color: #fff; }
+.msg .msg-meta { font-size: .72rem; opacity: .75; margin-bottom: .1rem; }
+.msg .msg-text { white-space: pre-wrap; word-break: break-word; }
+.chat-form { border-top: 1px solid var(--h-line, #e5e9f0); padding: .75rem 1rem; }
+.chat-empty { margin: auto; padding: 2rem; text-align: center; color: #6b7686; }

@@ -95,7 +95,8 @@ public static class UiKit
 // Avatar bileşeni girdisi: fotoğraf adresi (olabilir null), görünen ad, boyut (sm/md/lg/xl).
 public sealed record AvatarViewModel(string? ImageUrl, string Name, string Size = "md");
 
-public sealed record PanelMenuItem(string Icon, string Label, string Area, string Controller, string Action = "Index");
+// WithMessageBadge: öğenin yanında okunmamış mesaj rozeti çizilir (MessageBadge view component'i; servis kapalıysa gizli).
+public sealed record PanelMenuItem(string Icon, string Label, string Area, string Controller, string Action = "Index", bool WithMessageBadge = false);
 
 // Panel kenar çubuğu: profil kartı (avatar, ad, rol) + menü.
 public sealed record PanelSideViewModel(string DisplayName, string RoleLabel, string? ImageUrl, IReadOnlyList<PanelMenuItem> Items);

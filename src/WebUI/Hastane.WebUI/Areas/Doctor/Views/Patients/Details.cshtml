@@ -3,7 +3,14 @@
     ViewData["Title"] = Model.Name;
 }
 
-<a class="small" asp-area="Doctor" asp-controller="Patients" asp-action="Index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Hastalarım</a>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <a class="small" asp-area="Doctor" asp-controller="Patients" asp-action="Index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Hastalarım</a>
+    @* Bu hastayla randevunuz var; yoksa servis 403 verir ve uyarı bu sayfada görünür. *@
+    <form asp-area="" asp-controller="Messages" asp-action="WithPatient" asp-route-patientUserId="@Model.PatientId" method="post">
+        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Mesaj gönder</button>
+    </form>
+</div>
 
 <div class="panel-card p-4 my-3">
     <div class="d-flex flex-wrap align-items-center gap-3">

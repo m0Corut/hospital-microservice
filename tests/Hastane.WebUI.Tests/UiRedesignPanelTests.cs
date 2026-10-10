@@ -126,12 +126,13 @@ public class DoctorNewScreensTests
         await using var host = await WebUiTestHost.StartAsync();
         var client = host.CreateClient();
         await host.LoginAsync(client, TestJwt.Create("user-1", ["Doctor"], doctorId: null), roles: ["Doctor"]);
-        var before = host.Gateway.Requests.Count;
+        // Menü zili / mesaj rozeti (kabuk) çağrıları hariç: alan servislerine hiç gidilmez (ApiCallCount, SocialFeaturesTests.cs).
+        var before = host.Gateway.ApiCallCount();
 
         foreach (var path in new[] { "/Doctor/Patients", "/Doctor/Calendar" })
             Assert.Contains("henüz bir doktor kaydına bağlanmadı", await (await client.GetAsync(path)).Content.ReadHtmlAsync());
 
-        Assert.Equal(before, host.Gateway.Requests.Count);
+        Assert.Equal(before, host.Gateway.ApiCallCount());
     }
 
     // ---------- Haftalık takvim ----------
