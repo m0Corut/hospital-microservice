@@ -1,0 +1,38 @@
+@model ReviewsViewModel
+@{
+    ViewData["Title"] = "Yorumlarım";
+    ViewData["Tab"] = "reviews";
+}
+
+<h1 class="h4 mb-3">Yorumlarım</h1>
+<partial name="_PanelNav" />
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4"><div class="panel-card p-3 h-100"><div class="text-muted small">Yorum sayısı</div><div class="display-6">@Model.ReviewCount</div></div></div>
+    <div class="col-md-4"><div class="panel-card p-3 h-100"><div class="text-muted small">Ortalama puan</div><div class="display-6">@Model.AverageRating.ToString("0.0")</div></div></div>
+    <div class="col-md-4"><div class="panel-card p-3 h-100"><div class="text-muted small">Tavsiye oranı</div><div class="display-6">%@Model.RecommendationPercent</div></div></div>
+</div>
+
+<div class="panel-card p-4">
+    @if (Model.Reviews.Count == 0)
+    {
+        <p class="text-muted mb-0">Henüz yorum yok.</p>
+    }
+    else
+    {
+        @foreach (var r in Model.Reviews)
+        {
+            <div class="border-bottom pb-3 mb-3">
+                <div class="d-flex justify-content-between">
+                    <strong>@r.ReviewerName</strong>
+                    <span class="text-muted small">@DoctorPanelFormat.DateTimeText(r.CreatedAt)</span>
+                </div>
+                <div class="text-warning" aria-label="@r.Rating / 5 puan">@(new string('★', Math.Clamp(r.Rating, 0, 5)))<span class="text-muted">@(new string('☆', 5 - Math.Clamp(r.Rating, 0, 5)))</span> <span class="text-muted small">@r.Rating/5</span></div>
+                @if (!string.IsNullOrWhiteSpace(r.Comment))
+                {
+                    <p class="mb-0 mt-1">@r.Comment</p>
+                }
+            </div>
+        }
+    }
+</div>

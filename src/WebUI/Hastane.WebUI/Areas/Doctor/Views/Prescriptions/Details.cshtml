@@ -1,0 +1,54 @@
+@model PrescriptionDetailViewModel
+@{
+    ViewData["Title"] = "Reçete";
+    ViewData["Tab"] = "prescriptions";
+}
+
+<h1 class="h4 mb-3">Reçete</h1>
+<partial name="_PanelNav" />
+
+<div class="panel-card p-4 mb-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+        <div>
+            <div class="h5 mb-1">@Model.PatientLabel</div>
+            <div class="text-muted">Yazılma: @DoctorPanelFormat.DateTimeText(Model.IssuedAt)</div>
+            <a class="small" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.AppointmentId">İlgili randevu</a>
+        </div>
+        <div class="d-flex gap-2 align-items-start">
+            <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Edit" asp-route-id="@Model.Id">Düzenle</a>
+            <form method="post" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Delete" asp-route-id="@Model.Id">
+                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Reçete silinsin mi? Bu işlem geri alınamaz.');">Sil</button>
+            </form>
+        </div>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.Notes))
+    {
+        <hr />
+        <div class="small text-muted">Not</div>
+        <p class="mb-0">@Model.Notes</p>
+    }
+</div>
+
+<div class="panel-card p-4">
+    <h2 class="h5">İlaçlar</h2>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre</th><th>Not</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var i in Model.Items)
+                {
+                    <tr>
+                        <td>@i.LineNo</td>
+                        <td>@i.MedicineName</td>
+                        <td>@i.Dosage</td>
+                        <td>@i.Frequency</td>
+                        <td>@i.DurationDays gün</td>
+                        <td>@i.Instructions</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
