@@ -17,16 +17,9 @@ public interface IPatientPaymentClient
     Task<ApiResult<InvoiceDetailApiModel>> GetInvoiceAsync(Guid id, CancellationToken ct);
 }
 
-// IGatewayClient başlık eklemeyi desteklemiyor ve Infrastructure'a dokunmak yasak. Bu yüzden Idempotency-Key için,
-// IGatewayClient'ın kullandığı aynı yapılandırılmış HttpClient'in (adres + Bearer handler) yeni bir örneği alınır,
-// başlık o örneğin varsayılanına yazılır ve hata eşleme mantığı için GatewayClient aynen kullanılır.
-// Örnek her çağrıda yenidir (CreateClient), başlık başka isteğe sızmaz. Kalıcı çözüm: ortak istemci katmanında ele alınabilir.
-public sealed class PatientPaymentClient(IGatewayClient gateway, IHttpClientFactory httpFactory, ILogger<GatewayClient> gatewayLogger)
+public sealed class PatientPaymentClient(IGatewayClient gateway)
     : IPatientPaymentClient
 {
-    // AddHttpClient<IGatewayClient, GatewayClient> kaydının adlandırılmış istemci adı.
-    private const string GatewayHttpClientName = nameof(IGatewayClient);
-
     public Task<ApiResult<PagedPatientApiModel<PaymentApiModel>>> ListPaymentsAsync(
         int page, int pageSize, Guid? appointmentId, string? status, ApiFailures handle, CancellationToken ct)
     {
@@ -40,11 +33,8 @@ public sealed class PatientPaymentClient(IGatewayClient gateway, IHttpClientFact
         => gateway.GetAsync<PaymentApiModel>($"/gateway/payments/{id}", ct: ct);
 
     public Task<ApiResult<PaymentApiModel>> CreatePaymentAsync(string idempotencyKey, CreatePaymentRequest request, ApiFailures handle, CancellationToken ct)
-    {
-        var http = httpFactory.CreateClient(GatewayHttpClientName);
-        http.DefaultRequestHeaders.Add("Idempotency-Key", idempotencyKey);
-        return new GatewayClient(http, gatewayLogger).PostAsync<PaymentApiModel>("/gateway/payments", request, handle, ct);
-    }
+    => gateway.PostAsync<PaymentApiModel>("/gateway/payments", request,
+            new Dictionary<string, string> { ["Idempotency-Key"] = idempotencyKey }, handle, ct);
 
     public Task<ApiResult<PagedPatientApiModel<InvoiceApiModel>>> ListInvoicesAsync(int page, int pageSize, CancellationToken ct)
         => gateway.GetAsync<PagedPatientApiModel<InvoiceApiModel>>($"/gateway/invoices?page={page}&pageSize={pageSize}", ct: ct);

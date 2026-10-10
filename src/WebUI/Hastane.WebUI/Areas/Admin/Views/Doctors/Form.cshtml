@@ -19,7 +19,7 @@
 @* Liste ekle/çıkar düğmeleri JavaScript'siz çalışır: düğme "command" alanını gönderir, sunucu listeyi değiştirip formu yeniden çizer. *@
 <div class="panel-card p-4">
     <h1 class="h4 mb-3">@ViewData["Title"]</h1>
-    <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+    <form asp-area="Admin" asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
         @* Enter tuşu ilk gönder düğmesini tetikler; bu gizli düğme "Kaydet" olsun, "Çıkar" değil. *@
         <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Kaydet</button>
         <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
@@ -220,6 +220,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Kaydet</button>
-        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+        <a class="btn btn-link" asp-area="Admin" asp-action="Index">Vazgeç</a>
     </form>
 </div>

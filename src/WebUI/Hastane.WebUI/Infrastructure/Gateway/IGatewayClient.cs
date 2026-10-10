@@ -8,6 +8,7 @@ public interface IGatewayClient
 
     Task<ApiResult<T>> PostAsync<T>(string path, object? body, ApiFailures handle = ApiFailures.None, CancellationToken ct = default);
 
+    Task<ApiResult<T>> PostAsync<T>(string path, object? body, IReadOnlyDictionary<string, string> headers, ApiFailures handle = ApiFailures.None, CancellationToken ct = default);
     Task<ApiResult> PostAsync(string path, object? body, ApiFailures handle = ApiFailures.None, CancellationToken ct = default);
 
     Task<ApiResult<T>> PutAsync<T>(string path, object? body, ApiFailures handle = ApiFailures.None, CancellationToken ct = default);

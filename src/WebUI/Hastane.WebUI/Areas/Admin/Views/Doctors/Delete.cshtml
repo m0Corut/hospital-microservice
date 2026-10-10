@@ -8,6 +8,6 @@
     <p><strong>@Model.Title @Model.FirstName @Model.LastName</strong> kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
     <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
         <button type="submit" class="btn btn-danger">Evet, sil</button>
-        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+        <a class="btn btn-link" asp-area="Admin" asp-action="Index">Vazgeç</a>
     </form>
 </div>

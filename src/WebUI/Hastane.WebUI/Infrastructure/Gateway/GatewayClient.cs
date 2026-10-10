@@ -19,6 +19,10 @@ public sealed class GatewayClient(HttpClient http, ILogger<GatewayClient> logger
     public Task<ApiResult<T>> PostAsync<T>(string path, object? body, ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
         => SendAsync<T>(HttpMethod.Post, path, body, handle, ct);
 
+    public Task<ApiResult<T>> PostAsync<T>(string path, object? body, IReadOnlyDictionary<string, string> headers,
+        ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
+        => SendAsync<T>(HttpMethod.Post, path, body, handle, ct, headers);
+
     public async Task<ApiResult> PostAsync(string path, object? body, ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
         => await SendAsync<Unit>(HttpMethod.Post, path, body, handle, ct);
 
@@ -34,12 +38,16 @@ public sealed class GatewayClient(HttpClient http, ILogger<GatewayClient> logger
     public async Task<ApiResult> DeleteAsync(string path, ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
         => await SendAsync<Unit>(HttpMethod.Delete, path, null, handle, ct);
 
-    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiFailures handle, CancellationToken ct)
+    private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiFailures handle, CancellationToken ct,
+        IReadOnlyDictionary<string, string>? headers = null)
     {
         HttpResponseMessage response;
         try
         {
             using var request = new HttpRequestMessage(method, path);
+            // İsteğe özel başlık (ör. Idempotency-Key) yalnız bu isteğe yazılır, paylaşılan istemciye değil.
+            foreach (var (name, value) in headers ?? new Dictionary<string, string>())
+                request.Headers.TryAddWithoutValidation(name, value);
             if (body is not null)
                 request.Content = JsonContent.Create(body, body.GetType(), options: Json);
             response = await http.SendAsync(request, ct);

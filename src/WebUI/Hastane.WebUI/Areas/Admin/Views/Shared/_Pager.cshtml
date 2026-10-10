@@ -4,11 +4,11 @@
     <nav aria-label="Sayfalama">
         <ul class="pagination pagination-sm mb-0">
             <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
-                <a class="page-link" asp-action="@Model.Action" asp-all-route-data="Model.RouteFor(Math.Max(Model.Page - 1, 1))">Önceki</a>
+                <a class="page-link" asp-area="Admin" asp-action="@Model.Action" asp-all-route-data="Model.RouteFor(Math.Max(Model.Page - 1, 1))">Önceki</a>
             </li>
             <li class="page-item disabled"><span class="page-link">@Model.Page / @Model.TotalPages</span></li>
             <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
-                <a class="page-link" asp-action="@Model.Action" asp-all-route-data="Model.RouteFor(Math.Min(Model.Page + 1, Model.TotalPages))">Sonraki</a>
+                <a class="page-link" asp-area="Admin" asp-action="@Model.Action" asp-all-route-data="Model.RouteFor(Math.Min(Model.Page + 1, Model.TotalPages))">Sonraki</a>
             </li>
         </ul>
     </nav>

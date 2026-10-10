@@ -8,7 +8,7 @@
     <a class="btn btn-primary btn-sm" asp-action="Create">Doktor ekle</a>
 </div>
 
-<form method="get" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+<form method="get" asp-area="Admin" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
     <div class="col-md-5">
         <label for="text" class="form-label small">Ad ara</label>
         <input id="text" name="text" value="@Model.Text" class="form-control" />

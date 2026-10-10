@@ -51,7 +51,7 @@ public class DoctorsController(IAdminDoctorClient doctors, IAdminBranchClient br
         }
 
         SetSuccess("Doktor eklendi.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { area = "Admin" });
     }
 
     [HttpGet]
@@ -85,7 +85,7 @@ public class DoctorsController(IAdminDoctorClient doctors, IAdminBranchClient br
         }
 
         SetSuccess("Doktor güncellendi.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { area = "Admin" });
     }
 
     // Onay sayfası: yalnız gösterir, silmez.
@@ -103,11 +103,11 @@ public class DoctorsController(IAdminDoctorClient doctors, IAdminBranchClient br
         if (!result.IsSuccess)
         {
             SetWarning(AdminDisplay.ProblemText(result, "Doktor silinemedi."));
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { area = "Admin" });
         }
 
         SetSuccess("Doktor silindi.");
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { area = "Admin" });
     }
 
     private async Task<IActionResult> FormAsync(DoctorFormViewModel model, CancellationToken ct)

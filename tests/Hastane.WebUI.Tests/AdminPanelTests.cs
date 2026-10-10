@@ -336,6 +336,25 @@ public class AdminDoctorTests
         Assert.Contains("page=3", html); // sayfalama: "Sonraki" bağlantısı süzgeçleri taşır
     }
 
+    // Herkese açık DoctorsController sabit rotalı ("Doctors"). Alan verilmeden üretilen Index adresi
+    // oraya kayıyordu (/Doctors); yönetim sayfasındaki form, sayfalama ve "Vazgeç" bağlantıları /Admin/Doctors kalmalı.
+    [Fact]
+    public async Task List_links_stay_in_admin_area_not_public_doctors_page()
+    {
+        await using var host = await WebUiTestHost.StartAsync();
+        MapBranches(host);
+        host.Gateway.MapJson("GET", "/gateway/doctors/search", 200, Paged([DoctorListItem()], page: 2, pageSize: 10, total: 25));
+        var client = await AdminClientAsync(host);
+
+        var html = await HtmlAsync(await client.GetAsync("/Admin/Doctors?page=2"));
+
+        // Ana menüdeki herkese açık "Doktorlar" (/Doctors) meşru; sayfalama /Doctors?page=... olmamalı.
+        Assert.DoesNotContain("href=\"/Doctors?", html);
+        Assert.DoesNotContain("action=\"/Doctors", html);
+        Assert.Contains("action=\"/Admin/Doctors", html);
+        Assert.Contains("href=\"/Admin/Doctors?page=3", html);
+    }
+
     [Fact]
     public async Task List_empty_state()
     {
