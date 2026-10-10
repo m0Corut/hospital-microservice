@@ -1,0 +1,67 @@
+@model RegisterDoctorViewModel
+@{
+    ViewData["Title"] = "Doktor başvurusu";
+}
+
+<div class="auth-split panel-card">
+    <div class="auth-art" aria-hidden="true"><img src="~/img/login.svg" alt="" /></div>
+    <div class="auth-form">
+        <h1 class="h3 mb-1">Doktor başvurusu</h1>
+        <p class="text-muted mb-4">Bilgilerinizi gönderin; yönetici onaylayınca doktor paneliniz açılır.</p>
+        @if (Model.BranchesUnavailable)
+        {
+            <div class="alert alert-warning py-2 small">Branş listesi şu an yüklenemedi. Lütfen biraz sonra tekrar deneyin.</div>
+        }
+        <form asp-action="RegisterDoctor" asp-controller="Account" asp-area="" method="post" novalidate>
+            <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label asp-for="FirstName" class="form-label"></label>
+                    <input asp-for="FirstName" class="form-control" autocomplete="given-name" />
+                    <span asp-validation-for="FirstName" class="text-danger small"></span>
+                </div>
+                <div class="col-6 mb-3">
+                    <label asp-for="LastName" class="form-label"></label>
+                    <input asp-for="LastName" class="form-control" autocomplete="family-name" />
+                    <span asp-validation-for="LastName" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label"></label>
+                <input asp-for="Password" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="Password" class="text-danger small"></span>
+                <div class="form-text">En az 8 karakter; büyük harf, küçük harf ve rakam içermeli.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="ConfirmPassword" class="form-label"></label>
+                <input asp-for="ConfirmPassword" class="form-control" autocomplete="new-password" />
+                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="BranchId" class="form-label"></label>
+                <select asp-for="BranchId" class="form-select" asp-items="Model.Branches">
+                    <option value="">Branş seçin</option>
+                </select>
+                <span asp-validation-for="BranchId" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="LicenseNumber" class="form-label"></label>
+                <input asp-for="LicenseNumber" class="form-control" maxlength="50" autocomplete="off" />
+                <span asp-validation-for="LicenseNumber" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Note" class="form-label"></label>
+                <textarea asp-for="Note" class="form-control" rows="3" maxlength="500"></textarea>
+                <span asp-validation-for="Note" class="text-danger small"></span>
+            </div>
+            <button type="submit" class="btn btn-accent btn-lg w-100">Başvuruyu gönder</button>
+        </form>
+        <p class="small text-center mt-3 mb-0">Hasta mısınız? <a asp-action="Register" asp-controller="Account" asp-area="">Hasta olarak kayıt olun</a></p>
+        <p class="small text-center mt-2 mb-0">Zaten hesabınız var mı? <a asp-action="Login" asp-controller="Account" asp-area="">Giriş yapın</a></p>
+    </div>
+</div>

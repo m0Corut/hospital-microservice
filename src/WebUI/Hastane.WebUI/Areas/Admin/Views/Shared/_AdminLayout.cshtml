@@ -1,4 +1,8 @@
+@inject Hastane.WebUI.Clients.IAdminDoctorApplicationClient DoctorApplications
 @{
+    // Bekleyen başvuru sayısı (menü rozeti). Servis kapalı / yetkisiz ise null: rozet çıkmaz, sayfa bozulmaz.
+    var pendingApplications = await DoctorApplications.CountPendingAsync(Context.RequestAborted);
+    var applicationsLabel = pendingApplications is > 0 ? $"Doktor Başvuruları ({pendingApplications})" : "Doktor Başvuruları";
     // Admin paneli iskeleti: ortak _Layout içinde profil kartlı kenar menü + içerik. Yetki burada değil, AdminAreaController'dadır.
     Layout = "~/Views/Shared/_Layout.cshtml";
     var side = new PanelSideViewModel(
@@ -9,6 +13,7 @@
             new("speedometer2", "Panel", "Admin", "Home"),
             new("grid", "Branşlar", "Admin", "Branches"),
             new("person-badge", "Doktorlar", "Admin", "Doctors"),
+            new("person-check", applicationsLabel, "Admin", "DoctorApplications"),
             new("people", "Kullanıcılar", "Admin", "Users"),
             new("person-heart", "Hastalar", "Admin", "Patients"),
             new("shield-lock", "Roller", "Admin", "Roles"),

@@ -1,5 +1,6 @@
 using Hastane.WebUI.Infrastructure;
 using Hastane.WebUI.Infrastructure.Gateway;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,14 @@ builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
     // API'den gelen 401/403/404/servis-kapalı tek yerde kullanıcı davranışına çevrilir.
     options.Filters.Add<GatewayExceptionFilter>();
+});
+
+// Profil fotoğrafı yüklemesi (2 MB sınırlı) diske değil bellekte tamponlansın: eşik gövde sınırından büyük.
+// Antiforgery denetimi formu eylemden önce okuduğu için ayar eylem özniteliğiyle değil burada, genel verilir.
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MemoryBufferThreshold = 3 * 1024 * 1024;
+    options.MultipartBodyLengthLimit = 3 * 1024 * 1024;
 });
 
 builder.Services.AddWebUiDataProtection(builder.Configuration, builder.Environment);

@@ -38,8 +38,43 @@ public sealed class GatewayClient(HttpClient http, ILogger<GatewayClient> logger
     public async Task<ApiResult> DeleteAsync(string path, ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
         => await SendAsync<Unit>(HttpMethod.Delete, path, null, handle, ct);
 
+    public async Task<ApiResult<T>> PutFileAsync<T>(string path, string fieldName, string fileName, string contentType, Stream content,
+        ApiFailures handle = ApiFailures.None, CancellationToken ct = default)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new StreamContent(content);
+        file.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(contentType);
+        form.Add(file, fieldName, fileName);
+        return await SendAsync<T>(HttpMethod.Put, path, null, handle, ct, null, form);
+    }
+
+    public async Task<GatewayStream> GetStreamAsync(string path, CancellationToken ct = default)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, path);
+            response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            logger.LogWarning(ex, "Gateway'e ulaşılamadı: GET {Path}", path);
+            return new GatewayStream((int)HttpStatusCode.ServiceUnavailable, null, null, null);
+        }
+
+        var status = (int)response.StatusCode;
+        if (!response.IsSuccessStatusCode)
+        {
+            response.Dispose();
+            return new GatewayStream(status, null, null, null);
+        }
+
+        var stream = await response.Content.ReadAsStreamAsync(ct);
+        return new GatewayStream(status, response.Content.Headers.ContentType?.MediaType, stream, response);
+    }
+
     private async Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string path, object? body, ApiFailures handle, CancellationToken ct,
-        IReadOnlyDictionary<string, string>? headers = null)
+        IReadOnlyDictionary<string, string>? headers = null, HttpContent? content = null)
     {
         HttpResponseMessage response;
         try
@@ -48,7 +83,9 @@ public sealed class GatewayClient(HttpClient http, ILogger<GatewayClient> logger
             // İsteğe özel başlık (ör. Idempotency-Key) yalnız bu isteğe yazılır, paylaşılan istemciye değil.
             foreach (var (name, value) in headers ?? new Dictionary<string, string>())
                 request.Headers.TryAddWithoutValidation(name, value);
-            if (body is not null)
+            if (content is not null)
+                request.Content = content;
+            else if (body is not null)
                 request.Content = JsonContent.Create(body, body.GetType(), options: Json);
             response = await http.SendAsync(request, ct);
         }
