@@ -1,0 +1,84 @@
+@model ReviewIndexViewModel
+@{
+    ViewData["Title"] = "Yorumlar";
+    var pager = new PagerViewModel
+    {
+        Action = "Index", Page = Model.Page, PageSize = Model.PageSize, TotalCount = Model.TotalCount,
+        Filters = new Dictionary<string, string?>
+        {
+            ["doctorId"] = Model.DoctorId,
+            ["rating"] = Model.Rating?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["search"] = Model.Search,
+        },
+    };
+}
+
+<h1 class="h4 mb-3">Yorumlar</h1>
+
+<form method="get" asp-area="Admin" asp-controller="Reviews" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-4">
+        <label for="doctorId" class="form-label small">Doktor</label>
+        <select id="doctorId" name="doctorId" class="form-select">
+            <option value="">Tümü</option>
+            @foreach (var d in Model.DoctorNames.OrderBy(d => d.Value))
+            {
+                <option value="@d.Key" selected="@(Model.DoctorId == d.Key)">@d.Value</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="rating" class="form-label small">Puan</label>
+        <select id="rating" name="rating" class="form-select">
+            <option value="">Tümü</option>
+            @for (var i = 5; i >= 1; i--)
+            {
+                <option value="@i" selected="@(Model.Rating == i)">@i yıldız</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4">
+        <label for="search" class="form-label small">Ara (yorum metni, yazan)</label>
+        <input id="search" name="search" value="@Model.Search" class="form-control" maxlength="100" />
+    </div>
+    <div class="col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary mt-auto">Süz</button></div>
+</form>
+
+<div class="panel-card p-3">
+    @if (Model.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Yorum bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Doktor</th><th>Yazan</th><th>Puan</th><th>Yorum</th><th>Tarih</th><th class="text-end">İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var r in Model.Items)
+                {
+                    <tr>
+                        <td>@Model.DoctorName(r.DoctorId)</td>
+                        <td>@r.ReviewerName</td>
+                        <td class="text-nowrap"><partial name="_Stars" model="(double)r.Rating" /> <span class="visually-hidden">@r.Rating / 5</span></td>
+                        <td class="small" style="max-width: 28rem; white-space: pre-line;">@r.Comment</td>
+                        <td class="small text-nowrap">@AdminDisplay.Date(r.CreatedAt)</td>
+                        <td class="text-end">
+                            <form asp-action="Delete" asp-route-id="@r.Id" method="post" class="d-inline">
+                                <input type="hidden" name="doctorId" value="@Model.DoctorId" />
+                                <input type="hidden" name="rating" value="@Model.Rating" />
+                                <input type="hidden" name="search" value="@Model.Search" />
+                                <input type="hidden" name="page" value="@Model.Page" />
+                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Bu yorum silinsin mi? Bu işlem geri alınamaz.');">Sil</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-muted">Toplam @Model.TotalCount yorum</span>
+            <partial name="_Pager" model="pager" />
+        </div>
+    }
+</div>

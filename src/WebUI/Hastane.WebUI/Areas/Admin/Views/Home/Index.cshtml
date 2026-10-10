@@ -1,12 +1,15 @@
 @using Hastane.WebUI.Clients
-@model AdminSummary
+@model AdminHomeViewModel
 @{
     ViewData["Title"] = "Yönetim";
+    var summary = Model.Summary;
+    var dash = Model.Dashboard;
+    var charts = dash.Charts;
     var tiles = new List<(string Icon, string Tone, string Label, long Value)>();
-    if (Model.Users is { } users) tiles.Add(("people", "tone-blue", "Kullanıcı sayısı", users));
-    if (Model.Doctors is { } doctors) tiles.Add(("person-badge", "tone-teal", "Doktor", doctors));
-    if (Model.Payments is { } payments) tiles.Add(("credit-card", "tone-blue", "Ödeme", payments));
-    if (Model.Invoices is { } invoices) tiles.Add(("receipt", "tone-violet", "Fatura", invoices));
+    if (summary.Users is { } users) tiles.Add(("people", "tone-blue", "Kullanıcı sayısı", users));
+    if (summary.Doctors is { } doctors) tiles.Add(("person-badge", "tone-teal", "Doktor", doctors));
+    if (summary.Payments is { } payments) tiles.Add(("credit-card", "tone-blue", "Ödeme", payments));
+    if (summary.Invoices is { } invoices) tiles.Add(("receipt", "tone-violet", "Fatura", invoices));
 }
 
 <h1 class="page-title">Yönetim paneli</h1>
@@ -26,7 +29,157 @@
     </div>
 }
 
-<p class="text-muted small mb-4">Randevu ve reçete sayıları yakında: bu servisler henüz özet sayı vermiyor, o yüzden burada uydurma bir rakam göstermiyoruz.</p>
+<p class="text-muted small mb-4">Randevu ve reçete toplam sayıları yakında: bu servisler henüz özet sayı vermiyor, o yüzden kutularda uydurma bir rakam göstermiyoruz. Aşağıdaki grafikler listelerden hesaplanır.</p>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="panel-card p-3 h-100">
+            <h2 class="h6 mb-3">Günlük randevu sayısı <span class="text-muted fw-normal small">(son 30 gün)</span></h2>
+            @if (charts.Daily is null)
+            {
+                <p class="text-muted small mb-0" data-chart-missing="daily">Veri alınamadı.</p>
+            }
+            else
+            {
+                <div style="position: relative; height: 260px;"><canvas id="chart-daily" role="img" aria-label="Son 30 günde gün gün randevu sayısı"></canvas></div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="panel-card p-3 h-100">
+            <h2 class="h6 mb-3">Randevu durumları <span class="text-muted fw-normal small">(son 30 gün ve sonrası)</span></h2>
+            @if (charts.Status is null)
+            {
+                <p class="text-muted small mb-0" data-chart-missing="status">Veri alınamadı.</p>
+            }
+            else if (charts.Status.Values.Count == 0)
+            {
+                <p class="text-muted small mb-0">Randevu yok.</p>
+            }
+            else
+            {
+                <div style="position: relative; height: 260px;"><canvas id="chart-status" role="img" aria-label="Randevu durum dağılımı"></canvas></div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="panel-card p-3 h-100">
+            <h2 class="h6 mb-3">Aylık gelir <span class="text-muted fw-normal small">(son 6 ay, yalnız ödenmiş, iadeler düşülmüş, TRY)</span></h2>
+            @if (charts.Revenue is null)
+            {
+                <p class="text-muted small mb-0" data-chart-missing="revenue">Veri alınamadı.</p>
+            }
+            else
+            {
+                <div style="position: relative; height: 260px;"><canvas id="chart-revenue" role="img" aria-label="Son 6 ay aylık gelir (TRY)"></canvas></div>
+                @if (dash.OtherCurrencies.Count > 0)
+                {
+                    <p class="small text-muted mt-2 mb-0">
+                        TRY dışı ödemeler grafiğe girmez, 6 aylık toplam:
+                        @string.Join(", ", dash.OtherCurrencies.Select(c => AdminDisplay.Money(c.Total, c.Currency)))
+                    </p>
+                }
+                @if (dash.PaymentsTruncated)
+                {
+                    <p class="small text-muted mt-1 mb-0">Not: hesaplama yalnız son 500 ödeme kaydına dayanır.</p>
+                }
+            }
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="panel-card p-3 h-100">
+            <h2 class="h6 mb-3">Branşa göre doktor sayısı</h2>
+            @if (charts.DoctorsByBranch is null)
+            {
+                <p class="text-muted small mb-0" data-chart-missing="doctors">Veri alınamadı.</p>
+            }
+            else if (charts.DoctorsByBranch.Values.Count == 0)
+            {
+                <p class="text-muted small mb-0">Doktor yok.</p>
+            }
+            else
+            {
+                <div style="position: relative; height: @(Math.Max(260, charts.DoctorsByBranch.Values.Count * 34))px;"><canvas id="chart-doctors" role="img" aria-label="Branş başına doktor sayısı"></canvas></div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="panel-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0">Son randevular</h2>
+                <a class="small" asp-controller="Appointments" asp-action="Index">Tümü</a>
+            </div>
+            @if (dash.RecentAppointments is null)
+            {
+                <p class="text-muted small mb-0">Veri alınamadı.</p>
+            }
+            else if (dash.RecentAppointments.Count == 0)
+            {
+                <p class="text-muted small mb-0">Randevu yok.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Doktor</th><th>Branş</th><th>Tarih</th><th>Durum</th></tr></thead>
+                        <tbody>
+                        @foreach (var a in dash.RecentAppointments)
+                        {
+                            <tr>
+                                <td><a asp-controller="Appointments" asp-action="Details" asp-route-id="@a.Id">@a.Doctor</a></td>
+                                <td class="small">@a.Branch</td>
+                                <td class="small text-nowrap">@a.When</td>
+                                <td><span class="badge @a.Badge">@a.StatusText</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="panel-card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0">Son ödemeler</h2>
+                <a class="small" asp-controller="Payments" asp-action="Index">Tümü</a>
+            </div>
+            @if (dash.RecentPayments is null)
+            {
+                <p class="text-muted small mb-0">Veri alınamadı.</p>
+            }
+            else if (dash.RecentPayments.Count == 0)
+            {
+                <p class="text-muted small mb-0">Ödeme yok.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Doktor</th><th class="text-end">Tutar</th><th>Tarih</th><th>Durum</th></tr></thead>
+                        <tbody>
+                        @foreach (var p in dash.RecentPayments)
+                        {
+                            <tr>
+                                <td><a asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">@p.Doctor</a></td>
+                                <td class="text-end text-nowrap">@p.Amount</td>
+                                <td class="small text-nowrap">@p.When</td>
+                                <td><span class="badge @p.Badge">@p.StatusText</span></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
 <div class="row g-3">
     @{
@@ -35,11 +188,13 @@
             ("Branches", "grid", "Branşlar", "Branş ekle, düzenle, sil."),
             ("Doctors", "person-badge", "Doktorlar", "Doktor kayıtları, eğitim, deneyim, klinik ve çalışma programı."),
             ("Users", "people", "Kullanıcılar", "Kullanıcıları ara ve süz, rol ver, doktor kaydına bağla."),
+            ("Patients", "person-heart", "Hastalar", "Hasta listesi, ayrıntı ve randevularına geçiş."),
             ("Roles", "shield-lock", "Roller", "Rolleri listele, yeni rol oluştur."),
             ("Appointments", "calendar-check", "Randevular", "Tüm randevular, ayrıntı, durum ve silme."),
             ("Payments", "credit-card", "Ödemeler", "Ödeme listesi, ayrıntı ve iade."),
             ("Invoices", "receipt", "Faturalar", "Fatura listesi ve ayrıntısı."),
             ("Prescriptions", "file-earmark-medical", "Reçeteler", "Reçeteleri görüntüle, düzenle, sil, yazdır."),
+            ("Reviews", "chat-square-text", "Yorumlar", "Tüm yorumlar, puan ve doktor süzgeci, silme."),
         };
     }
     @foreach (var s in sections)
@@ -57,3 +212,44 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    @* Grafik verisi JSON olarak gömülür: Json.Serialize HTML-güvenli kodlar (< > & ' -> \uXXXX), "</script>" dizisi oluşamaz. Html.Raw yok. *@
+    <script type="application/json" id="dashboard-data">@Json.Serialize(charts)</script>
+    <script src="~/lib/chartjs/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            var holder = document.getElementById('dashboard-data');
+            if (!holder || !window.Chart) return;
+            var d = JSON.parse(holder.textContent);
+            var css = getComputedStyle(document.documentElement);
+            var color = function (name, fallback) { return (css.getPropertyValue(name) || '').trim() || fallback; };
+            var primary = color('--h-primary', '#1e6fd9'), accent = color('--h-accent', '#0fb5a6'), line = color('--h-line', '#e4eaf3'), muted = color('--h-muted', '#6b768f');
+            var statusColors = { Pending: '#f4a62a', Confirmed: primary, Completed: accent, Cancelled: '#e5484d' };
+            var grid = { color: line }, ticks = { color: muted };
+            var make = function (id, config) { var el = document.getElementById(id); if (el) new Chart(el, config); };
+            var fmt = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 });
+
+            if (d.daily) make('chart-daily', {
+                type: 'line',
+                data: { labels: d.daily.labels, datasets: [{ label: 'Randevu', data: d.daily.values, borderColor: primary, backgroundColor: primary + '22', fill: true, tension: .3, pointRadius: 2 }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: grid, ticks: ticks }, y: { beginAtZero: true, grid: grid, ticks: { color: muted, precision: 0 } } } }
+            });
+            if (d.status && d.status.values.length) make('chart-status', {
+                type: 'doughnut',
+                data: { labels: d.status.labels, datasets: [{ data: d.status.values, backgroundColor: d.status.keys.map(function (k) { return statusColors[k] || muted; }), borderWidth: 0 }] },
+                options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: muted } } } }
+            });
+            if (d.revenue) make('chart-revenue', {
+                type: 'bar',
+                data: { labels: d.revenue.labels, datasets: [{ label: 'Gelir (TRY)', data: d.revenue.values, backgroundColor: accent, borderRadius: 6 }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (c) { return fmt.format(c.parsed.y); } } } }, scales: { x: { grid: { display: false }, ticks: ticks }, y: { beginAtZero: true, grid: grid, ticks: { color: muted, callback: function (v) { return fmt.format(v); } } } } }
+            });
+            if (d.doctorsByBranch && d.doctorsByBranch.values.length) make('chart-doctors', {
+                type: 'bar',
+                data: { labels: d.doctorsByBranch.labels, datasets: [{ label: 'Doktor', data: d.doctorsByBranch.values, backgroundColor: primary, borderRadius: 6 }] },
+                options: { indexAxis: 'y', maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: grid, ticks: { color: muted, precision: 0 } }, y: { grid: { display: false }, ticks: ticks } } }
+            });
+        })();
+    </script>
+}

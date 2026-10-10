@@ -138,3 +138,23 @@ public sealed class DoctorIndexViewModel
     public Dictionary<string, string> BranchNames { get; init; } = [];
     public List<SelectListItem> BranchChoices { get; init; } = [];
 }
+
+public sealed class PatientIndexViewModel
+{
+    public string? Search { get; init; }
+    public required AdminPagedApiModel<AdminUserApiModel> Page { get; init; }
+}
+
+public sealed class ReviewIndexViewModel
+{
+    public string? DoctorId { get; init; }
+    public int? Rating { get; init; }
+    public string? Search { get; init; }
+    public int Page { get; init; }
+    public int PageSize { get; init; }
+    public long TotalCount { get; init; }
+    public List<AdminReviewApiModel> Items { get; init; } = [];
+    public Dictionary<string, string> DoctorNames { get; init; } = [];
+
+    public string DoctorName(string id) => DoctorNames.GetValueOrDefault(id, id);
+}
