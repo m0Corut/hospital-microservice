@@ -17,6 +17,14 @@ public class DoctorsController(
     [HttpGet("Doctors"), AllowAnonymous]
     public async Task<IActionResult> Index([FromQuery] DoctorSearchFilter filter, CancellationToken ct)
     {
+        // Filtre paneli branşları çoklu onay kutusuyla gönderir (?branchId=a&branchId=b). string alan yalnız ilkini
+        // bağlar; hepsini alıp Doctor servisinin beklediği virgüllü biçime çevir (branchIds=a,b).
+        var selectedBranches = Request.Query["branchId"]
+            .SelectMany(v => (v ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        filter.BranchId = selectedBranches.Length == 0 ? null : string.Join(',', selectedBranches);
+
         var branchList = await branches.GetAllAsync(ApiFailures.All, ct);
         var branchItems = branchList.Value ?? [];
 
