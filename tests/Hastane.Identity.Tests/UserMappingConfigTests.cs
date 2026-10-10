@@ -55,4 +55,16 @@ public class UserMappingConfigTests
         Assert.Equal("665f1c2e9b1d4a0012345678", dto.DoctorId);
         Assert.Null(new AppUser { Email = "x@y.zz" }.Adapt<UserSummaryDto>(StrictConfig()).DoctorId);
     }
+
+    [Fact]
+    public void AppUser_To_Summary_BuildsRelativePhotoUrl_OnlyWhenPhotoExists()
+    {
+        var user = new AppUser { Id = "abc", Email = "d@b.co", PhotoFileName = "abc-0123456789abcdef0123456789abcdef.png" };
+
+        var dto = user.Adapt<UserSummaryDto>(StrictConfig());
+
+        Assert.Equal("/gateway/users/abc/photo", dto.PhotoUrl);
+        Assert.DoesNotContain("0123456789abcdef", dto.PhotoUrl);
+        Assert.Null(new AppUser { Email = "x@y.zz" }.Adapt<UserSummaryDto>(StrictConfig()).PhotoUrl);
+    }
 }

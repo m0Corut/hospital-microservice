@@ -10,4 +10,6 @@ public class UserSummaryDto
     public List<string> Roles { get; set; } = [];
     // Bağlı doktor kaydı (yoksa null).
     public string? DoctorId { get; set; }
+    // Göreli avatar adresi (/gateway/users/{id}/photo); fotoğraf yoksa null. Dosya adı dışarı çıkmaz.
+    public string? PhotoUrl { get; set; }
 }

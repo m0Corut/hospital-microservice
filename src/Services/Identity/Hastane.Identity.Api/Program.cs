@@ -1,6 +1,8 @@
 using Hastane.Identity.Api.Data;
 using Hastane.Identity.Api.Entities;
+using Hastane.Identity.Api.Integration;
 using Hastane.Identity.Api.Mapping;
+using Hastane.Identity.Api.Settings;
 using Hastane.Identity.Api.Services;
 using Hastane.Shared.Security;
 using Mapster;
@@ -38,7 +40,32 @@ builder.Services.AddIdentityCore<AppUser>(options =>
     })
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<HastaneIdentityDbContext>()
-    .AddSignInManager();
+    .AddSignInManager()
+    .AddDefaultTokenProviders(); // şifre sıfırlama token'ı (DataProtectorTokenProvider)
+
+// Şifre sıfırlama token'ı 30 dk geçerli. Token SecurityStamp'a bağlıdır: şifre değişince aynı token tekrar çalışmaz.
+// Üretimde Data Protection anahtarları kalıcı/paylaşımlı olmalı (aksi halde yeniden başlatma/çok kopya token'ı bozar).
+builder.Services.AddDataProtection();
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromMinutes(30));
+
+// Ayarlar. Sırlar (Internal:ApiKey) appsettings'te DEĞİL, user-secrets/ortam değişkeninde.
+builder.Services.AddOptions<WebUiOptions>().BindConfiguration(WebUiOptions.SectionName);
+builder.Services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName);
+builder.Services.AddOptions<NotificationClientOptions>().Configure<IConfiguration>((o, config) =>
+{
+    o.BaseUrl = config["Services:NotificationBaseUrl"] is { Length: > 0 } url ? url : o.BaseUrl;
+    o.ApiKey = config["Internal:ApiKey"] ?? string.Empty;
+});
+// Notification çağrısı: 3 sn zaman aşımı; başarısızlık asıl işi bozmaz (istemci hata yutar, loglar).
+builder.Services.AddHttpClient<INotificationEmailClient, NotificationEmailClient>((sp, client) =>
+{
+    client.BaseAddress = new Uri(sp.GetRequiredService<IOptions<NotificationClientOptions>>().Value.BaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(3);
+});
+builder.Services.AddSingleton<EmailOutbox>();
+builder.Services.AddSingleton<IEmailOutbox>(sp => sp.GetRequiredService<EmailOutbox>());
+builder.Services.AddHostedService<EmailOutboxWorker>();
+builder.Services.AddSingleton<IForgotPasswordLimiter, ForgotPasswordLimiter>();
 
 // Gelen token'ı doğrulama (RS256, açık anahtar) + politikalar. Identity de kendi uçlarını bununla korur.
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
@@ -52,6 +79,9 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
+builder.Services.AddScoped<IDoctorApplicationService, DoctorApplicationService>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 
 var app = builder.Build();
 

@@ -10,6 +10,8 @@ public class HastaneIdentityDbContext : IdentityDbContext<AppUser, IdentityRole,
 {
     public HastaneIdentityDbContext(DbContextOptions<HastaneIdentityDbContext> options) : base(options) { }
 
+    public DbSet<DoctorApplication> DoctorApplications => Set<DoctorApplication>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         // Önce Identity kendi tablolarını kursun, sonra bizim eklemeler üstüne yazılsın.

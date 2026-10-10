@@ -14,4 +14,7 @@ public class AppUser : IdentityUser
     // Doctor servisindeki (MongoDB) doktor kaydının kimliği. Yalnız Admin bağlar (PUT users/{id}/doctor-link).
     // Token'a doctor_id claim'i olarak buradan girer. Doctor servisine sorulmaz: kimlik metin olarak saklanır.
     public string? DoctorId { get; set; }
+
+    // Profil fotoğrafının SUNUCUNUN ürettiği dosya adı ({userId}-{guid}.{ext}); yoksa null. Yol Storage:PhotoPath altındadır.
+    public string? PhotoFileName { get; set; }
 }

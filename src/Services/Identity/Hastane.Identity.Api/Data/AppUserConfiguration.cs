@@ -15,6 +15,7 @@ public class AppUserConfiguration : IEntityTypeConfiguration<AppUser>
         // Bir doktor kaydı en çok bir kullanıcıya bağlanır. Filtre: DoctorId'si boş (NULL) olan binlerce hasta
         // "aynı değer" sayılıp çakışmasın; benzersizlik yalnız dolu değerler için aranır.
         builder.Property(u => u.DoctorId).HasMaxLength(64);
+        builder.Property(u => u.PhotoFileName).HasMaxLength(100);
         builder.HasIndex(u => u.DoctorId).IsUnique().HasFilter("[DoctorId] IS NOT NULL");
     }
 }
