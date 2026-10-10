@@ -39,11 +39,17 @@
         #conn[data-ok="true"] { color: #4ade80; }
         .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         .pick { margin: auto; text-align: center; font-size: 1.6rem; }
+        .head-left { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .back { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .8rem; border: 1px solid #3b6a8c; border-radius: .4rem; color: #cfe6f5; text-decoration: none; font-size: 1rem; white-space: nowrap; }
+        .back:hover, .back:focus-visible { background: #1e4a6b; color: #fff; }
     </style>
 </head>
 <body>
     <header>
-        <h1>@(Model.DoctorName ?? "Bekleme salonu çağrı ekranı")</h1>
+        <div class="head-left">
+            <a class="back" href="~/" aria-label="Siteye dön">&larr; Siteye dön</a>
+            <h1>@(Model.DoctorName ?? "Bekleme salonu çağrı ekranı")</h1>
+        </div>
         <form method="get" action="@Url.Action("Display", "Queue", new { area = "" })" aria-label="Doktor seçimi">
             <label for="doctorId" class="visually-hidden">Doktor</label>
             <select id="doctorId" name="doctorId" onchange="this.form.submit()">
