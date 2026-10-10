@@ -18,6 +18,10 @@
     <!-- Elasticsearch 8.x istemcisi (Apache-2.0); sunucu 8.15. 9.x serisi yerine 8.x: sunucu sürümüyle uyumlu çizgi. -->
     <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.19.27" />
   </ItemGroup>
+  <ItemGroup Label="Olay akışı (Kafka)">
+    <!-- Confluent.Kafka (Apache-2.0): librdkafka üzerine resmi .NET istemcisi. Doctor (üretici) ve Analytics (tüketici) kullanır. -->
+    <PackageVersion Include="Confluent.Kafka" Version="2.16.0" />
+  </ItemGroup>
   <ItemGroup Label="Güvenlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>
@@ -44,6 +48,7 @@
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MariaDb" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Kafka" Version="4.16.0" />
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
   </ItemGroup>

@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Hastane.Doctor.Api.Activity;
 using Hastane.Doctor.Api.Mapping;
 using Hastane.Doctor.Api.Search;
 using Hastane.Doctor.Api.Services;
@@ -30,6 +31,10 @@ builder.Services.AddScoped<IDoctorService, DoctorService>();
 
 // Arama dizini (Elasticsearch): Elasticsearch:Url boşsa KAPALI, arama yalnız Mongo ile çalışır.
 builder.Services.AddDoctorSearch(builder.Configuration);
+
+// Olay akışı (Kafka): arama ve profil görüntüleme olayları bellek kanalı + arka plan üretici ile `hastane.doctor-activity` konusuna yazılır.
+// Kafka:BootstrapServers boşsa KAPALI; Kafka kapalıyken de hiçbir istek yavaşlamaz ya da bozulmaz.
+builder.Services.AddDoctorActivity(builder.Configuration);
 
 // Açılışta dizinleri (BranchId, Gender, ClinicLocations.City) idempotent oluşturur.
 builder.Services.AddHostedService<DoctorIndexInitializer>();

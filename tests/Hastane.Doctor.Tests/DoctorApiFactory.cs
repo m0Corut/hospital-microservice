@@ -31,6 +31,8 @@ public class DoctorApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseSetting("DatabaseSettings:DoctorCollectionName", CollectionName);
         // Elasticsearch varsayılan KAPALI: appsettings.Development.json localhost:9200 yazsa da mevcut testler yalnız Mongo ile koşar.
         builder.UseSetting("Elasticsearch:Url", "");
+        // Olay akışı (Kafka) varsayılan KAPALI: appsettings.Development.json localhost:9092 yazsa da testler gerçek Kafka'ya olay yazmaz.
+        builder.UseSetting("Kafka:BootstrapServers", "");
         // Singleton IMongoClient kaydını konteynerin adresiyle değiştir.
         builder.ConfigureServices(services =>
         {

@@ -58,6 +58,7 @@ public class ElasticDoctorApiFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseSetting("DatabaseSettings:DoctorCollectionName", CollectionName);
         builder.UseSetting("Elasticsearch:Url", ElasticUrl);
         builder.UseSetting("Elasticsearch:Index", IndexName);
+        builder.UseSetting("Kafka:BootstrapServers", ""); // gerçek Kafka'ya olay yazılmasın
         builder.UseSetting("Elasticsearch:RefreshOnWrite", "true");
         builder.ConfigureServices(services =>
         {

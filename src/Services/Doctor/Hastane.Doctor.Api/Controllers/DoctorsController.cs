@@ -1,3 +1,4 @@
+using Hastane.Doctor.Api.Activity;
 using Hastane.Doctor.Api.Dtos;
 using Hastane.Doctor.Api.Search;
 using Hastane.Doctor.Api.Services;
@@ -17,11 +18,13 @@ public class DoctorsController : ControllerBase
 {
     private readonly IDoctorService _service;
     private readonly ICurrentUser _currentUser;
+    private readonly IDoctorActivityPublisher _activity;
 
-    public DoctorsController(IDoctorService service, ICurrentUser currentUser)
+    public DoctorsController(IDoctorService service, ICurrentUser currentUser, IDoctorActivityPublisher activity)
     {
         _service = service;
         _currentUser = currentUser;
+        _activity = activity;
     }
 
     // GET api/doctors?branchId=... ile branşa göre süzülür.
@@ -43,6 +46,8 @@ public class DoctorsController : ControllerBase
         {
             var (result, engine) = await _service.SearchWithEngineAsync(query, ct);
             Response.Headers["X-Search-Engine"] = engine; // teşhis: yanıtı hangi motor üretti (gövde değişmez)
+            // Olay akışı: anonim arama istatistiği. TryPublish bekletmez ve fırlatmaz; Kafka kapalıyken bile bu satır mikrosaniyedir.
+            _activity.TryPublish(DoctorActivityEvent.Search(query, result.TotalCount, engine));
             return Ok(result);
         }
         catch (DoctorValidationException ex) { return ValidationProblem(new ValidationProblemDetails(ex.Errors)); }
@@ -95,7 +100,9 @@ public class DoctorsController : ControllerBase
     public async Task<ActionResult<PublicDoctorDto>> GetPublic(string id, CancellationToken ct)
     {
         var doctor = await _service.GetPublicByIdAsync(id, ct);
-        return doctor is null ? NotFound() : Ok(doctor);
+        if (doctor is null) return NotFound();
+        _activity.TryPublish(DoctorActivityEvent.ProfileView(id));
+        return Ok(doctor);
     }
 
     // Ayrıntıda telefon + e-posta var (listede yok): yalnız giriş yapmış kullanıcıya.
@@ -104,7 +111,9 @@ public class DoctorsController : ControllerBase
     public async Task<ActionResult<GetByIdDoctorDto>> GetById(string id, CancellationToken ct)
     {
         var doctor = await _service.GetByIdAsync(id, ct);
-        return doctor is null ? NotFound() : Ok(doctor);
+        if (doctor is null) return NotFound();
+        _activity.TryPublish(DoctorActivityEvent.ProfileView(id));
+        return Ok(doctor);
     }
 
     [Authorize(Policy = HastanePolicies.AdminOnly)]

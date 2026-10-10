@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.MongoDb" />
+    <PackageReference Include="Testcontainers.Kafka" />
+    <PackageReference Include="Confluent.Kafka" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Services\Analytics\Hastane.Analytics.Api\Hastane.Analytics.Api.csproj" />
+    <ProjectReference Include="..\Hastane.TestSupport\Hastane.TestSupport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Tek Mongo + tek Kafka konteyneri tüm test sınıflarınca paylaşılır (Kafka açılışı yavaş); sınıflar sırayla koşar. -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

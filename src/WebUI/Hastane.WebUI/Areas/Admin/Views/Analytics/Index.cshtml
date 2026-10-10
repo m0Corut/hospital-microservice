@@ -1,0 +1,123 @@
+@model AnalyticsViewModel
+@{
+    ViewData["Title"] = "Analitik";
+    var s = Model.Status;
+}
+
+<h1 class="h4 mb-3">Analitik</h1>
+
+<p class="text-muted small">
+    Doktor araması ve profil görüntülemeleri, Kafka'daki <strong>olay akışına</strong> anonim olarak yazılır (kullanıcı kimliği yok).
+    Analytics servisi akışı okuyup günlük toplamlar çıkarır. Kafka kapalıyken site normal çalışır; yalnız bu sayılar güncellenmez.
+</p>
+
+<div class="panel-card p-3 mb-3" data-analytics-status>
+    @if (s is null)
+    {
+        <p class="text-danger mb-0">Analitik servisine ulaşılamadı; durum ve toplamlar okunamadı.</p>
+    }
+    else
+    {
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Kafka</dt>
+            <dd class="col-sm-8">
+                @if (!s.KafkaEnabled) { <span class="badge bg-secondary">Kapalı</span> <span class="small text-muted">Kafka ayarlı değil.</span> }
+                else if (s.KafkaConnected) { <span class="badge bg-success">Açık, bağlı</span> }
+                else { <span class="badge bg-danger">Bağlı değil</span> <span class="small text-muted">Kafka çalışıyor mu? (docker compose --profile extra up -d)</span> }
+            </dd>
+            @if (!string.IsNullOrEmpty(s.Topic))
+            {
+                <dt class="col-sm-4">Konu / tüketici grubu</dt>
+                <dd class="col-sm-8">@s.Topic / @s.GroupId</dd>
+            }
+            <dt class="col-sm-4">Son işlenen olay</dt>
+            <dd class="col-sm-8">@(s.LastProcessedAt is { } last ? AppointmentTime.ToClinicLocal(last).ToString("dd.MM.yyyy HH:mm") : "-")</dd>
+            <dt class="col-sm-4">Bugün işlenen olay</dt>
+            <dd class="col-sm-8">@s.ProcessedToday</dd>
+        </dl>
+    }
+</div>
+
+@if (s is not null)
+{
+    <form method="get" class="mb-3 d-flex align-items-center gap-2">
+        <label for="days" class="small text-muted mb-0">Dönem</label>
+        <select id="days" name="days" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            @foreach (var d in new[] { 1, 7, 30, 90 })
+            {
+                <option value="@d" selected="@(d == Model.Days)">Son @d gün</option>
+            }
+        </select>
+        <noscript><button type="submit" class="btn btn-sm btn-outline-secondary">Göster</button></noscript>
+    </form>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7">
+            <div class="panel-card p-3 h-100">
+                <h2 class="h6 mb-3">En çok görüntülenen doktorlar</h2>
+                @if (Model.Doctors is null)
+                {
+                    <p class="text-muted small mb-0">Veri alınamadı.</p>
+                }
+                else if (Model.Doctors.Count == 0)
+                {
+                    <p class="text-muted small mb-0">Bu dönemde profil görüntülemesi yok.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0" data-analytics-doctors>
+                        @foreach (var row in Model.Doctors)
+                        {
+                            <li class="mb-2">
+                                <div class="d-flex justify-content-between small">
+                                    <span>@row.Name</span>
+                                    <span class="fw-semibold">@row.Views</span>
+                                </div>
+                                <div class="progress" style="height: 10px;" role="img" aria-label="@row.Name: @row.Views görüntüleme">
+                                    <div class="progress-bar" style="width: @row.Percent%"></div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="panel-card p-3 h-100">
+                <h2 class="h6 mb-3">En çok aranan terimler</h2>
+                @if (Model.Terms is null)
+                {
+                    <p class="text-muted small mb-0">Veri alınamadı.</p>
+                }
+                else if (Model.Terms.Count == 0)
+                {
+                    <p class="text-muted small mb-0">Bu dönemde arama yok.</p>
+                }
+                else
+                {
+                    <ol class="mb-0 small" data-analytics-terms>
+                        @foreach (var t in Model.Terms)
+                        {
+                            <li>@t.Term <span class="text-muted">(@t.Count)</span></li>
+                        }
+                    </ol>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (s.KafkaEnabled)
+    {
+        <div class="panel-card p-3">
+            <h2 class="h6">Yeniden hesapla</h2>
+            <p class="small text-muted">
+                Kafka mesajları okunduktan sonra silmez (saklama süresi 7 gün). Bu düğme günlük toplamları siler ve tüketici grubunun
+                okuma konumunu akışın başına çeker; olaylar baştan okunup toplamlar yeniden kurulur. Dikkat: Kafka yalnız son 7 günü tuttuğu için
+                daha eski toplamlar geri gelmez.
+            </p>
+            <form asp-area="Admin" asp-controller="Analytics" asp-action="Rebuild" method="post">
+                <button type="submit" class="btn btn-outline-primary" onclick="return confirm('Günlük toplamlar silinip Kafka akışından baştan hesaplansın mı? Akışta olmayan (7 günden eski) toplamlar kaybolur.');">Yeniden hesapla</button>
+            </form>
+        </div>
+    }
+}
