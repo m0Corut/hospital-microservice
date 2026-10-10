@@ -16,7 +16,13 @@ app.MapHealthChecks("/health");
 // ona göndermemek için yalnız diğer yollarda devreye sokulur.
 app.UseWhen(
     ctx => !ctx.Request.Path.StartsWithSegments("/health"),
-    branch => branch.UseOcelot().GetAwaiter().GetResult());
+    branch =>
+    {
+        // SignalR (kuyruk ekranı) WebSocket ile gelir: Ocelot WebSocket vekili için UseWebSockets Ocelot'tan ÖNCE gelmeli
+        // (ocelot.json'daki "ws" şemalı rota: /gateway/hubs/queue). İstemci skipNegotiation + WebSockets ile bağlanır.
+        branch.UseWebSockets();
+        branch.UseOcelot().GetAwaiter().GetResult();
+    });
 
 app.Run();
 

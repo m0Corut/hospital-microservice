@@ -67,6 +67,15 @@
         <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
         <button type="submit" class="btn btn-outline-primary"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Mesaj gönder</button>
     </form>
+    @* Sıraya gir: yalnız onaylı ve BUGÜNKÜ (İstanbul) randevu için gösterilir; asıl kural Queue API'sindedir (409). *@
+    @if (a.Status == "Confirmed" && DisplayText.DateLocal(a.AppointmentDate) == DisplayText.DateLocal(DateTime.UtcNow))
+    {
+        <form asp-area="Patient" asp-controller="Queue" asp-action="CheckIn" method="post">
+            <input type="hidden" name="appointmentId" value="@a.Id" />
+            <button type="submit" class="btn btn-primary"><i class="bi bi-people me-1" aria-hidden="true"></i>Sıraya gir</button>
+        </form>
+        <a class="btn btn-outline-primary" asp-area="Patient" asp-controller="Queue" asp-action="Index">Sıram</a>
+    }
     @if (Model.CanPay)
     {
         <a class="btn btn-primary" asp-controller="Payments" asp-action="Create" asp-route-appointmentId="@a.Id">Ödeme yap</a>

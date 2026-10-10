@@ -1,0 +1,105 @@
+@using Hastane.WebUI.ViewModels.Queue
+@model QueueDisplayViewModel
+@{
+    // Tam ekran bekleme salonu ekranı: ortak _Layout YOK (menü/altbilgi istemiyoruz), oturum da istemez.
+    Layout = null;
+    var title = Model.DoctorName is null ? "Çağrı ekranı" : "Çağrı ekranı · " + Model.DoctorName;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>@title</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; background: #0b1b2b; color: #f1f6fb; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; }
+        header { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: #12304a; }
+        header h1 { margin: 0; font-size: clamp(1.4rem, 3vw, 2.4rem); }
+        header select { font-size: 1.1rem; padding: .4rem .6rem; border-radius: .4rem; max-width: 22rem; }
+        header button { font-size: 1.1rem; padding: .4rem .9rem; border-radius: .4rem; border: 0; background: #2dd4bf; color: #04201c; cursor: pointer; }
+        main { flex: 1; display: grid; grid-template-columns: 3fr 2fr; gap: 2rem; padding: 2rem; }
+        @@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+        .now { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: #123a57; border-radius: 1.5rem; padding: 2rem; }
+        .now .label { font-size: clamp(1.2rem, 2.5vw, 2rem); color: #9bd1f0; letter-spacing: .05em; text-transform: uppercase; }
+        .now .number { font-size: clamp(6rem, 22vw, 18rem); font-weight: 800; line-height: 1; color: #2dd4bf; }
+        .now .name { font-size: clamp(2rem, 6vw, 5rem); font-weight: 600; }
+        .now.flash { animation: flash 1.2s ease-in-out 3; }
+        @@keyframes flash { 50% { background: #1e6b8f; } }
+        .next { background: #0f2538; border-radius: 1.5rem; padding: 2rem; }
+        .next h2 { margin: 0 0 1rem; font-size: clamp(1.2rem, 2.5vw, 2rem); color: #9bd1f0; text-transform: uppercase; letter-spacing: .05em; }
+        .next ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }
+        .next li { display: flex; gap: 1.2rem; align-items: baseline; font-size: clamp(1.4rem, 3.5vw, 3rem); }
+        .next li .n { min-width: 3.2ch; font-weight: 800; color: #fbbf24; }
+        .empty { color: #7c93a8; font-size: clamp(1.1rem, 2.5vw, 2rem); }
+        footer { padding: .6rem 2rem; font-size: 1rem; color: #7c93a8; display: flex; justify-content: space-between; }
+        #conn[data-ok="false"] { color: #f87171; }
+        #conn[data-ok="true"] { color: #4ade80; }
+        .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        .pick { margin: auto; text-align: center; font-size: 1.6rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>@(Model.DoctorName ?? "Bekleme salonu çağrı ekranı")</h1>
+        <form method="get" action="@Url.Action("Display", "Queue", new { area = "" })" aria-label="Doktor seçimi">
+            <label for="doctorId" class="visually-hidden">Doktor</label>
+            <select id="doctorId" name="doctorId" onchange="this.form.submit()">
+                <option value="">Doktor seçin…</option>
+                @foreach (var d in Model.Doctors)
+                {
+                    <option value="@d.Id" selected="@(d.Id == Model.DoctorId)">@d.Name</option>
+                }
+            </select>
+            <noscript><button type="submit">Göster</button></noscript>
+        </form>
+    </header>
+
+    @if (Model.DoctorId is null)
+    {
+        <p class="pick">Çağrı ekranını başlatmak için yukarıdan bir doktor seçin.</p>
+    }
+    else
+    {
+        <main id="queue-display"
+              data-doctor-id="@Model.DoctorId"
+              data-hub-url="@Model.HubUrl"
+              data-poll-url="@Model.PollUrl">
+            <section class="now" id="now" aria-live="assertive">
+                <div class="label">Şu an çağrılan</div>
+                @if (Model.Display?.Current is { } current)
+                {
+                    <div class="number" id="now-number">@current.Number</div>
+                    <div class="name" id="now-name">@current.DisplayName</div>
+                }
+                else
+                {
+                    <div class="number" id="now-number">–</div>
+                    <div class="name" id="now-name">@(Model.Unavailable ? "Bilgi alınamıyor" : "Henüz çağrılan yok")</div>
+                }
+            </section>
+            <section class="next" aria-live="polite">
+                <h2>Sıradakiler</h2>
+                <ol id="next-list">
+                    @if (Model.Display is { Next.Count: > 0 })
+                    {
+                        foreach (var n in Model.Display.Next)
+                        {
+                            <li><span class="n">@n.Number</span><span>@n.DisplayName</span></li>
+                        }
+                    }
+                </ol>
+                <p class="empty" id="next-empty" hidden="@(Model.Display is { Next.Count: > 0 })">Sırada bekleyen yok.</p>
+            </section>
+        </main>
+        <footer>
+            <span id="conn" data-ok="@(Model.Unavailable ? "false" : "true")">@(Model.Unavailable ? "Bağlantı yok, yeniden deneniyor…" : "Canlı")</span>
+            <span id="updated"></span>
+        </footer>
+        <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+        <script src="~/js/queue-display.js"></script>
+    }
+</body>
+</html>
