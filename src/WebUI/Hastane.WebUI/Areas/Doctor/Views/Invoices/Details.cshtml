@@ -1,0 +1,46 @@
+@using Hastane.WebUI.ViewModels.Public
+@model DoctorInvoiceDetailViewModel
+@{
+    var i = Model.Invoice;
+    ViewData["Title"] = "Fatura " + i.InvoiceNumber;
+}
+
+<div class="panel-card p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+        <div>
+            <h1 class="h4 mb-1">Fatura @i.InvoiceNumber</h1>
+            <div class="text-muted">@Model.PatientLabel · @DisplayText.DateLocal(i.IssuedAt)</div>
+        </div>
+        @if (Model.Refunded)
+        {
+            <div><span class="badge text-bg-secondary fs-6">İade edildi</span></div>
+        }
+    </div>
+
+    <div class="table-responsive mt-3">
+        <table class="table align-middle">
+            <thead>
+                <tr><th>Açıklama</th><th class="text-end">Adet</th><th class="text-end">Birim fiyat</th><th class="text-end">Tutar</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var line in i.Lines)
+                {
+                    <tr>
+                        <td>@line.Description</td>
+                        <td class="text-end">@line.Quantity</td>
+                        <td class="text-end">@DisplayText.Money(line.UnitPrice, i.Currency)</td>
+                        <td class="text-end">@DisplayText.Money(line.LineTotal, i.Currency)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr><td colspan="3" class="text-end">Ara toplam</td><td class="text-end">@DisplayText.Money(i.Subtotal, i.Currency)</td></tr>
+                <tr><td colspan="3" class="text-end">KDV (%@i.TaxPercent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))</td><td class="text-end">@DisplayText.Money(i.TaxAmount, i.Currency)</td></tr>
+                <tr class="fw-bold"><td colspan="3" class="text-end">Toplam</td><td class="text-end">@DisplayText.Money(i.Total, i.Currency)</td></tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<a class="btn btn-outline-secondary" asp-action="Index">Faturalarıma dön</a>
+<a class="btn btn-outline-primary" asp-action="Print" asp-route-id="@i.Id"><i class="bi bi-printer me-1" aria-hidden="true"></i>Yazdır</a>

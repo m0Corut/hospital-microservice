@@ -17,6 +17,7 @@
         var roles = User.FindAll(HastaneClaims.Role).Select(c => UiText.RoleName(c.Value)).ToList();
         var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
         var area = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
+        var action = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
         string NavActive(bool on) => on ? "active" : "";
     }
     <header class="no-print">
@@ -31,7 +32,7 @@
                 </button>
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link @NavActive(area == "" && controller == "Home")" href="~/">Ana Sayfa</a></li>
+                        <li class="nav-item"><a class="nav-link @NavActive(area == "" && controller == "Home" && action == "Index")" href="~/">Ana Sayfa</a></li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle @NavActive(area == "" && (controller is "Doctors" or "Branches"))" href="~/Doctors" id="doctorsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Doktorlar</span></a>
                             <ul class="dropdown-menu" aria-labelledby="doctorsMenu">
@@ -39,18 +40,32 @@
                                 <li><a class="dropdown-item" href="~/Branches"><i class="bi bi-grid" aria-hidden="true"></i>Branşlar</a></li>
                             </ul>
                         </li>
-                        @if (User.IsInRole(HastaneRoles.Admin))
+                        @if (!isAuth)
                         {
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @NavActive(area == "Admin")" href="~/Admin" id="adminMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Yönetim</span></a>
-                                <ul class="dropdown-menu" aria-labelledby="adminMenu">
-                                    <li><a class="dropdown-item" href="~/Admin"><i class="bi bi-speedometer2" aria-hidden="true"></i>Panel</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Branches"><i class="bi bi-grid" aria-hidden="true"></i>Branşlar</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Doctors"><i class="bi bi-person-badge" aria-hidden="true"></i>Doktorlar</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Users"><i class="bi bi-people" aria-hidden="true"></i>Kullanıcılar</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevular</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemeler</a></li>
-                                    <li><a class="dropdown-item" href="~/Admin/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçeteler</a></li>
+                                <a class="nav-link dropdown-toggle" href="#" id="patientsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Hastalar</span></a>
+                                <ul class="dropdown-menu" aria-labelledby="patientsMenu">
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Login"><i class="bi bi-box-arrow-in-right" aria-hidden="true"></i>Giriş yap</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Register"><i class="bi bi-person-plus" aria-hidden="true"></i>Kayıt ol</a></li>
+                                </ul>
+                            </li>
+                        }
+                        else if (User.IsInRole(HastaneRoles.Patient))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActive(area == "Patient")" href="~/Patient" id="patientsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Hastalar</span></a>
+                                <ul class="dropdown-menu" aria-labelledby="patientsMenu">
+                                    <li><a class="dropdown-item" href="~/Patient"><i class="bi bi-speedometer2" aria-hidden="true"></i>Panel</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevularım</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçetelerim</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemelerim</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Invoices"><i class="bi bi-receipt" aria-hidden="true"></i>Faturalarım</a></li>
+                                    @* Henüz yok: tıklanamaz öğe (bağlantı değil), "yakında" rozetiyle. *@
+                                    <li><span class="dropdown-item disabled" aria-disabled="true"><i class="bi bi-heart" aria-hidden="true"></i>Favoriler <span class="badge text-bg-light ms-1">yakında</span></span></li>
+                                    <li><span class="dropdown-item disabled" aria-disabled="true"><i class="bi bi-chat-dots" aria-hidden="true"></i>Mesajlar <span class="badge text-bg-light ms-1">yakında</span></span></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="Profile"><i class="bi bi-person-gear" aria-hidden="true"></i>Profil Ayarları</a></li>
+                                    <li><a class="dropdown-item" asp-area="" asp-controller="Account" asp-action="ChangePassword"><i class="bi bi-key" aria-hidden="true"></i>Şifre Değiştir</a></li>
                                 </ul>
                             </li>
                         }
@@ -59,26 +74,32 @@
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle @NavActive(area == "Doctor")" href="~/Doctor" id="doctorPanelMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Doktor Paneli</span></a>
                                 <ul class="dropdown-menu" aria-labelledby="doctorPanelMenu">
-                                    <li><a class="dropdown-item" href="~/Doctor"><i class="bi bi-speedometer2" aria-hidden="true"></i>Özet</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor"><i class="bi bi-speedometer2" aria-hidden="true"></i>Panel</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevular</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Calendar"><i class="bi bi-calendar-week" aria-hidden="true"></i>Takvim</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Patients"><i class="bi bi-people" aria-hidden="true"></i>Hastalarım</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Schedule"><i class="bi bi-clock-history" aria-hidden="true"></i>Çalışma Saatleri</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçeteler</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Invoices"><i class="bi bi-receipt" aria-hidden="true"></i>Faturalarım</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Reviews"><i class="bi bi-star" aria-hidden="true"></i>Yorumlar</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Profile"><i class="bi bi-person-vcard" aria-hidden="true"></i>Profil</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Social"><i class="bi bi-share" aria-hidden="true"></i>Sosyal Medya</a></li>
                                 </ul>
                             </li>
                         }
-                        @if (User.IsInRole(HastaneRoles.Patient))
+                        @if (User.IsInRole(HastaneRoles.Admin))
                         {
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @NavActive(area == "Patient")" href="~/Patient" id="patientMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Randevularım</span></a>
-                                <ul class="dropdown-menu" aria-labelledby="patientMenu">
-                                    <li><a class="dropdown-item" href="~/Patient/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevu listesi</a></li>
-                                    <li><a class="dropdown-item" href="~/Patient/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçetelerim</a></li>
-                                    <li><a class="dropdown-item" href="~/Patient/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemelerim</a></li>
-                                    <li><a class="dropdown-item" href="~/Patient/Invoices"><i class="bi bi-receipt" aria-hidden="true"></i>Faturalarım</a></li>
-                                </ul>
-                            </li>
+                            @* Yönetim alt menüsü bilerek yok: tek bağlantı; ayrıntı /Admin panelinin kendi kenar menüsündedir. *@
+                            <li class="nav-item"><a class="nav-link @NavActive(area == "Admin")" href="~/Admin"><span>Yönetim</span></a></li>
                         }
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle @NavActive(area == "" && controller == "Home" && (action is "About" or "Contact" or "Faq"))" href="#" id="pagesMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Sayfalar</span></a>
+                            <ul class="dropdown-menu" aria-labelledby="pagesMenu">
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="About"><i class="bi bi-info-circle" aria-hidden="true"></i>Hakkımızda</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Contact"><i class="bi bi-envelope" aria-hidden="true"></i>İletişim</a></li>
+                                <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Faq"><i class="bi bi-question-circle" aria-hidden="true"></i>SSS</a></li>
+                            </ul>
+                        </li>
                     </ul>
                     <ul class="navbar-nav align-items-lg-center">
                         @if (isAuth)
@@ -157,6 +178,8 @@
                         <li><a href="~/">Ana Sayfa</a></li>
                         <li><a href="~/Branches">Branşlar</a></li>
                         <li><a href="~/Doctors">Doktor ara</a></li>
+                        <li><a asp-area="" asp-controller="Home" asp-action="About">Hakkımızda</a></li>
+                        <li><a asp-area="" asp-controller="Home" asp-action="Faq">SSS</a></li>
                     </ul>
                 </div>
                 <div class="col-6 col-lg-3">
@@ -178,7 +201,8 @@
                     <ul class="small">
                         <li><i class="bi bi-geo-alt me-2" aria-hidden="true"></i>Örnek Mah. Sağlık Cad. No: 1</li>
                         <li><i class="bi bi-telephone me-2" aria-hidden="true"></i>0 (000) 000 00 00</li>
-                        <li><i class="bi bi-envelope me-2" aria-hidden="true"></i>iletisim@hastane.test</li>
+                        <li class="text-break"><i class="bi bi-envelope me-2" aria-hidden="true"></i>iletisim@hastane.test</li>
+                        <li><a asp-area="" asp-controller="Home" asp-action="Contact">İletişim formu</a></li>
                     </ul>
                 </div>
             </div>

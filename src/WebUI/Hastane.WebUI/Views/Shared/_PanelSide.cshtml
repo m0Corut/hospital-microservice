@@ -9,7 +9,10 @@
         <div class="pp-name">@Model.DisplayName</div>
         <div class="pp-role">@Model.RoleLabel</div>
     </div>
-    <ul class="panel-menu">
+    @* Mobilde menü uzun olduğundan açılır/kapanır (Bootstrap collapse); geniş ekranda her zaman açık (site.css). *@
+    <button class="panel-menu-toggle d-lg-none" type="button" data-bs-toggle="collapse" data-bs-target="#panelMenu"
+            aria-expanded="false" aria-controls="panelMenu"><i class="bi bi-list" aria-hidden="true"></i> Panel menüsü</button>
+    <ul class="panel-menu collapse" id="panelMenu">
         @foreach (var item in Model.Items)
         {
             var active = string.Equals(area, item.Area, StringComparison.OrdinalIgnoreCase)

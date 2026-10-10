@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Sayfa bulunamadı">
+<ellipse cx="160" cy="200" rx="110" ry="11" fill="#0b2a5b" opacity=".07"/>
+<rect x="60" y="30" width="200" height="150" rx="18" fill="#eaf2fc"/>
+<rect x="60" y="30" width="200" height="30" rx="18" fill="#cfe0f5"/>
+<rect x="60" y="46" width="200" height="14" fill="#cfe0f5"/>
+<circle cx="80" cy="45" r="5" fill="#fff"/>
+<circle cx="97" cy="45" r="5" fill="#fff"/>
+<circle cx="114" cy="45" r="5" fill="#fff"/>
+<text x="160" y="132" text-anchor="middle" font-family="system-ui, sans-serif" font-size="60" font-weight="700" fill="#1e6fd9">404</text>
+<circle cx="236" cy="150" r="30" fill="#fff" stroke="#0fb5a6" stroke-width="7"/>
+<path d="M257 171l24 24" stroke="#0fb5a6" stroke-width="9" stroke-linecap="round"/>
+<path d="M225 150h22" stroke="#0fb5a6" stroke-width="6" stroke-linecap="round"/>
+<path d="M92 156h72" stroke="#dbe8f8" stroke-width="8" stroke-linecap="round"/>
+</svg>

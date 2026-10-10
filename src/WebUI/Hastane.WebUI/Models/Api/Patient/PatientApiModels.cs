@@ -101,6 +101,7 @@ public class InvoiceApiModel
     public Guid Id { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public Guid PaymentId { get; set; }
+    public string PatientId { get; set; } = string.Empty;
     public string DoctorId { get; set; } = string.Empty;
     public DateTime IssuedAt { get; set; }
     public string Currency { get; set; } = string.Empty;

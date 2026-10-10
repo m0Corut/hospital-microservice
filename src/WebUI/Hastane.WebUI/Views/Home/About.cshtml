@@ -1,0 +1,46 @@
+@{
+    ViewData["Title"] = "Hakkımızda";
+}
+
+<section class="page-hero mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+            <h1>Hakkımızda</h1>
+            <p class="lead mb-0">Hastane, bir <strong>eğitim projesidir</strong>: mikroservis mimarisini, kimlik doğrulamayı ve bir MVC arayüzünü uçtan uca öğrenmek için yazılmıştır.</p>
+        </div>
+        <div class="col-lg-5 text-center">
+            <img class="hero-art" src="~/img/hero.svg" alt="Hastane binası ve doktor çizimi" width="480" height="377" />
+        </div>
+    </div>
+</section>
+
+<div class="alert alert-info" role="note">
+    Bu sitedeki doktorlar, hastalar, ödemeler, reçeteler ve diğer tüm içerik <strong>kurgusaldır</strong>. Gerçek bir sağlık hizmeti sunulmaz; tıbbi tavsiye yerine geçmez.
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="panel-card p-4 h-100">
+            <h2 class="h5"><i class="bi bi-search text-primary me-1" aria-hidden="true"></i>Doktor bulun</h2>
+            <p class="mb-0">Branşa, şehre ya da ada göre doktor arayın; profilleri ve hasta yorumlarını inceleyin.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-card p-4 h-100">
+            <h2 class="h5"><i class="bi bi-calendar-check text-primary me-1" aria-hidden="true"></i>Randevu alın</h2>
+            <p class="mb-0">Doktorun çalışma saatlerinden boş bir saat seçin; randevunuzu panelinizden takip edin.</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-card p-4 h-100">
+            <h2 class="h5"><i class="bi bi-shield-check text-primary me-1" aria-hidden="true"></i>Üç rol</h2>
+            <p class="mb-0">Hasta, doktor ve yönetici panelleri vardır; her rol yalnız kendi yetkisindeki ekranı görür.</p>
+        </div>
+    </div>
+</div>
+
+<div class="panel-card p-4">
+    <h2 class="h5">Nasıl yapıldı?</h2>
+    <p class="mb-2">Arka uçta branş, doktor, değerlendirme, randevu, kimlik, reçete ve ödeme servisleri ayrı birer API olarak çalışır; bu arayüz hepsine tek bir kapıdan (gateway) bağlanır.</p>
+    <p class="mb-0 text-muted small">Ödeme sağlayıcısı bir benzetimdir: gerçek kart çekimi yapılmaz.</p>
+</div>

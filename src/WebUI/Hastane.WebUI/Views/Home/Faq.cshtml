@@ -1,0 +1,35 @@
+@{
+    ViewData["Title"] = "Sık Sorulan Sorular";
+    var items = new (string Question, string Answer)[]
+    {
+        ("Randevuyu nasıl alırım?", "Doktor ara sayfasından bir doktor seçin, profilindeki \"Randevu al\" düğmesiyle boş saatlerden birini işaretleyin. Randevu için hasta hesabıyla giriş yapmış olmanız gerekir."),
+        ("Randevumu nasıl iptal ederim?", "Hasta panelinde Randevularım sayfasından ilgili randevuyu açın ve \"İptal et\" düğmesini kullanın. Tamamlanmış ya da zaten iptal edilmiş randevu iptal edilemez."),
+        ("Randevu saatini değiştirebilir miyim?", "Evet. Bekleyen ya da onaylanmış randevuda \"Yeniden planla\" ile aynı doktorun başka bir boş saatini seçebilirsiniz."),
+        ("Ödemeyi nasıl yaparım?", "Randevudan sonra Ödeme sayfasında kart bilgilerini girersiniz. Bu proje bir eğitim projesidir: ödeme sağlayıcısı bir benzetimdir ve gerçek bir çekim yapılmaz."),
+        ("Faturama nereden ulaşırım?", "Ödeme başarılı olunca fatura oluşur. Hasta panelindeki Faturalarım sayfasından görüntüleyebilir ve yazdırabilirsiniz."),
+        ("Reçetelerimi nerede görürüm?", "Doktorunuz reçete yazdığında Hasta panelindeki Reçetelerim sayfasında listelenir; ayrıntı sayfasından yazdırabilirsiniz."),
+        ("Şifremi unuttum, ne yapmalıyım?", "Şifre sıfırlama bağlantısı henüz yok (yakında). Giriş yaptıysanız Şifre Değiştir sayfasından yeni bir şifre belirleyebilirsiniz."),
+        ("Doktor olarak nasıl kayıt olurum?", "Doktor hesapları yönetici tarafından bir doktor kaydına bağlanır. Kayıt olduktan sonra yöneticiye başvurun."),
+        ("Yorum yazabilir miyim?", "Evet, hasta hesabıyla giriş yaptıktan sonra doktorun profilindeki Yorumlar sekmesinden puan ve yorum bırakabilirsiniz."),
+        ("Bu sitedeki bilgiler gerçek mi?", "Hayır. Hastane bir eğitim projesidir; tüm doktor, hasta ve ödeme verisi kurgusaldır."),
+    };
+}
+
+<h1 class="page-title">Sık Sorulan Sorular</h1>
+
+<div class="accordion panel-card faq-accordion" id="faq">
+    @for (var i = 0; i < items.Length; i++)
+    {
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="faq-h-@i">
+                <button class="accordion-button @(i == 0 ? "" : "collapsed")" type="button" data-bs-toggle="collapse" data-bs-target="#faq-c-@i"
+                        aria-expanded="@(i == 0 ? "true" : "false")" aria-controls="faq-c-@i">@items[i].Question</button>
+            </h2>
+            <div id="faq-c-@i" class="accordion-collapse collapse @(i == 0 ? "show" : "")" aria-labelledby="faq-h-@i" data-bs-parent="#faq">
+                <div class="accordion-body">@items[i].Answer</div>
+            </div>
+        </div>
+    }
+</div>
+
+<p class="mt-4 text-muted">Aradığınızı bulamadınız mı? <a asp-area="" asp-controller="Home" asp-action="Contact">Bize yazın</a>.</p>

@@ -22,12 +22,15 @@
                             <td>
                                 <span class="d-flex align-items-center gap-2">
                                     <partial name="_Avatar" model="@(new AvatarViewModel(null, row.Label, "sm"))" />
-                                    <strong>@row.Label</strong>
+                                    <a class="fw-bold" asp-area="Doctor" asp-controller="Patients" asp-action="Details" asp-route-patientId="@row.PatientId">@row.Label</a>
                                 </span>
                             </td>
                             <td>@row.AppointmentCount</td>
                             <td>@DoctorPanelFormat.DateTimeText(row.LastDate)</td>
-                            <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@row.LastAppointmentId">Son randevu</a></td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-primary btn-sm" asp-area="Doctor" asp-controller="Patients" asp-action="Details" asp-route-patientId="@row.PatientId">Profil</a>
+                                <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@row.LastAppointmentId">Son randevu</a>
+                            </td>
                         </tr>
                     }
                 </tbody>

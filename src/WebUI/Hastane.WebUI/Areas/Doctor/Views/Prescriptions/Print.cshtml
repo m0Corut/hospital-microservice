@@ -13,6 +13,7 @@
     <div><span class="text-muted">Tarih:</span> @DoctorPanelFormat.DateTimeText(Model.IssuedAt)</div>
 </div>
 
+<div class="table-responsive">
 <table class="table align-middle">
     <thead>
         <tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre</th><th>Not</th></tr>
@@ -31,6 +32,7 @@
         }
     </tbody>
 </table>
+</div>
 @if (!string.IsNullOrWhiteSpace(Model.Notes))
 {
     <p class="mb-0"><strong>Doktor notu:</strong> @Model.Notes</p>

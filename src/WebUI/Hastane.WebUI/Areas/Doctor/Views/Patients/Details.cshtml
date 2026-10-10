@@ -1,0 +1,72 @@
+@model PatientProfileViewModel
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<a class="small" asp-area="Doctor" asp-controller="Patients" asp-action="Index"><i class="bi bi-arrow-left" aria-hidden="true"></i> Hastalarım</a>
+
+<div class="panel-card p-4 my-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+        <partial name="_Avatar" model="@(new AvatarViewModel(null, Model.Name, "lg"))" />
+        <div class="min-w-0">
+            <h1 class="h4 mb-1 text-break">@Model.Name</h1>
+            @if (Model.Email is not null)
+            {
+                <div class="text-muted text-break"><i class="bi bi-envelope me-1" aria-hidden="true"></i>@Model.Email</div>
+            }
+        </div>
+    </div>
+    <div class="row g-3 mt-2">
+        <div class="col-6 col-md-3"><div class="small text-muted">Randevu sayısı</div><div class="fs-5 fw-bold">@Model.Appointments.Count</div></div>
+        <div class="col-6 col-md-3"><div class="small text-muted">Tamamlanan</div><div class="fs-5 fw-bold">@Model.CompletedCount</div></div>
+        <div class="col-6 col-md-3"><div class="small text-muted">İlk randevu</div><div>@(Model.FirstVisit is { } f ? DoctorPanelFormat.DateTimeText(f) : "-")</div></div>
+        <div class="col-6 col-md-3"><div class="small text-muted">Son randevu</div><div>@(Model.LastVisit is { } l ? DoctorPanelFormat.DateTimeText(l) : "-")</div></div>
+    </div>
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <h2 class="h5">Randevular ve notlar</h2>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead><tr><th>Tarih</th><th>Branş</th><th>Durum</th><th>Hasta notu</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.Appointments)
+                {
+                    <tr>
+                        <td class="text-nowrap">@DoctorPanelFormat.DateTimeText(a.Date)</td>
+                        <td>@a.BranchLabel</td>
+                        <td><span class="badge @DoctorPanelFormat.StatusBadge(a.Status)">@DoctorPanelFormat.StatusText(a.Status)</span></td>
+                        <td class="text-break">@(string.IsNullOrWhiteSpace(a.Note) ? "-" : a.Note)</td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@a.Id">Ayrıntı</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="panel-card p-4">
+    <h2 class="h5">Yazdığım reçeteler</h2>
+    @if (Model.Prescriptions.Count == 0)
+    {
+        <p class="text-muted mb-0">Bu hastaya henüz reçete yazılmadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead><tr><th>Tarih</th><th>İlaç sayısı</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var p in Model.Prescriptions)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@DoctorPanelFormat.DateTimeText(p.IssuedAt)</td>
+                            <td>@p.ItemCount</td>
+                            <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Details" asp-route-id="@p.Id">Aç</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

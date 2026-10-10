@@ -54,6 +54,7 @@ public sealed class DoctorDetailApiModel
     public string? Email { get; set; }
     public List<string> Services { get; set; } = [];
     public List<string> Gallery { get; set; } = [];
+    public SocialLinksApiModel SocialLinks { get; set; } = new();
     public List<EducationApiModel> Educations { get; set; } = [];
     public List<ExperienceApiModel> Experiences { get; set; } = [];
     public List<AwardApiModel> Awards { get; set; } = [];
@@ -62,6 +63,17 @@ public sealed class DoctorDetailApiModel
     public decimal? MinFee { get; set; }
     public decimal? MaxFee { get; set; }
     public string? Currency { get; set; }
+}
+
+// Herkese açık profilde gösterilen sosyal bağlantılar. Gösterimde yalnız http/https kabul edilir (UiKit.SafeSocialUrl).
+public sealed class SocialLinksApiModel
+{
+    public string? Facebook { get; set; }
+    public string? X { get; set; }
+    public string? Instagram { get; set; }
+    public string? LinkedIn { get; set; }
+    public string? Pinterest { get; set; }
+    public string? YouTube { get; set; }
 }
 
 public sealed class EducationApiModel

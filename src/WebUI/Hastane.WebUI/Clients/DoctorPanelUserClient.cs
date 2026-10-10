@@ -7,6 +7,9 @@ public interface IDoctorPanelUserClient
 {
     // Kimlik -> görünen ad. Tek toplu çağrı (N+1 yok); erişim reddedilir ya da servis kapalıysa boş sözlük döner.
     Task<IReadOnlyDictionary<string, string>> GetNamesAsync(IEnumerable<string> ids, CancellationToken ct);
+
+    // Tek kullanıcı (ad + e-posta): users?ids=<id>. Bulunamazsa ya da erişim reddedilirse null.
+    Task<DoctorPanelUserApiModel?> GetAsync(string id, CancellationToken ct);
 }
 
 public sealed class DoctorPanelUserClient(IGatewayClient gateway) : IDoctorPanelUserClient
@@ -27,5 +30,14 @@ public sealed class DoctorPanelUserClient(IGatewayClient gateway) : IDoctorPanel
         }
 
         return names;
+    }
+
+    public async Task<DoctorPanelUserApiModel?> GetAsync(string id, CancellationToken ct)
+    {
+        var result = await gateway.GetAsync<List<DoctorPanelUserApiModel>>(
+            $"/gateway/users?ids={Uri.EscapeDataString(id)}", ApiFailures.All, ct);
+        return result.TryGetValue(out var users)
+            ? users.FirstOrDefault(u => string.Equals(u.Id, id, StringComparison.OrdinalIgnoreCase))
+            : null;
     }
 }
