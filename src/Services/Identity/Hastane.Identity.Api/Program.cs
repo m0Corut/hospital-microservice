@@ -4,6 +4,7 @@ using Hastane.Identity.Api.Integration;
 using Hastane.Identity.Api.Mapping;
 using Hastane.Identity.Api.Settings;
 using Hastane.Identity.Api.Services;
+using Hastane.Shared.Hosting;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.AspNetCore.Identity;
@@ -91,7 +92,12 @@ _ = app.Services.GetRequiredService<IJwtTokenService>();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    // Yalnız geliştirmede: veritabanı/tablolar yoksa kendisi kurulur. Üretimde şema değişikliği bilinçli yapılır.
+}
+
+// Development'ta ya da Database:MigrateOnStartup=true verilince (Docker ortamı).
+if (app.ShouldMigrateOnStartup())
+{
+    // Bekleyen migration'ları açılışta uygular: veritabanı/tablolar yoksa kendisi kurulur. Üretimde şema değişikliği bilinçli yapılır.
     using var scope = app.Services.CreateScope();
     await scope.ServiceProvider.GetRequiredService<HastaneIdentityDbContext>().Database.MigrateAsync();
 }

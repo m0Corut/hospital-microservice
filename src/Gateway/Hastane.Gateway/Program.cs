@@ -4,7 +4,13 @@ using Ocelot.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Rotalar kodda değil dosyada: yeni servis eklemek = ocelot.json'a satır eklemek.
-builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+// Ortama özel dosya varsa (ocelot.Docker.json: ana makine adları konteyner adları) ocelot.json YERİNE o yüklenir.
+// İkisini birden yüklemek yanlış: dizi öğeleri sırayla birleşir, rota sırası kayınca yanlış servise gider.
+// ocelot.Docker.json elle yazılmaz: scripts/sync-ocelot-docker.ps1 ocelot.json'dan üretir.
+var routesFile = builder.Environment.ContentRootFileProvider.GetFileInfo($"ocelot.{builder.Environment.EnvironmentName}.json").Exists
+    ? $"ocelot.{builder.Environment.EnvironmentName}.json"
+    : "ocelot.json";
+builder.Configuration.AddJsonFile(routesFile, optional: false, reloadOnChange: true);
 builder.Services.AddOcelot(builder.Configuration);
 builder.Services.AddHealthChecks();
 

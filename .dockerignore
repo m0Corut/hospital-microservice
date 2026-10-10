@@ -1,0 +1,24 @@
+# Docker bağlamına girmeyecekler: derleme çıktıları, testler, sırlar, depo geçmişi.
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/TestResults/
+**/logs/
+**/*.log
+**/*.user
+.git/
+.gitattributes
+.gitignore
+.env
+.env.*
+secrets/
+tests/
+docs/
+scripts/
+*.md
+*.slnx
+docker-compose*.yml
+Dockerfile
+.dockerignore
+deploy/

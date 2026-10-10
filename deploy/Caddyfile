@@ -1,0 +1,22 @@
+# Caddy ters vekil: otomatik HTTPS (Let's Encrypt) + WebSocket desteği hazır gelir.
+# DOMAIN ortam değişkeni compose'tan gelir (.env: DOMAIN=hastane.ornek.com). Yerelde DOMAIN=localhost -> Caddy kendi
+# yerel sertifikasını üretir (tarayıcı bir kez uyarır).
+#
+# Tarayıcı iki yere gider:
+#   1) WebUI (MVC sayfaları)                      -> webui:8080
+#   2) Gateway, YALNIZ SignalR kuyruk ekranı için -> /gateway/hubs/*  (WebSocket)
+# Diğer tüm API çağrılarını WebUI sunucu tarafında Gateway'e kendisi yapar; Gateway'in geri kalanı internete AÇILMAZ.
+{$DOMAIN} {
+	encode zstd gzip
+
+	@hub path /gateway/hubs/*
+	handle @hub {
+		reverse_proxy gateway:8080
+	}
+
+	handle {
+		reverse_proxy webui:8080
+	}
+
+	header -Server
+}

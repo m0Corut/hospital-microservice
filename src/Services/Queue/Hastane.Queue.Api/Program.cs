@@ -5,6 +5,7 @@ using Hastane.Queue.Api.Integration;
 using Hastane.Queue.Api.Mapping;
 using Hastane.Queue.Api.Services;
 using Hastane.Queue.Api.Settings;
+using Hastane.Shared.Hosting;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
@@ -64,8 +65,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
 
-    // Yalnız geliştirmede: bekleyen migration'ları açılışta uygular.
+// Development'ta ya da Database:MigrateOnStartup=true verilince (Docker ortamı).
+if (app.ShouldMigrateOnStartup())
+{
+    // Bekleyen migration'ları açılışta uygular.
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<QueueDbContext>().Database.Migrate();
 }

@@ -17,3 +17,6 @@ appsettings.*.local.json
 # Loglar
 logs/
 *.log
+
+# Docker: JWT anahtar dosyaları (docker-up.ps1 üretir)
+secrets/
