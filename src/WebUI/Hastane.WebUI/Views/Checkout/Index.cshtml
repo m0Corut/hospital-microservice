@@ -1,0 +1,90 @@
+@using Hastane.WebUI.ViewModels.Orders
+@model CheckoutViewModel
+@{
+    ViewData["Title"] = "Siparişi tamamla";
+    var cart = Model.Cart;
+}
+
+<div class="container py-4">
+    <h1 class="page-title">Siparişi tamamla</h1>
+
+    <ol class="stepper" aria-label="Sipariş adımları">
+        <li class="done"><span>Sepet</span></li>
+        <li class="current"><span>Teslimat</span></li>
+        <li><span>Sipariş alındı</span></li>
+    </ol>
+
+    <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+    @if (Model.CartUnavailable)
+    {
+        <div class="alert alert-warning" role="alert">
+            Sepetinize şu anda ulaşılamıyor. Birkaç dakika sonra sayfayı yenileyip tekrar deneyin.
+        </div>
+    }
+    else if (cart.Items.Count == 0)
+    {
+        <div class="panel-card p-4">
+            <h2 class="h5">Sepetiniz boş</h2>
+            <p class="text-muted">Sipariş verebilmek için önce sepetinize ürün ekleyin.</p>
+            <a class="btn btn-primary" href="/Cart">Sepete git</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-7 order-2 order-lg-1">
+                <div class="panel-card p-4">
+                    <h2 class="h5 mb-3"><i class="bi bi-truck me-2 text-primary" aria-hidden="true"></i>Teslimat bilgileri</h2>
+
+                    <form asp-action="Index" asp-controller="Checkout" method="post" novalidate>
+                        <input type="hidden" name="IdempotencyKey" value="@Model.IdempotencyKey" />
+
+                        <div class="mb-3">
+                            <label asp-for="ShippingAddress" class="form-label"></label>
+                            <textarea asp-for="ShippingAddress" class="form-control" rows="3" maxlength="300" autocomplete="street-address"></textarea>
+                            @if (Model.AddressPrefilled)
+                            {
+                                <div class="form-text">Adres profilinizden dolduruldu; isterseniz değiştirebilirsiniz.</div>
+                            }
+                            <span asp-validation-for="ShippingAddress" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Note" class="form-label"></label>
+                            <textarea asp-for="Note" class="form-control" rows="2" maxlength="500"></textarea>
+                            <span asp-validation-for="Note" class="text-danger small"></span>
+                        </div>
+
+                        <div class="alert alert-info py-2 small" role="note">
+                            <i class="bi bi-cash-coin me-1" aria-hidden="true"></i>
+                            <strong>Kapıda ödeme:</strong> Ürünleri teslim alırken ödersiniz. Şimdi kartınızdan tutar çekilmez.
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Siparişi ver</button>
+                        <a class="btn btn-outline-secondary" href="/Cart">Sepete dön</a>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-5 order-1 order-lg-2">
+                <aside class="panel-card p-4" aria-label="Sepet özeti">
+                    <h2 class="h5 mb-3">Sepet özeti</h2>
+                    <ul class="summary-list">
+                        @foreach (var item in cart.Items)
+                        {
+                            <li>
+                                <span class="k">@item.Name &times; @item.Quantity</span>
+                                <span class="v">@OrderDisplay.Money(item.LineTotal, cart.Currency)</span>
+                            </li>
+                        }
+                        <li>
+                            <span class="k">Toplam</span>
+                            <span class="v h5 mb-0 text-primary">@OrderDisplay.Money(cart.Total, cart.Currency)</span>
+                        </li>
+                    </ul>
+                    <p class="small text-muted mb-0">Nihai tutar sipariş anında ürün fiyatlarından yeniden hesaplanır.</p>
+                </aside>
+            </div>
+        </div>
+    }
+</div>

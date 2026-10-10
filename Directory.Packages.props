@@ -29,6 +29,13 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
   </ItemGroup>
+  <ItemGroup Label="MariaDB / MySQL (Order)">
+    <!-- Pomelo.EntityFrameworkCore.MySql son kararlı sürümü 9.0.0 (EF Core 9); 10.0.0-rc yalnız önizleme. EF Core 10 için kararlı seçenek Oracle MySql.EntityFrameworkCore (GPL-2.0 + Universal FOSS exception). -->
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.9" />
+    <!-- MySql.EntityFrameworkCore 10.0.9 EF Core 10.0.9'a bağlı; diğer servisler 10.0.12 kullanıyor. Test projesine de geçsin diye çekirdek paketler açıkça 10.0.12'ye sabitlenir. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
+  </ItemGroup>
   <ItemGroup Label="Test">
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
@@ -36,6 +43,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.MariaDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
   </ItemGroup>
 </Project>
