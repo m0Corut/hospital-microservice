@@ -8,6 +8,9 @@ public interface IDoctorPanelAppointmentClient
     Task<ApiResult<List<DoctorPanelAppointmentApiModel>>> ListAsync(
         string doctorId, DoctorPanelAppointmentStatus? status, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct);
 
+    // Hasta profili: appointments?doctorId=&patientId= (ikisi de servisin desteklediği süzgeç; doktor için doctorId zaten token'dan zorlanır).
+    Task<ApiResult<List<DoctorPanelAppointmentApiModel>>> ListForPatientAsync(string doctorId, string patientId, CancellationToken ct);
+
     Task<ApiResult<DoctorPanelAppointmentApiModel>> GetAsync(Guid id, CancellationToken ct);
 
     Task<ApiResult> SetStatusAsync(Guid id, DoctorPanelAppointmentStatus status, CancellationToken ct);
@@ -26,6 +29,10 @@ public sealed class DoctorPanelAppointmentClient(IGatewayClient gateway) : IDoct
         if (toUtc is not null) query.Add($"to={Uri.EscapeDataString(toUtc.Value.ToString("O"))}");
         return gateway.GetAsync<List<DoctorPanelAppointmentApiModel>>($"/gateway/appointments?{string.Join('&', query)}", ct: ct);
     }
+
+    public Task<ApiResult<List<DoctorPanelAppointmentApiModel>>> ListForPatientAsync(string doctorId, string patientId, CancellationToken ct)
+        => gateway.GetAsync<List<DoctorPanelAppointmentApiModel>>(
+            $"/gateway/appointments?doctorId={Uri.EscapeDataString(doctorId)}&patientId={Uri.EscapeDataString(patientId)}", ct: ct);
 
     public Task<ApiResult<DoctorPanelAppointmentApiModel>> GetAsync(Guid id, CancellationToken ct)
         => gateway.GetAsync<DoctorPanelAppointmentApiModel>($"/gateway/appointments/{id}", ct: ct);

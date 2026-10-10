@@ -40,6 +40,14 @@ public static class UiKit
         return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" ? url : null;
     }
 
+    // Sosyal bağlantı: yalnız mutlak http/https adresi (javascript:, data:, göreli yol atılır). Servis de aynı kuralı uygular.
+    public static string? SafeSocialUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        url = url.Trim();
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" ? url : null;
+    }
+
     // Branş adından ikon dosyası (wwwroot/img/branches/<anahtar>.svg). Eşleşmezse genel ikon.
     public static string BranchIcon(string? branchName)
     {

@@ -45,4 +45,27 @@ public class HomeController(IBranchClient branches, IPublicDoctorClient doctors,
             FeaturedUnavailable = !search.IsSuccess,
         });
     }
+
+    // ---------- Genel sayfalar (eğitim projesi, kurgusal içerik; gateway çağrısı YOK) ----------
+
+    [AllowAnonymous]
+    public IActionResult About() => View();
+
+    [AllowAnonymous]
+    public IActionResult Faq() => View();
+
+    [AllowAnonymous]
+    [HttpGet]
+    public IActionResult Contact() => View(new ContactFormViewModel());
+
+    // Form bilerek HİÇBİR YERE gönderilmez: e-posta servisi, gateway çağrısı ve kayıt yok. Antiforgery globaldir.
+    [AllowAnonymous]
+    [HttpPost]
+    public IActionResult Contact(ContactFormViewModel model)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        SetSuccess("Mesajınız alındı (eğitim projesi, kaydedilmez).");
+        return RedirectToAction(nameof(Contact));
+    }
 }

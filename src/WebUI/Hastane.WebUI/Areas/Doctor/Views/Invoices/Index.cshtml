@@ -1,0 +1,74 @@
+@using Hastane.WebUI.ViewModels.Public
+@model DoctorInvoiceListViewModel
+@{
+    ViewData["Title"] = "Faturalarım";
+    string Join(IReadOnlyList<MoneyTotal> totals)
+        => totals.Count == 0 ? DisplayText.Money(0m, "TRY") : string.Join(" + ", totals.Select(t => DisplayText.Money(t.Amount, t.Currency)));
+}
+
+<h1 class="page-title">Faturalarım</h1>
+
+@if (Model.Summary is { } sum)
+{
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6 col-xl-3"><div class="panel-card stat-tile"><span class="st-icon tone-teal"><i class="bi bi-calendar-month" aria-hidden="true"></i></span><div class="min-w-0"><div class="st-value fs-5 text-break">@Join(sum.ThisMonth)</div><div class="st-label">Bu ay kazanç</div></div></div></div>
+        <div class="col-12 col-md-6 col-xl-3"><div class="panel-card stat-tile"><span class="st-icon tone-blue"><i class="bi bi-wallet2" aria-hidden="true"></i></span><div class="min-w-0"><div class="st-value fs-5 text-break">@Join(sum.Total)</div><div class="st-label">Toplam kazanç</div></div></div></div>
+        <div class="col-6 col-xl-3"><div class="panel-card stat-tile"><span class="st-icon tone-violet"><i class="bi bi-credit-card" aria-hidden="true"></i></span><div><div class="st-value">@sum.PaidCount</div><div class="st-label">Ödeme sayısı</div></div></div></div>
+        <div class="col-6 col-xl-3"><div class="panel-card stat-tile"><span class="st-icon tone-rose"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></span><div><div class="st-value">@sum.RefundedCount</div><div class="st-label">İade edilen</div></div></div></div>
+    </div>
+    <p class="small text-muted">Kazanç, durumu "Ödendi" olan ödemelerin toplamıdır; iade edilenler dahil değildir.</p>
+}
+else if (Model.SummaryNote is not null)
+{
+    <div class="alert alert-warning py-2 small" role="status">@Model.SummaryNote</div>
+}
+
+@if (Model.Items.Count == 0)
+{
+    <div class="panel-card p-4"><partial name="_EmptyState" model="@("Henüz faturanız yok.")" /></div>
+}
+else
+{
+    <div class="panel-card">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr><th>Fatura no</th><th>Tarih</th><th>Hasta</th><th>Toplam</th><th>Durum</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model.Items)
+                    {
+                        var i = row.Invoice;
+                        <tr>
+                            <td>@i.InvoiceNumber</td>
+                            <td>@DisplayText.DateLocal(i.IssuedAt)</td>
+                            <td>@row.PatientLabel</td>
+                            <td>@DisplayText.Money(i.Total, i.Currency)</td>
+                            <td>
+                                @if (row.Refunded)
+                                {
+                                    <span class="badge text-bg-secondary">İade edildi</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@i.Id">Ayrıntı</a>
+                                <a class="btn btn-outline-secondary btn-sm" asp-action="Print" asp-route-id="@i.Id" aria-label="Yazdır"><i class="bi bi-printer" aria-hidden="true"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-3" aria-label="Sayfalar">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)">Önceki</a></li>
+                <li class="page-item disabled"><span class="page-link">@Model.Page / @Model.TotalPages</span></li>
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")"><a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)">Sonraki</a></li>
+            </ul>
+        </nav>
+    }
+}

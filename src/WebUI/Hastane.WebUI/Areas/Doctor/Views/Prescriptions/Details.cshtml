@@ -12,7 +12,7 @@
             <div class="text-muted">Yazılma: @DoctorPanelFormat.DateTimeText(Model.IssuedAt)</div>
             <a class="small" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.AppointmentId">İlgili randevu</a>
         </div>
-        <div class="d-flex gap-2 align-items-start">
+        <div class="d-flex flex-wrap gap-2 align-items-start">
             <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Print" asp-route-id="@Model.Id"><i class="bi bi-printer me-1" aria-hidden="true"></i>Yazdır</a>
             <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Edit" asp-route-id="@Model.Id">Düzenle</a>
             <form method="post" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Delete" asp-route-id="@Model.Id">

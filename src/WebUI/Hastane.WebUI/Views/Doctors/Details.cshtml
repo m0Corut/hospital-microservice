@@ -44,6 +44,27 @@
             }
             <span><i class="bi bi-cash-coin" aria-hidden="true"></i>@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</span>
         </div>
+        @{
+            // Yalnız mutlak http/https adresleri bağlantı olur (javascript:, data: gösterilmez); dış bağlantıya referrer/izleme ipucu verilmez.
+            var socials = new (string Url, string Icon, string Label)?[]
+            {
+                UiKit.SafeSocialUrl(d.SocialLinks?.Facebook) is { } sFb ? (sFb, "facebook", "Facebook") : null,
+                UiKit.SafeSocialUrl(d.SocialLinks?.X) is { } sX ? (sX, "twitter-x", "X") : null,
+                UiKit.SafeSocialUrl(d.SocialLinks?.Instagram) is { } sIg ? (sIg, "instagram", "Instagram") : null,
+                UiKit.SafeSocialUrl(d.SocialLinks?.LinkedIn) is { } sLi ? (sLi, "linkedin", "LinkedIn") : null,
+                UiKit.SafeSocialUrl(d.SocialLinks?.Pinterest) is { } sPi ? (sPi, "pinterest", "Pinterest") : null,
+                UiKit.SafeSocialUrl(d.SocialLinks?.YouTube) is { } sYt ? (sYt, "youtube", "YouTube") : null,
+            }.Where(l => l is not null).Select(l => l!.Value).ToList();
+        }
+        @if (socials.Count > 0)
+        {
+            <div class="social-links mt-2">
+                @foreach (var link in socials)
+                {
+                    <a href="@link.Url" target="_blank" rel="noopener noreferrer nofollow" aria-label="@link.Label"><i class="bi bi-@link.Icon" aria-hidden="true"></i></a>
+                }
+            </div>
+        }
         @if (d.Services.Count > 0)
         {
             <div class="service-tags">
@@ -177,7 +198,7 @@
                     {
                         var r = row.Review;
                         <div class="border-bottom py-3">
-                            <div class="d-flex justify-content-between">
+                            <div class="d-flex flex-wrap justify-content-between gap-1">
                                 <span class="d-flex align-items-center gap-2">
                                     <partial name="_Avatar" model="@(new AvatarViewModel(null, r.ReviewerName, "sm"))" />
                                     <strong>@r.ReviewerName</strong>

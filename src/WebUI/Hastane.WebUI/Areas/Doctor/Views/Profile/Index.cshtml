@@ -106,6 +106,7 @@
 
     <div class="panel-card p-4 mb-3">
         <h2 class="h5">Sosyal medya</h2>
+        <p class="small text-muted">Ayrıca <a asp-area="Doctor" asp-controller="Social" asp-action="Index">Sosyal Medya</a> sayfasından da düzenleyebilirsiniz.</p>
         <div class="row g-3">
             <div class="col-md-6"><label asp-for="SocialLinks.Facebook" class="form-label">Facebook</label><input asp-for="SocialLinks.Facebook" class="form-control" /><span asp-validation-for="SocialLinks.Facebook" class="text-danger small"></span></div>
             <div class="col-md-6"><label asp-for="SocialLinks.X" class="form-label">X</label><input asp-for="SocialLinks.X" class="form-control" /><span asp-validation-for="SocialLinks.X" class="text-danger small"></span></div>
@@ -182,6 +183,7 @@
                 </div>
 
                 <h3 class="h6 mt-3">Haftalık program</h3>
+                <p class="small text-muted mb-2">Programı daha rahat düzenlemek için <a asp-area="Doctor" asp-controller="Schedule" asp-action="Index">Çalışma Saatleri</a> sayfasını kullanabilirsiniz.</p>
                 @for (var s = 0; s < Model.ClinicLocations[c].Schedule.Count; s++)
                 {
                     <div class="row g-2 align-items-end mb-2">

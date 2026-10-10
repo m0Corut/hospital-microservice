@@ -1,0 +1,79 @@
+@model ScheduleFormViewModel
+@{
+    ViewData["Title"] = "Çalışma Saatleri";
+    var dayOptions = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
+}
+
+<h1 class="page-title">Çalışma Saatleri</h1>
+<p class="text-muted">Her klinik için haftalık programınızı düzenleyin. Hastalar bu aralıklara göre randevu alır; aynı gün içindeki aralıklar çakışamaz.</p>
+
+@if (Model.ClinicLocations.Count == 0)
+{
+    <div class="panel-card p-4">
+        <partial name="_EmptyState" model="@("Henüz klinik konumu eklemediniz. Program, bir kliniğe bağlıdır.")" />
+        <div class="text-center">
+            <a class="btn btn-primary" asp-area="Doctor" asp-controller="Profile" asp-action="Index">Profilimden klinik ekle</a>
+        </div>
+    </div>
+}
+else
+{
+    <form method="post" asp-area="Doctor" asp-controller="Schedule" asp-action="Index" novalidate>
+        @* Enter tuşu formdaki İLK gönder düğmesini tetikler: o "Kaldır/Ekle" olmasın diye görünmez varsayılan Kaydet en başta. *@
+        <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Kaydet</button>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+        @for (var c = 0; c < Model.ClinicLocations.Count; c++)
+        {
+            <div class="panel-card p-4 mb-3">
+                <input type="hidden" asp-for="ClinicLocations[c].ClinicName" />
+                <h2 class="h5 mb-3"><i class="bi bi-hospital text-primary me-1" aria-hidden="true"></i>@Model.ClinicLocations[c].ClinicName</h2>
+
+                @if (Model.ClinicLocations[c].Schedule.Count == 0)
+                {
+                    <p class="text-muted small">Bu klinik için henüz saat aralığı yok. Hastalar randevu alamaz.</p>
+                }
+
+                @for (var s = 0; s < Model.ClinicLocations[c].Schedule.Count; s++)
+                {
+                    <div class="row g-2 align-items-end mb-2 schedule-row">
+                        <div class="col-6 col-md-3">
+                            <label asp-for="ClinicLocations[c].Schedule[s].DayOfWeek" class="form-label small">Gün</label>
+                            <select asp-for="ClinicLocations[c].Schedule[s].DayOfWeek" class="form-select">
+                                @foreach (var d in dayOptions)
+                                {
+                                    <option value="@d" selected="@(Model.ClinicLocations[c].Schedule[s].DayOfWeek == d)">@DoctorPanelFormat.DayName(d)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label asp-for="ClinicLocations[c].Schedule[s].StartTime" class="form-label small">Başlangıç</label>
+                            <input asp-for="ClinicLocations[c].Schedule[s].StartTime" type="time" class="form-control" />
+                            <span asp-validation-for="ClinicLocations[c].Schedule[s].StartTime" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6 col-md-2">
+                            <label asp-for="ClinicLocations[c].Schedule[s].EndTime" class="form-label small">Bitiş</label>
+                            <input asp-for="ClinicLocations[c].Schedule[s].EndTime" type="time" class="form-control" />
+                            <span asp-validation-for="ClinicLocations[c].Schedule[s].EndTime" class="text-danger small"></span>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label asp-for="ClinicLocations[c].Schedule[s].SlotMinutes" class="form-label small">Randevu süresi (dk)</label>
+                            <input asp-for="ClinicLocations[c].Schedule[s].SlotMinutes" type="number" min="5" max="120" class="form-control" />
+                            <span asp-validation-for="ClinicLocations[c].Schedule[s].SlotMinutes" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button type="submit" name="op" value="remove-slot:@c:@s" class="btn btn-outline-danger btn-sm w-100">Kaldır</button>
+                        </div>
+                    </div>
+                }
+                <span asp-validation-for="ClinicLocations[c].Schedule" class="text-danger small d-block mb-2"></span>
+                <button type="submit" name="op" value="add-slot:@c" class="btn btn-outline-primary btn-sm">+ Saat aralığı ekle</button>
+            </div>
+        }
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+            <button type="submit" class="btn btn-primary">Çalışma saatlerini kaydet</button>
+            <a class="btn btn-outline-secondary" asp-area="Doctor" asp-controller="Schedule" asp-action="Index">Vazgeç</a>
+        </div>
+    </form>
+}

@@ -137,7 +137,7 @@ public sealed class ReviewsViewModel
     public List<DoctorPanelReviewApiModel> Reviews { get; set; } = [];
 }
 
-public sealed record PatientRow(string Label, int AppointmentCount, DateTime LastDate, Guid LastAppointmentId);
+public sealed record PatientRow(string Label, int AppointmentCount, DateTime LastDate, Guid LastAppointmentId, string PatientId);
 
 public sealed record CalendarEvent(Guid Id, DateTime Date, string PatientLabel, DoctorPanelAppointmentStatus Status);
 

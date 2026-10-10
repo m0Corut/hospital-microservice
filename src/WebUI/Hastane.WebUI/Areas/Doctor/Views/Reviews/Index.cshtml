@@ -21,7 +21,7 @@
         @foreach (var r in Model.Reviews)
         {
             <div class="border-bottom pb-3 mb-3">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex flex-wrap justify-content-between gap-1">
                     <strong>@r.ReviewerName</strong>
                     <span class="text-muted small">@DoctorPanelFormat.DateTimeText(r.CreatedAt)</span>
                 </div>

@@ -9,6 +9,9 @@ public interface IDoctorPanelPrescriptionClient
 {
     Task<ApiResult<List<DoctorPanelPrescriptionSummaryApiModel>>> ListAsync(string doctorId, Guid? appointmentId, CancellationToken ct);
 
+    // Hasta profili: prescriptions?doctorId=&patientId= (doktor kapsamı serviste token'dan zorlanır).
+    Task<ApiResult<List<DoctorPanelPrescriptionSummaryApiModel>>> ListForPatientAsync(string doctorId, string patientId, CancellationToken ct);
+
     Task<ApiResult<DoctorPanelPrescriptionApiModel>> GetAsync(Guid id, CancellationToken ct);
 
     Task<ApiResult<DoctorPanelPrescriptionApiModel>> CreateAsync(
@@ -27,6 +30,10 @@ public sealed class DoctorPanelPrescriptionClient(IGatewayClient gateway) : IDoc
         if (appointmentId is not null) path += $"&appointmentId={appointmentId}";
         return gateway.GetAsync<List<DoctorPanelPrescriptionSummaryApiModel>>(path, ct: ct);
     }
+
+    public Task<ApiResult<List<DoctorPanelPrescriptionSummaryApiModel>>> ListForPatientAsync(string doctorId, string patientId, CancellationToken ct)
+        => gateway.GetAsync<List<DoctorPanelPrescriptionSummaryApiModel>>(
+            $"/gateway/prescriptions?doctorId={Uri.EscapeDataString(doctorId)}&patientId={Uri.EscapeDataString(patientId)}", ct: ct);
 
     public Task<ApiResult<DoctorPanelPrescriptionApiModel>> GetAsync(Guid id, CancellationToken ct)
         => gateway.GetAsync<DoctorPanelPrescriptionApiModel>($"/gateway/prescriptions/{id}", ct: ct);

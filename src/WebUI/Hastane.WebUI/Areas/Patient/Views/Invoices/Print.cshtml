@@ -10,6 +10,7 @@
 <h1 class="h4 mb-1">Fatura @i.InvoiceNumber</h1>
 <div class="text-muted mb-3">@Model.DoctorName · @DisplayText.DateLocal(i.IssuedAt)</div>
 
+<div class="table-responsive">
 <table class="table align-middle">
     <thead>
         <tr><th>Açıklama</th><th class="text-end">Adet</th><th class="text-end">Birim fiyat</th><th class="text-end">Tutar</th></tr>
@@ -31,3 +32,4 @@
         <tr class="fw-bold"><td colspan="3" class="text-end">Toplam</td><td class="text-end">@DisplayText.Money(i.Total, i.Currency)</td></tr>
     </tfoot>
 </table>
+</div>

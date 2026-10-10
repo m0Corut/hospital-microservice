@@ -10,6 +10,7 @@
 <h1 class="h4 mb-1">Reçete</h1>
 <div class="text-muted mb-3">@Model.DoctorName · @DisplayText.DateTimeLocal(p.IssuedAt)</div>
 
+<div class="table-responsive">
 <table class="table align-middle">
     <thead>
         <tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre</th><th>Kullanım</th></tr>
@@ -28,6 +29,7 @@
         }
     </tbody>
 </table>
+</div>
 @if (!string.IsNullOrWhiteSpace(p.Notes))
 {
     <p class="mb-0"><strong>Doktor notu:</strong> @p.Notes</p>
