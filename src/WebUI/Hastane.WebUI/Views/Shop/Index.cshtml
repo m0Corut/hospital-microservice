@@ -1,0 +1,61 @@
+@using Hastane.WebUI.ViewModels.Shop
+@model ShopIndexViewModel
+@{
+    ViewData["Title"] = "Mağaza";
+    var f = Model.Filter;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+}
+
+<div class="shop-toolbar">
+    <h1 class="h3 mb-0">Mağaza</h1>
+    <form method="get" asp-area="" asp-controller="Shop" asp-action="Index" role="search">
+        @if (!string.IsNullOrEmpty(f.Category))
+        {
+            <input type="hidden" name="category" value="@f.Category" />
+        }
+        <input type="search" name="q" value="@f.Q" class="form-control" maxlength="100" placeholder="Ürün ara" aria-label="Ürün ara" />
+        <button type="submit" class="btn btn-accent">Ara</button>
+    </form>
+</div>
+
+<nav class="category-chips" aria-label="Kategoriler">
+    <a class="category-chip @(string.IsNullOrEmpty(f.Category) ? "active" : "")" asp-area="" asp-controller="Shop" asp-action="Index" asp-route-q="@f.Q">Tümü</a>
+    @foreach (var (key, label, icon) in ShopDisplay.Categories)
+    {
+        <a class="category-chip @(f.Category == key ? "active" : "")" asp-area="" asp-controller="Shop" asp-action="Index" asp-route-category="@key" asp-route-q="@f.Q">
+            <i class="bi @icon" aria-hidden="true"></i>@label
+        </a>
+    }
+</nav>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="panel-card"><partial name="_EmptyState" model="@("Aramanıza uygun ürün bulunamadı.")" /></div>
+}
+else
+{
+    <p class="text-muted small"><strong>@Model.TotalCount</strong> ürün</p>
+    <div class="product-grid">
+        @foreach (var product in Model.Items)
+        {
+            <partial name="_ProductCard" model="@(new ProductCardViewModel(product, Model.CanBuy, Model.IsSignedIn))" />
+        }
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="mt-4" aria-label="Sayfalar">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(f.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", "Shop", Model.PageRoute(Math.Max(1, f.Page - 1)))">Önceki</a>
+                </li>
+                <li class="page-item disabled"><span class="page-link">@f.Page / @Model.TotalPages</span></li>
+                <li class="page-item @(f.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" href="@Url.Action("Index", "Shop", Model.PageRoute(Math.Min(Model.TotalPages, f.Page + 1)))">Sonraki</a>
+                </li>
+            </ul>
+        </nav>
+    }
+}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="D vitamini damla şişesi">
+  <ellipse cx="200" cy="352" rx="90" ry="12" fill="#0b2a5b" opacity=".12"/>
+  <path d="M176 40h48v38a24 24 0 0 1-8 18h-32a24 24 0 0 1-8-18z" fill="#0fb5a6"/>
+  <rect x="184" y="92" width="32" height="22" fill="#e4eaf3"/>
+  <rect x="150" y="104" width="100" height="30" rx="8" fill="#0b2a5b"/>
+  <path d="M154 134h92v18c22 10 36 28 36 52v112a28 28 0 0 1-28 28H146a28 28 0 0 1-28-28V204c0-24 14-42 36-52z" fill="#8a5a2b"/>
+  <path d="M154 134h92v18c22 10 36 28 36 52v6H118v-6c0-24 14-42 36-52z" fill="#a8723a"/>
+  <rect x="140" y="212" width="120" height="96" rx="12" fill="#fff"/>
+  <circle cx="200" cy="250" r="26" fill="#1e6fd9"/>
+  <text x="200" y="261" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="30" fill="#fff">D3</text>
+  <rect x="162" y="284" width="76" height="8" rx="4" fill="#cfd8e6"/>
+  <path d="M296 120c10 18 18 28 18 40a18 18 0 0 1-36 0c0-12 8-22 18-40z" fill="#f2c94c" opacity=".9"/>
+  <rect x="126" y="168" width="12" height="140" rx="6" fill="#fff" opacity=".22"/>
+</svg>

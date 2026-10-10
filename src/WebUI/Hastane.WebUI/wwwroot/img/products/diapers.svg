@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bebek bezi">
+  <ellipse cx="200" cy="346" rx="130" ry="10" fill="#0b2a5b" opacity=".12"/>
+  <path d="M56 120h288c8 0 14 6 14 14v36c0 54-34 100-86 120l-30 12c-12 4-24 4-36 0l-30-12c-52-20-86-66-86-120v-36c0-8 6-14 14-14z" fill="#fff"/>
+  <path d="M56 120h288c8 0 14 6 14 14v36c0 54-34 100-86 120l-30 12c-12 4-24 4-36 0l-30-12c-52-20-86-66-86-120v-36c0-8 6-14 14-14z" fill="none" stroke="#1e6fd9" stroke-width="6"/>
+  <path d="M42 134h316v34H42z" fill="#2f86e8"/>
+  <rect x="64" y="132" width="52" height="38" rx="8" fill="#0fb5a6"/>
+  <rect x="284" y="132" width="52" height="38" rx="8" fill="#0fb5a6"/>
+  <path d="M120 196c24 40 136 40 160 0" fill="none" stroke="#9fc4f2" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="200" cy="244" r="20" fill="#f6d9a6"/>
+  <circle cx="193" cy="240" r="3" fill="#0b2a5b"/>
+  <circle cx="207" cy="240" r="3" fill="#0b2a5b"/>
+  <path d="M193 250q7 6 14 0" fill="none" stroke="#0b2a5b" stroke-width="3" stroke-linecap="round"/>
+</svg>

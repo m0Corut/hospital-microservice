@@ -1,0 +1,14 @@
+@using Hastane.WebUI.Models.Api.Market
+@model ProductApiModel
+@{
+    ViewData["Title"] = "Ürünü sil";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4">Ürünü sil</h1>
+    <p><strong>@Model.Name</strong> ürününü silmek istediğinize emin misiniz? Bu işlem geri alınamaz; sepetlerdeki kopyaları "artık satışta değil" olarak görünür.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+        <button type="submit" class="btn btn-danger">Evet, sil</button>
+        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+    </form>
+</div>

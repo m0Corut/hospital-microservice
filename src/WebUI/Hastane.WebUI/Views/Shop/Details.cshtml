@@ -1,0 +1,68 @@
+@using Hastane.WebUI.ViewModels.Shop
+@model ProductDetailsViewModel
+@{
+    var p = Model.Product;
+    ViewData["Title"] = p.Name;
+    var note = ShopDisplay.StockNote(p.Stock);
+    var returnUrl = Context.Request.Path.Value;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+}
+
+<nav aria-label="Konum" class="small mb-3">
+    <a asp-area="" asp-controller="Shop" asp-action="Index">Mağaza</a>
+    <span class="text-muted mx-1">/</span>
+    <a asp-area="" asp-controller="Shop" asp-action="Index" asp-route-category="@p.Category">@ShopDisplay.CategoryLabel(p.Category)</a>
+</nav>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="product-detail-image"><img src="@ShopDisplay.Image(p.ImageUrl)" alt="@p.Name" /></div>
+    </div>
+    <div class="col-md-7">
+        <div class="panel-card p-4">
+            <div class="text-muted small text-uppercase">@ShopDisplay.CategoryLabel(p.Category)</div>
+            <h1 class="h3">@p.Name</h1>
+            <div class="product-detail-price my-2">@ShopDisplay.Money(p.Price, p.Currency)</div>
+
+            @if (p.Stock <= 0)
+            {
+                <p><span class="badge text-bg-secondary">Stokta yok</span></p>
+            }
+            else
+            {
+                <p class="text-success small mb-2"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>Stokta@(note is null ? "" : " (" + note + ")")</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(p.Description))
+            {
+                <p class="product-description">@p.Description</p>
+            }
+
+            @if (p.Stock > 0 && Model.CanBuy)
+            {
+                <form asp-area="" asp-controller="Shop" asp-action="AddToCart" asp-route-id="@p.Id" method="post" class="d-flex flex-wrap gap-2 align-items-end">
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
+                    <div>
+                        <label for="quantity" class="form-label small mb-1">Adet</label>
+                        <select id="quantity" name="quantity" class="form-select">
+                            @for (var i = 1; i <= Model.MaxSelectable; i++)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-accent"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>Sepete ekle</button>
+                    <a class="btn btn-outline-accent" asp-area="" asp-controller="Cart" asp-action="Index">Sepetim</a>
+                </form>
+            }
+            else if (p.Stock > 0 && !Model.IsSignedIn)
+            {
+                <a class="btn btn-accent" asp-area="" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl">
+                    <i class="bi bi-box-arrow-in-right me-1" aria-hidden="true"></i>Sepete eklemek için giriş yapın
+                </a>
+            }
+        </div>
+    </div>
+</div>

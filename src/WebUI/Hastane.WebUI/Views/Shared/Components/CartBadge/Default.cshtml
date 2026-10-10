@@ -1,0 +1,12 @@
+@using Hastane.WebUI.ViewComponents
+@model int?
+@{
+    var badge = NavBadge.Text(Model);
+}
+<a class="nav-link nav-cart position-relative" href="~/Cart" aria-label="@(badge is null ? "Sepetim" : $"Sepetim, {Model} ürün")" title="Sepetim">
+    <i class="bi bi-cart3 fs-5" aria-hidden="true"></i>
+    @if (badge is not null)
+    {
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger cart-count">@badge</span>
+    }
+</a>

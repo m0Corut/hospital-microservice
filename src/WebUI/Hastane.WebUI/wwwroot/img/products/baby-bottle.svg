@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Biberon">
+  <ellipse cx="200" cy="354" rx="90" ry="11" fill="#0b2a5b" opacity=".12"/>
+  <path d="M200 30c-12 0-20 10-20 22v26h40V52c0-12-8-22-20-22z" fill="#f6b8c8"/>
+  <path d="M168 78h64c14 0 24 10 24 22v10H144v-10c0-12 10-22 24-22z" fill="#d9467a"/>
+  <rect x="136" y="108" width="128" height="34" rx="10" fill="#e66b97"/>
+  <path d="M148 142h104c10 0 18 8 18 18v168c0 14-12 26-26 26H156c-14 0-26-12-26-26V160c0-10 8-18 18-18z" fill="#eaf3ff" stroke="#9fc4f2" stroke-width="4"/>
+  <path d="M130 244h140v84c0 14-12 26-26 26H156c-14 0-26-12-26-26z" fill="#fff"/>
+  <g stroke="#1e6fd9" stroke-width="4" stroke-linecap="round">
+    <path d="M148 178h26M148 204h18M148 230h26M148 256h18M148 282h26"/>
+  </g>
+  <g fill="#1e6fd9" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="14">
+    <text x="224" y="184">240</text>
+    <text x="224" y="236">120</text>
+  </g>
+  <path d="M200 298c-14-16-22-24-22-34a14 14 0 0 1 22-11 14 14 0 0 1 22 11c0 10-8 18-22 34z" fill="#d9467a" opacity=".85" transform="translate(0 6) scale(1)"/>
+  <rect x="266" y="160" width="10" height="150" rx="5" fill="#fff" opacity=".6" transform="translate(-30 0)"/>
+</svg>

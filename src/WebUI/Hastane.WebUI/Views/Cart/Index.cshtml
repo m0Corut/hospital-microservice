@@ -1,0 +1,111 @@
+@using Hastane.WebUI.ViewModels.Shop
+@model CartViewModel
+@{
+    ViewData["Title"] = "Sepetim";
+    var cart = Model.Cart;
+}
+@section Styles {
+    <link rel="stylesheet" href="~/css/shop.css" asp-append-version="true" />
+}
+
+<h1 class="h3 mb-3">Sepetim</h1>
+
+@if (cart.Items.Count == 0)
+{
+    <div class="panel-card p-3">
+        <partial name="_EmptyState" model="@("Sepetiniz boş.")" />
+        <div class="text-center pb-3">
+            <a class="btn btn-accent" asp-area="" asp-controller="Shop" asp-action="Index">Alışverişe başla</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="panel-card p-3">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead><tr><th>Ürün</th><th>Birim fiyat</th><th>Adet</th><th class="text-end">Tutar</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var item in cart.Items)
+                        {
+                            <tr class="cart-row @(item.IsAvailable ? "" : "unavailable")">
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <img class="cart-row-image" src="@ShopDisplay.Image(item.ImageUrl)" alt="" />
+                                        <div>
+                                            @if (item.IsAvailable)
+                                            {
+                                                <a asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@item.ProductId">@item.Name</a>
+                                            }
+                                            else
+                                            {
+                                                <span>@item.Name</span>
+                                                <div><span class="badge text-bg-secondary">@(item.Note ?? "Artık satışta değil")</span></div>
+                                            }
+                                            @if (item.IsAvailable && item.Quantity > item.Stock)
+                                            {
+                                                <div class="small text-danger">Stokta yalnız @item.Stock adet var.</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </td>
+                                @if (item.IsAvailable)
+                                {
+                                    <td class="text-nowrap">@ShopDisplay.Money(item.UnitPrice, cart.Currency)</td>
+                                    <td>
+                                        <form asp-area="" asp-controller="Cart" asp-action="Update" method="post" class="cart-qty-form">
+                                            <input type="hidden" name="productId" value="@item.ProductId" />
+                                            <input type="number" name="quantity" value="@item.Quantity" min="1" max="@ShopDisplay.MaxQuantity" class="form-control form-control-sm" aria-label="@item.Name adedi" />
+                                            <button type="submit" class="btn btn-outline-accent btn-sm">Güncelle</button>
+                                        </form>
+                                    </td>
+                                    <td class="text-end text-nowrap">@ShopDisplay.Money(item.LineTotal, cart.Currency)</td>
+                                }
+                                else
+                                {
+                                    <td class="text-muted">-</td>
+                                    <td class="text-muted">@item.Quantity</td>
+                                    <td class="text-end text-muted">-</td>
+                                }
+                                <td class="text-end">
+                                    <form asp-area="" asp-controller="Cart" asp-action="Remove" method="post">
+                                        <input type="hidden" name="productId" value="@item.ProductId" />
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" aria-label="@item.Name ürününü kaldır"><i class="bi bi-trash" aria-hidden="true"></i> Kaldır</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="panel-card p-4 cart-summary">
+                <h2 class="h5">Sipariş özeti</h2>
+                <div class="d-flex justify-content-between my-3">
+                    <span>Toplam</span>
+                    <strong class="fs-5">@ShopDisplay.Money(cart.Total, cart.Currency)</strong>
+                </div>
+                @if (Model.HasStockIssue)
+                {
+                    <div class="alert alert-warning py-2 small">Bazı ürünlerde adet, stoktan fazla. Siparişi tamamlamadan önce adetleri düzeltin.</div>
+                }
+                @if (Model.HasAvailableItems)
+                {
+                    <a class="btn btn-accent w-100" href="~/Checkout">Siparişi tamamla</a>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-accent w-100" disabled>Siparişi tamamla</button>
+                }
+                <form asp-area="" asp-controller="Cart" asp-action="Clear" method="post" class="mt-2">
+                    <button type="submit" class="btn btn-link btn-sm text-danger w-100">Sepeti boşalt</button>
+                </form>
+                <a class="btn btn-link btn-sm w-100" asp-area="" asp-controller="Shop" asp-action="Index">Alışverişe devam et</a>
+            </div>
+        </div>
+    </div>
+}

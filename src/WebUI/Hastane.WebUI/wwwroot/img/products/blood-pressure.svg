@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Tansiyon aleti">
+  <ellipse cx="200" cy="356" rx="150" ry="12" fill="#0b2a5b" opacity=".12"/>
+  <rect x="54" y="214" width="180" height="120" rx="20" fill="#fff"/>
+  <rect x="54" y="214" width="180" height="120" rx="20" fill="none" stroke="#1e6fd9" stroke-width="6"/>
+  <rect x="72" y="232" width="144" height="58" rx="10" fill="#0b2a5b"/>
+  <text x="96" y="262" font-family="'Courier New', monospace" font-weight="700" font-size="28" fill="#6ff0e2">120</text>
+  <text x="96" y="282" font-family="'Courier New', monospace" font-weight="700" font-size="16" fill="#6ff0e2">/ 80</text>
+  <path d="M178 266l-10-14 10 6 10-18 8 26 8-10" fill="none" stroke="#e8586b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" transform="translate(-8 4)"/>
+  <circle cx="92" cy="316" r="9" fill="#0fb5a6"/>
+  <rect x="116" y="310" width="76" height="12" rx="6" fill="#cfd8e6"/>
+  <path d="M234 276h30c26 0 34-16 34-40v-24" fill="none" stroke="#6b768f" stroke-width="8" stroke-linecap="round"/>
+  <rect x="244" y="64" width="110" height="148" rx="30" fill="#1e6fd9"/>
+  <rect x="244" y="64" width="110" height="46" rx="23" fill="#2f86e8"/>
+  <rect x="262" y="120" width="74" height="10" rx="5" fill="#fff" opacity=".35"/>
+  <rect x="262" y="140" width="74" height="10" rx="5" fill="#fff" opacity=".35"/>
+  <rect x="262" y="160" width="74" height="10" rx="5" fill="#fff" opacity=".35"/>
+</svg>
