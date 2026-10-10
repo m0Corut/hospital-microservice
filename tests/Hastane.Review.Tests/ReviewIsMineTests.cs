@@ -25,7 +25,7 @@ public class ReviewIsMineTests : IClassFixture<ReviewApiFactory>
         return token is null ? client : client.WithBearer(token);
     }
 
-    private static string PatientToken(string userId) => TestJwt.Create(userId, [HastaneRoles.Patient], name: "Hasta " + userId);
+    private static string PatientToken(string userId) => TestJwt.Create(userId, [HastaneRoles.Patient], name: "Test Hasta"); // ad kimliği İÇERMEZ: "kimlik yanıtta yok" testi adı yanlışlıkla yakalamasın
 
     private async Task<ResultReviewDto> CreateAsync(string userId, string doctorId)
     {

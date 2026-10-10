@@ -21,4 +21,9 @@
     <ProjectReference Include="..\Hastane.TestSupport\Hastane.TestSupport.csproj" />
   </ItemGroup>
 
+  <!-- Her test sınıfı kendi SQL Server konteynerini açar (~800 MB). 9+ sınıf aynı anda açılınca Docker belleği
+       (7,4 GB) taşıyor ve konteynerler çöküyordu: sınıflar sırayla koşar, aynı anda tek konteyner. -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

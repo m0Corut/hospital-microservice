@@ -148,12 +148,16 @@ public class ProfileAndAdminListApiTests : IClassFixture<IdentityApiFactory>
         var user = await IdentityTestData.CreateUserAsync(_factory, [HastaneRoles.Patient]);
         var client = IdentityTestData.ClientFor(_factory, user, HastaneRoles.Patient);
 
-        for (var i = 0; i < 5; i++)
+        // Identity hesabı 5. hatalı denemede kilitler ve o denemenin kendisi de "kilitli" döner (login ile aynı).
+        for (var i = 0; i < 4; i++)
         {
             var wrong = await client.PostAsJsonAsync("/api/auth/change-password",
                 new { currentPassword = "Yanlis1234", newPassword = "Yenisifre9" }, Ct);
             Assert.Equal(HttpStatusCode.BadRequest, wrong.StatusCode);
         }
+        var fifth = await client.PostAsJsonAsync("/api/auth/change-password",
+            new { currentPassword = "Yanlis1234", newPassword = "Yenisifre9" }, Ct);
+        Assert.Equal((HttpStatusCode)423, fifth.StatusCode);
 
         var locked = await client.PostAsJsonAsync("/api/auth/change-password",
             new { currentPassword = IdentityTestData.GoodPassword, newPassword = "Yenisifre9" }, Ct);
