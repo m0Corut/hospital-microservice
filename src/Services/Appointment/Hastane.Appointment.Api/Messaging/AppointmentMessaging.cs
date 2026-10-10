@@ -13,7 +13,7 @@ public static class AppointmentMessaging
 
     // Üretimde de testte de AYNI olan kısım (outbox + adlandırma). Taşıma (RabbitMQ / bellek) ayrıca eklenir:
     // test kendi taşımasını (MassTransit test harness) verir.
-    public static void Configure(IBusRegistrationConfigurator x)
+    public static void Configure(IBusRegistrationConfigurator x, Action<IEntityFrameworkOutboxConfigurator>? configureOutbox = null)
     {
         x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter(EndpointPrefix, includeNamespace: false));
         x.AddEntityFrameworkOutbox<AppointmentDbContext>(o =>
@@ -23,6 +23,8 @@ public static class AppointmentMessaging
             // "Bus outbox": IPublishEndpoint.Publish çağrısı mesajı DbContext'e ekler; SaveChanges randevuyla birlikte yazar.
             o.UseBusOutbox();
             o.DisableInboxCleanupService();
+            // Testler teslim gecikmesini kısaltmak için buradan ayar verir (ör. QueryDelay); üretim varsayılanları korunur.
+            configureOutbox?.Invoke(o);
         });
     }
 

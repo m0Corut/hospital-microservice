@@ -1,6 +1,7 @@
 using System.Net;
 using Hastane.Contracts;
 using Hastane.Order.Api.Dtos;
+using Hastane.TestSupport;
 using MassTransit.Testing;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +24,7 @@ public class OrderEventTests : OrderTestBase
 
         var order = await PlaceOrderAsync(client);
 
-        var published = await Harness.Published.SelectAsync<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct);
         Assert.NotNull(published);
         var e = published.Context.Message;
         Assert.NotEqual(Guid.Empty, e.EventId);
@@ -46,8 +47,9 @@ public class OrderEventTests : OrderTestBase
         Assert.Equal(HttpStatusCode.Created, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
         var orderId = (await ReadAsync<GetByIdOrderDto>(first)).Id;
-        await Harness.Published.Any<OrderPlaced>(m => m.Context.Message.OrderId == orderId, Ct);
-        Assert.Single(Harness.Published.Select<OrderPlaced>(m => m.Context.Message.OrderId == orderId, Ct));
+        await Harness.AnyConsumedAsync<OrderPlaced>(m => m.Context.Message.OrderId == orderId, Ct);
+        await OutboxHarnessExtensions.WaitQuietPeriodAsync(Ct);
+        Assert.Single(Harness.Consumed.Select<OrderPlaced>(m => m.Context.Message.OrderId == orderId, Ct));
     }
 
     [Fact]
@@ -58,8 +60,8 @@ public class OrderEventTests : OrderTestBase
         var cancel = await ClientFor(PatientToken(sub)).PostAsync($"/api/orders/{order.Id}/cancel", Raw("{}"), Ct);
         Assert.Equal(HttpStatusCode.OK, cancel.StatusCode);
 
-        var placed = await Harness.Published.SelectAsync<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
-        var cancelled = await Harness.Published.SelectAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct).FirstOrDefault();
+        var placed = await Harness.ConsumedEventAsync<OrderPlaced>(m => m.Context.Message.OrderId == order.Id, Ct);
+        var cancelled = await Harness.ConsumedEventAsync<OrderCancelled>(m => m.Context.Message.OrderId == order.Id, Ct);
         Assert.NotNull(placed);
         Assert.NotNull(cancelled);
         Assert.NotEqual(placed.Context.Message.EventId, cancelled.Context.Message.EventId);

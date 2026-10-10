@@ -6,26 +6,14 @@ using Hastane.Shared.Security;
 using Hastane.TestSupport;
 using MassTransit;
 using MassTransit.Testing;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using static Hastane.Notification.Tests.NotificationTestHelpers;
 
 namespace Hastane.Notification.Tests;
 
-// Üretimdeki tüketici yapılandırması + MassTransit test harness (bellek içi taşıma; RabbitMQ yok). Mongo gerçek (konteyner).
-public class NotificationEventApiFactory : NotificationApiFactory
-{
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        base.ConfigureWebHost(builder);
-        builder.ConfigureTestServices(services =>
-        {
-            services.RemoveMassTransit();
-            services.AddMassTransitTestHarness(x => NotificationMessaging.Configure(x));
-        });
-    }
-}
+// Olay testleri için ayrı fabrika (ayrı Mongo konteyneri). Test harness kaydı temel sınıfta (NotificationApiFactory):
+// üretimdeki tüketici yapılandırması + MassTransit test harness (bellek içi taşıma; RabbitMQ yok). Mongo gerçek (konteyner).
+public class NotificationEventApiFactory : NotificationApiFactory;
 
 // Olay -> uygulama içi bildirim: metinler/alıcılar eski senkron yolla aynı, aynı olay iki kez gelirse tek bildirim.
 public class EventConsumerTests : IClassFixture<NotificationEventApiFactory>

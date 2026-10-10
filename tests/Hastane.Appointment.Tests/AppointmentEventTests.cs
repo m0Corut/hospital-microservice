@@ -66,8 +66,8 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
         var response = await client.PatchAsJsonAsync($"/api/appointments/{appointment.Id}/status",
             new UpdateStatusDto { Status = status }, Json, Ct);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var published = await Harness.Published.SelectAsync<AppointmentStatusChanged>(
-            m => m.Context.Message.AppointmentId == appointment.Id && m.Context.Message.NewStatus == status.ToString(), Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<AppointmentStatusChanged>(
+            m => m.Context.Message.AppointmentId == appointment.Id && m.Context.Message.NewStatus == status.ToString(), Ct);
         Assert.NotNull(published);
         return published.Context.Message;
     }
@@ -82,7 +82,7 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
 
         var created = await CreateAsync(patient, doctorId);
 
-        var published = await Harness.Published.SelectAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == created.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == created.Id, Ct);
         Assert.NotNull(published);
         var e = published.Context.Message;
         Assert.NotEqual(Guid.Empty, e.EventId);
@@ -97,8 +97,8 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
         var a = await CreateAsync(Unique("pat"), Unique("doc"));
         var b = await CreateAsync(Unique("pat"), Unique("doc"));
 
-        var ea = await Harness.Published.SelectAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == a.Id, Ct).FirstOrDefault();
-        var eb = await Harness.Published.SelectAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == b.Id, Ct).FirstOrDefault();
+        var ea = await Harness.ConsumedEventAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == a.Id, Ct);
+        var eb = await Harness.ConsumedEventAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == b.Id, Ct);
         Assert.NotNull(ea);
         Assert.NotNull(eb);
         Assert.NotEqual(ea.Context.Message.EventId, eb.Context.Message.EventId);
@@ -115,8 +115,9 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         // Reddedilen istek outbox satırı da bırakmaz (aynı transaction geri alındı): bu doktor için tek olay.
-        await Harness.Published.Any<AppointmentCreated>(m => m.Context.Message.AppointmentId == first.Id, Ct);
-        var forDoctor = Harness.Published.Select<AppointmentCreated>(m => m.Context.Message.DoctorId == doctorId, Ct).ToList();
+        await Harness.AnyConsumedAsync<AppointmentCreated>(m => m.Context.Message.AppointmentId == first.Id, Ct);
+        await OutboxHarnessExtensions.WaitQuietPeriodAsync(Ct);
+        var forDoctor = Harness.Consumed.Select<AppointmentCreated>(m => m.Context.Message.DoctorId == doctorId, Ct).ToList();
         Assert.Single(forDoctor);
     }
 
@@ -171,7 +172,7 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
             new UpdateStatusDto { Status = AppointmentStatus.Completed }, Json, Ct);
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        Assert.False(await Harness.Published.Any<AppointmentStatusChanged>(m => m.Context.Message.AppointmentId == created.Id, Ct));
+        Assert.False(await Harness.AnyConsumedAsync<AppointmentStatusChanged>(m => m.Context.Message.AppointmentId == created.Id, Ct, OutboxHarnessExtensions.QuietPeriod));
     }
 
     // ---- yeniden planlama ----
@@ -187,7 +188,7 @@ public class AppointmentEventTests : IClassFixture<AppointmentApiFactory>
             new UpdateAppointmentDto { Id = created.Id, BranchId = "branch-2", AppointmentDate = newDate }, Json, Ct);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var published = await Harness.Published.SelectAsync<AppointmentRescheduled>(m => m.Context.Message.AppointmentId == created.Id, Ct).FirstOrDefault();
+        var published = await Harness.ConsumedEventAsync<AppointmentRescheduled>(m => m.Context.Message.AppointmentId == created.Id, Ct);
         Assert.NotNull(published);
         var e = published.Context.Message;
         Assert.Equal(created.AppointmentDate, e.OldDate);
