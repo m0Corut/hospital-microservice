@@ -29,6 +29,8 @@ public class DoctorApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         builder.UseTestJwt();
         builder.UseSetting("DatabaseSettings:DatabaseName", DatabaseName);
         builder.UseSetting("DatabaseSettings:DoctorCollectionName", CollectionName);
+        // Elasticsearch varsayılan KAPALI: appsettings.Development.json localhost:9200 yazsa da mevcut testler yalnız Mongo ile koşar.
+        builder.UseSetting("Elasticsearch:Url", "");
         // Singleton IMongoClient kaydını konteynerin adresiyle değiştir.
         builder.ConfigureServices(services =>
         {

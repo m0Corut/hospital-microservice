@@ -11,11 +11,14 @@ public class IndexInitializerResilienceTests
     public async Task AppStarts_EvenWhenMongoClientCannotBeCreated()
     {
         await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseSetting("Elasticsearch:Url", ""); // Development ayarı localhost:9200 yazsa da bu test Elasticsearch'e bağlanmaz
             b.ConfigureServices(services =>
             {
                 services.RemoveAll<IMongoClient>();
                 services.AddSingleton<IMongoClient>(_ => throw new InvalidOperationException("bağlantı cümlesi geçersiz"));
-            }));
+            });
+        });
 
         using var client = factory.CreateClient(); // host başlar; dizin hatası yalnız loglanır
         Assert.NotNull(client);

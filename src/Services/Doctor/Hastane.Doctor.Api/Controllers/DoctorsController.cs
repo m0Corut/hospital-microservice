@@ -1,4 +1,5 @@
 using Hastane.Doctor.Api.Dtos;
+using Hastane.Doctor.Api.Search;
 using Hastane.Doctor.Api.Services;
 using Hastane.Doctor.Api.Validation;
 using Hastane.Shared.Security;
@@ -38,8 +39,45 @@ public class DoctorsController : ControllerBase
     [HttpGet("search")]
     public async Task<ActionResult<PagedResult<DoctorSearchItemDto>>> Search([FromQuery] DoctorSearchQuery query, CancellationToken ct)
     {
-        try { return Ok(await _service.SearchAsync(query, ct)); }
+        try
+        {
+            var (result, engine) = await _service.SearchWithEngineAsync(query, ct);
+            Response.Headers["X-Search-Engine"] = engine; // teşhis: yanıtı hangi motor üretti (gövde değişmez)
+            return Ok(result);
+        }
         catch (DoctorValidationException ex) { return ValidationProblem(new ValidationProblemDetails(ex.Errors)); }
+    }
+
+    // GET api/doctors/suggest?q=yilm  -> en çok 8 öneri (doktor adı / hizmet). Anonim, salt okunur.
+    [AllowAnonymous]
+    [HttpGet("suggest")]
+    public async Task<ActionResult<List<DoctorSuggestionDto>>> Suggest([FromQuery] string? q, CancellationToken ct)
+    {
+        try { return Ok(await _service.SuggestAsync(q, ct)); }
+        catch (DoctorValidationException ex) { return ValidationProblem(new ValidationProblemDetails(ex.Errors)); }
+    }
+
+    // Arama dizini bakımı (yalnız Admin): kaynak gerçek Mongo; dizin türetilmiş kopyadır, bozulursa buradan onarılır.
+    [Authorize(Policy = HastanePolicies.AdminOnly)]
+    [HttpGet("search-index/status")]
+    public async Task<ActionResult<SearchIndexStatusDto>> SearchIndexStatus(CancellationToken ct)
+        => Ok(await _service.GetSearchIndexStatusAsync(ct));
+
+    [Authorize(Policy = HastanePolicies.AdminOnly)]
+    [HttpPost("search-index/rebuild")]
+    public async Task<ActionResult<SearchIndexRebuildResultDto>> RebuildSearchIndex(CancellationToken ct)
+    {
+        try
+        {
+            var count = await _service.RebuildSearchIndexAsync(ct);
+            if (count is null)
+                return Problem(statusCode: StatusCodes.Status409Conflict, title: "Arama dizini kapalı.", detail: "Elasticsearch:Url ayarlanmamış.");
+            return Ok(new SearchIndexRebuildResultDto { Indexed = count.Value });
+        }
+        catch (SearchIndexException ex)
+        {
+            return Problem(statusCode: StatusCodes.Status503ServiceUnavailable, title: "Arama dizinine ulaşılamadı.", detail: ex.Message);
+        }
     }
 
     // GET api/doctors/batch?ids=a,b,c
