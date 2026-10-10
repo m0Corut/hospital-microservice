@@ -1,0 +1,70 @@
+@using Hastane.WebUI.ViewModels.Queue
+@model PatientQueueViewModel
+@{
+    ViewData["Title"] = "Sıram";
+}
+
+<div data-queue-live data-hub-url="@Model.HubUrl" data-doctor-ids="@string.Join(',', Model.Rows.Select(r => r.Entry.DoctorId).Distinct())"></div>
+
+<h1 class="h4 mb-3">Sıram</h1>
+
+@if (Model.Unavailable)
+{
+    <div class="alert alert-warning">Sıra servisine şu an ulaşılamıyor. Biraz sonra yenileyin.</div>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="panel-card p-4">
+        <p class="text-muted mb-2">Bugün için sıraya girmediniz.</p>
+        <p class="small mb-0">Randevu gününüzde, <a asp-controller="Appointments" asp-action="Index">randevunuzun</a> sayfasından “Sıraya gir” düğmesini kullanın.</p>
+    </div>
+}
+else
+{
+    foreach (var row in Model.Rows)
+    {
+        var e = row.Entry;
+        <div class="panel-card p-4 mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="text-muted small">@row.DoctorName</div>
+                    <div class="display-3 fw-bold lh-1">@e.Number</div>
+                    <div class="small text-muted">Sıra numaranız</div>
+                </div>
+                <div class="text-end">
+                    <span class="badge fs-6 @QueueText.Badge(e.Status)">@QueueText.Status(e.Status)</span>
+                    @if (e.Status == "Waiting")
+                    {
+                        <div class="fs-5 mt-2">
+                            @if (e.AheadCount == 0)
+                            {
+                                <text>Sıradaki sizsiniz</text>
+                            }
+                            else
+                            {
+                                <text>Önünüzde <strong>@e.AheadCount</strong> kişi var</text>
+                            }
+                        </div>
+                    }
+                    else if (e.Status == "Called")
+                    {
+                        <div class="fs-5 mt-2 text-primary">Sıra size geldi, lütfen muayene odasına geçin.</div>
+                    }
+                    <div class="small text-muted mt-1">Sıraya giriş: @QueueText.Time(e.CreatedAt)</div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <p class="small text-muted">Sayfa, sıra değiştikçe kendiliğinden yenilenir.</p>
+}
+
+<p>
+    <a class="btn btn-outline-secondary" asp-controller="Appointments" asp-action="Index">Randevularıma dön</a>
+</p>
+
+@section Scripts {
+    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+    <script src="~/js/queue-live.js"></script>
+}

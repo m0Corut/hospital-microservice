@@ -33,7 +33,13 @@ public sealed class GatewayTests : IAsyncLifetime
         ("payments", "/api/payments"), ("invoices", "/api/invoices"),
         ("doctor-applications", "/api/doctor-applications"), ("patients", "/api/patients"),
         ("notifications", "/api/notifications"), ("chat", "/api/chat"),
+        ("queue", "/api/queue"), ("medicines", "/api/medicines"), ("pharmacy", "/api/pharmacy"),
+        ("products", "/api/products"), ("cart", "/api/cart"), ("orders", "/api/orders"),
     ];
+
+    // SignalR için tek WebSocket rotası: ayrı bir şema ("ws") ve yalnız GET (WebSocket el sıkışması GET'tir).
+    private const string HubUpstream = "/gateway/hubs/queue";
+    private const string HubDownstream = "/hubs/queue";
 
     public static TheoryData<string, string, string> PathCases()
     {
@@ -53,18 +59,90 @@ public sealed class GatewayTests : IAsyncLifetime
     public void Route_table_matches_ocelot_json_exactly()
     {
         var actual = OcelotRoutes.Read().Select(r => (r.Upstream, r.Downstream)).Order().ToArray();
-        var expected = Expected.Select(e => ($"/gateway/{e.Up}/{{everything}}", $"{e.Down}/{{everything}}")).Order().ToArray();
+        var expected = Expected.Select(e => ($"/gateway/{e.Up}/{{everything}}", $"{e.Down}/{{everything}}"))
+            .Append((HubUpstream, HubDownstream)).Order().ToArray();
         Assert.Equal(expected, actual);
     }
 
     [Fact]
-    public void Every_route_allows_all_http_methods()
+    public void Every_route_allows_all_http_methods_except_the_websocket_route_which_is_get_only()
     {
         string[] all = ["GET", "POST", "PUT", "PATCH", "DELETE"];
         foreach (var r in OcelotRoutes.Read())
         {
-            Assert.Equal(all.Order(), r.Methods.Order());
+            if (r.Upstream == HubUpstream) Assert.Equal(["GET"], r.Methods);
+            else Assert.Equal(all.Order(), r.Methods.Order());
         }
+    }
+
+    [Fact]
+    public void Websocket_route_uses_ws_scheme_and_all_others_http()
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "ocelot.json")));
+        foreach (var route in doc.RootElement.GetProperty("Routes").EnumerateArray())
+        {
+            var upstream = route.GetProperty("UpstreamPathTemplate").GetString();
+            var scheme = route.GetProperty("DownstreamScheme").GetString();
+            Assert.Equal(upstream == HubUpstream ? "ws" : "http", scheme);
+        }
+    }
+
+    // İç uçlar (/api/internal/...) servisten servise iç anahtarla çağrılır; Gateway bunları ASLA dışarı açmamalı.
+    [Fact]
+    public void No_route_exposes_api_internal()
+    {
+        foreach (var r in OcelotRoutes.Read())
+        {
+            Assert.DoesNotContain("internal", r.Downstream, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("internal", r.Upstream, StringComparison.OrdinalIgnoreCase);
+            // Her alt yol, tek bir kaynak önekine (/api/<kaynak> ya da hub) sabitlenmiş olmalı.
+            Assert.True(r.Downstream.StartsWith("/api/", StringComparison.Ordinal) || r.Downstream == HubDownstream, r.Downstream);
+        }
+    }
+
+    [Theory]
+    [InlineData("/gateway/internal/stock/reserve")]
+    [InlineData("/gateway/products/internal/stock/reserve")]
+    [InlineData("/gateway/orders/internal/stock/release")]
+    [InlineData("/gateway/orders/..%2Finternal%2Fstock%2Freserve")]
+    [InlineData("/gateway/orders/%2e%2e/internal/stock/reserve")]
+    [InlineData("/gateway/orders/..%252Finternal/stock/reserve")]
+    public async Task Internal_endpoints_are_unreachable_through_the_gateway(string url)
+    {
+        var response = await _client.PostAsync(url, new StringContent("{}", Encoding.UTF8, "application/json"), TestContext.Current.CancellationToken);
+
+        if (response.StatusCode != HttpStatusCode.OK) return; // gateway reddetti ya da bulunamadı: güvenli
+        // 200 ise bile hiçbir isteğin alt serviste /api/internal olarak çözülmediği kanıtlanmalı.
+        var echo = (await response.Content.ReadFromJsonAsync<Echo>(TestContext.Current.CancellationToken))!;
+        Assert.DoesNotMatch(@"^/api/internal(/|$)", echo.Path);
+        Assert.StartsWith("/api/", echo.Path, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/internal", echo.Path, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Gerçek WebSocket el sıkışması: istemci -> Gateway (UseWebSockets + Ocelot ws vekili) -> sahte alt servis.
+    // Sorgu dizgesi (SignalR'ın ?id= / ?access_token= parametreleri) aynen iletilmeli.
+    [Fact]
+    public async Task Websocket_route_proxies_to_downstream_hub_path_with_query()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var wsClient = _factory.Server.CreateWebSocketClient();
+
+        using var socket = await wsClient.ConnectAsync(new Uri("ws://localhost/gateway/hubs/queue?id=abc"), ct);
+        await socket.SendAsync(Encoding.UTF8.GetBytes("merhaba"), System.Net.WebSockets.WebSocketMessageType.Text, true, ct);
+
+        var buffer = new byte[1024];
+        var received = await socket.ReceiveAsync(buffer, ct);
+        var text = Encoding.UTF8.GetString(buffer, 0, received.Count);
+
+        Assert.Equal("echo:merhaba|/hubs/queue?id=abc", text);
+    }
+
+    [Fact]
+    public async Task Websocket_route_rejects_plain_http_post()
+    {
+        var response = await _client.PostAsync("/gateway/hubs/queue", new StringContent("{}"), TestContext.Current.CancellationToken);
+
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Theory]

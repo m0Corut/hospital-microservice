@@ -30,8 +30,22 @@ public sealed class FakeDownstream : IAsyncDisposable
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         var app = builder.Build();
 
+        app.UseWebSockets();
         app.Run(async ctx =>
         {
+            // WebSocket (SignalR rotası): gelen ilk metni yol + sorgu ile birlikte geri yansıtır, sonra kapanır.
+            if (ctx.WebSockets.IsWebSocketRequest)
+            {
+                using var socket = await ctx.WebSockets.AcceptWebSocketAsync();
+                var buffer = new byte[1024];
+                var received = await socket.ReceiveAsync(buffer, ctx.RequestAborted);
+                var text = System.Text.Encoding.UTF8.GetString(buffer, 0, received.Count);
+                var reply = System.Text.Encoding.UTF8.GetBytes($"echo:{text}|{ctx.Request.Path.Value}{ctx.Request.QueryString.Value}");
+                await socket.SendAsync(reply, System.Net.WebSockets.WebSocketMessageType.Text, true, ctx.RequestAborted);
+                await socket.CloseAsync(System.Net.WebSockets.WebSocketCloseStatus.NormalClosure, "bitti", ctx.RequestAborted);
+                return;
+            }
+
             using var reader = new StreamReader(ctx.Request.Body);
             var body = await reader.ReadToEndAsync();
             ctx.Response.StatusCode = int.TryParse(ctx.Request.Headers["X-Fake-Status"], out var s) ? s : 200;

@@ -1,0 +1,113 @@
+@using Hastane.WebUI.ViewModels.Queue
+@model DoctorQueueViewModel
+@{
+    ViewData["Title"] = "Sıra";
+}
+
+<div data-queue-live data-hub-url="@Model.HubUrl" data-doctor-ids="@Model.DoctorId"></div>
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h4 mb-0">Bugünün sırası</h1>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" target="_blank" rel="noopener" asp-area="" asp-controller="Queue" asp-action="Display" asp-route-doctorId="@Model.DoctorId">
+            <i class="bi bi-tv me-1" aria-hidden="true"></i>Çağrı ekranını aç
+        </a>
+        <form asp-area="Doctor" asp-controller="Queue" asp-action="CallNext" method="post">
+            <button type="submit" class="btn btn-primary" disabled="@(Model.Current is not null || Model.Waiting.Count == 0)">
+                <i class="bi bi-megaphone me-1" aria-hidden="true"></i>Sıradakini çağır
+            </button>
+        </form>
+    </div>
+</div>
+
+@if (Model.Unavailable)
+{
+    <div class="alert alert-warning">Sıra servisine şu an ulaşılamıyor.</div>
+}
+
+<section class="panel-card p-4 mb-4">
+    <h2 class="h6 text-muted text-uppercase">Şu an çağrılan</h2>
+    @if (Model.Current is { } current)
+    {
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-baseline gap-3">
+                <span class="display-4 fw-bold">@current.Number</span>
+                <span class="fs-4">@current.DisplayName</span>
+                <span class="text-muted small">Çağrı: @QueueText.Time(current.CalledAt)</span>
+            </div>
+            <div class="d-flex gap-2">
+                <form asp-area="Doctor" asp-controller="Queue" asp-action="Complete" asp-route-id="@current.Id" method="post">
+                    <button type="submit" class="btn btn-success">Tamamla</button>
+                </form>
+                <form asp-area="Doctor" asp-controller="Queue" asp-action="NoShow" asp-route-id="@current.Id" method="post">
+                    <button type="submit" class="btn btn-outline-danger">Gelmedi</button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <p class="text-muted mb-0">Şu an çağrılan hasta yok.</p>
+    }
+</section>
+
+<section class="panel-card p-4 mb-4">
+    <h2 class="h6 text-muted text-uppercase">Bekleyenler (@Model.Waiting.Count)</h2>
+    @if (Model.Waiting.Count == 0)
+    {
+        <p class="text-muted mb-0">Sırada bekleyen hasta yok.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr><th>No</th><th>Hasta</th><th>Sıraya giriş</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Waiting)
+                    {
+                        <tr>
+                            <td class="fw-bold">@e.Number</td>
+                            <td>@e.DisplayName</td>
+                            <td>@QueueText.Time(e.CreatedAt)</td>
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <a class="btn btn-outline-secondary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@e.AppointmentId">Randevu</a>
+                                    <form asp-area="Doctor" asp-controller="Queue" asp-action="Call" asp-route-id="@e.Id" method="post">
+                                        <button type="submit" class="btn btn-outline-primary btn-sm" disabled="@(Model.Current is not null)">Çağır</button>
+                                    </form>
+                                    <form asp-area="Doctor" asp-controller="Queue" asp-action="NoShow" asp-route-id="@e.Id" method="post">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Gelmedi</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>
+
+@if (Model.Finished.Count > 0)
+{
+    <section class="panel-card p-4">
+        <h2 class="h6 text-muted text-uppercase">Bitenler (@Model.Finished.Count)</h2>
+        <ul class="list-unstyled mb-0">
+            @foreach (var e in Model.Finished)
+            {
+                <li class="d-flex gap-3 py-1">
+                    <span class="fw-bold">@e.Number</span>
+                    <span>@e.DisplayName</span>
+                    <span class="badge @QueueText.Badge(e.Status)">@QueueText.Status(e.Status)</span>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@section Scripts {
+    <script src="~/lib/microsoft-signalr/signalr.min.js"></script>
+    <script src="~/js/queue-live.js"></script>
+}
