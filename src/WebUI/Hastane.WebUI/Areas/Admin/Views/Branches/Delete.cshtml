@@ -1,0 +1,13 @@
+@model AdminBranchApiModel
+@{
+    ViewData["Title"] = "Branşı sil";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4">Branşı sil</h1>
+    <p><strong>@Model.Name</strong> branşını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+        <button type="submit" class="btn btn-danger">Evet, sil</button>
+        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+    </form>
+</div>

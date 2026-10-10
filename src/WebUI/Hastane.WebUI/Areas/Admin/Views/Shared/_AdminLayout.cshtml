@@ -1,0 +1,25 @@
+@{
+    // Yönetim paneli iskeleti: ortak _Layout içinde sol menü + içerik. Yetki burada değil, AdminAreaController'dadır.
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var current = ViewContext.RouteData.Values["controller"]?.ToString() ?? "Home";
+    string Active(string controller) => string.Equals(current, controller, StringComparison.OrdinalIgnoreCase) ? "active" : "";
+}
+
+<div class="row g-4">
+    <aside class="col-lg-3">
+        <div class="list-group panel-card" aria-label="Yönetim menüsü">
+            <a class="list-group-item list-group-item-action @Active("Home")" asp-area="Admin" asp-controller="Home" asp-action="Index">Panel</a>
+            <a class="list-group-item list-group-item-action @Active("Branches")" asp-area="Admin" asp-controller="Branches" asp-action="Index">Branşlar</a>
+            <a class="list-group-item list-group-item-action @Active("Doctors")" asp-area="Admin" asp-controller="Doctors" asp-action="Index">Doktorlar</a>
+            <a class="list-group-item list-group-item-action @Active("Users")" asp-area="Admin" asp-controller="Users" asp-action="Index">Kullanıcılar</a>
+            <a class="list-group-item list-group-item-action @Active("Roles")" asp-area="Admin" asp-controller="Roles" asp-action="Index">Roller</a>
+            <a class="list-group-item list-group-item-action @Active("Appointments")" asp-area="Admin" asp-controller="Appointments" asp-action="Index">Randevular</a>
+            <a class="list-group-item list-group-item-action @Active("Payments")" asp-area="Admin" asp-controller="Payments" asp-action="Index">Ödemeler</a>
+            <a class="list-group-item list-group-item-action @Active("Invoices")" asp-area="Admin" asp-controller="Invoices" asp-action="Index">Faturalar</a>
+            <a class="list-group-item list-group-item-action @Active("Prescriptions")" asp-area="Admin" asp-controller="Prescriptions" asp-action="Index">Reçeteler</a>
+        </div>
+    </aside>
+    <div class="col-lg-9">
+        @RenderBody()
+    </div>
+</div>

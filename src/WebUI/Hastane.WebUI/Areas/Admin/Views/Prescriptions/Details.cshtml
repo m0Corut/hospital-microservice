@@ -1,0 +1,41 @@
+@model PrescriptionDetailsViewModel
+@{
+    ViewData["Title"] = "Reçete";
+    var p = Model.Prescription;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Reçete</h1>
+    <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Tarih</dt><dd class="col-sm-9">@AdminDisplay.Date(p.IssuedAt)</dd>
+        <dt class="col-sm-3">Doktor</dt><dd class="col-sm-9">@Model.Lookups.Doctor(p.DoctorId)</dd>
+        <dt class="col-sm-3">Hasta Id</dt><dd class="col-sm-9"><code>@p.PatientId</code></dd>
+        <dt class="col-sm-3">Randevu</dt><dd class="col-sm-9"><a asp-controller="Appointments" asp-action="Details" asp-route-id="@p.AppointmentId">Randevuya git</a></dd>
+        <dt class="col-sm-3">Not</dt><dd class="col-sm-9">@p.Notes</dd>
+    </dl>
+</div>
+
+<div class="panel-card p-3">
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead><tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre (gün)</th><th>Kullanım</th></tr></thead>
+            <tbody>
+            @foreach (var item in p.Items.OrderBy(i => i.LineNo))
+            {
+                <tr>
+                    <td>@item.LineNo</td>
+                    <td>@item.MedicineName</td>
+                    <td>@item.Dosage</td>
+                    <td>@item.Frequency</td>
+                    <td>@item.DurationDays</td>
+                    <td class="small">@item.Instructions</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

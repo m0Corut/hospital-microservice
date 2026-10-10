@@ -1,0 +1,225 @@
+@model DoctorFormViewModel
+@{
+    var isEdit = Model.Id is not null;
+    ViewData["Title"] = isEdit ? "Doktoru düzenle" : "Doktor ekle";
+
+    var genderItems = new List<SelectListItem>
+    {
+        new("Erkek", nameof(AdminDoctorGender.Male)),
+        new("Kadın", nameof(AdminDoctorGender.Female)),
+        new("Diğer", nameof(AdminDoctorGender.Other)),
+    };
+    var dayItems = new[]
+    {
+        DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+        DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday,
+    }.Select(d => new SelectListItem(AdminDisplay.Day(d), d.ToString())).ToList();
+}
+
+@* Liste ekle/çıkar düğmeleri JavaScript'siz çalışır: düğme "command" alanını gönderir, sunucu listeyi değiştirip formu yeniden çizer. *@
+<div class="panel-card p-4">
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
+    <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+        @* Enter tuşu ilk gönder düğmesini tetikler; bu gizli düğme "Kaydet" olsun, "Çıkar" değil. *@
+        <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Kaydet</button>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+        <h2 class="h6 text-primary">Kişisel bilgiler</h2>
+        <div class="row g-3 mb-4">
+            <div class="col-md-2">
+                <label asp-for="Title" class="form-label"></label>
+                <input asp-for="Title" class="form-control" placeholder="Dr." />
+                <span asp-validation-for="Title" class="text-danger small"></span>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="FirstName" class="form-label"></label>
+                <input asp-for="FirstName" class="form-control" />
+                <span asp-validation-for="FirstName" class="text-danger small"></span>
+            </div>
+            <div class="col-md-5">
+                <label asp-for="LastName" class="form-label"></label>
+                <input asp-for="LastName" class="form-control" />
+                <span asp-validation-for="LastName" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Gender" class="form-label"></label>
+                <select asp-for="Gender" class="form-select" asp-items="genderItems">
+                    <option value="">Seçin</option>
+                </select>
+                <span asp-validation-for="Gender" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="BranchId" class="form-label"></label>
+                <select asp-for="BranchId" class="form-select" asp-items="Model.BranchChoices">
+                    <option value="">Seçin</option>
+                </select>
+                <span asp-validation-for="BranchId" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Degrees" class="form-label"></label>
+                <input asp-for="Degrees" class="form-control" />
+                <span asp-validation-for="Degrees" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Email" class="form-label"></label>
+                <input asp-for="Email" class="form-control" />
+                <span asp-validation-for="Email" class="text-danger small"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="ImageUrl" class="form-label"></label>
+                <input asp-for="ImageUrl" class="form-control" placeholder="https://..." />
+                <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Biography" class="form-label"></label>
+                <textarea asp-for="Biography" class="form-control" rows="4"></textarea>
+                <span asp-validation-for="Biography" class="text-danger small"></span>
+            </div>
+        </div>
+
+        <h2 class="h6 text-primary">Sosyal bağlantılar</h2>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4"><label asp-for="SocialLinks.Facebook" class="form-label"></label><input asp-for="SocialLinks.Facebook" class="form-control" /><span asp-validation-for="SocialLinks.Facebook" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="SocialLinks.X" class="form-label"></label><input asp-for="SocialLinks.X" class="form-control" /><span asp-validation-for="SocialLinks.X" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="SocialLinks.Instagram" class="form-label"></label><input asp-for="SocialLinks.Instagram" class="form-control" /><span asp-validation-for="SocialLinks.Instagram" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="SocialLinks.LinkedIn" class="form-label"></label><input asp-for="SocialLinks.LinkedIn" class="form-control" /><span asp-validation-for="SocialLinks.LinkedIn" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="SocialLinks.Pinterest" class="form-label"></label><input asp-for="SocialLinks.Pinterest" class="form-control" /><span asp-validation-for="SocialLinks.Pinterest" class="text-danger small"></span></div>
+            <div class="col-md-4"><label asp-for="SocialLinks.YouTube" class="form-label"></label><input asp-for="SocialLinks.YouTube" class="form-control" /><span asp-validation-for="SocialLinks.YouTube" class="text-danger small"></span></div>
+        </div>
+
+        <h2 class="h6 text-primary">Hizmetler</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.Services.Count; i++)
+            {
+                <div class="input-group mb-2">
+                    <input asp-for="Services[i]" class="form-control" aria-label="Hizmet @(i + 1)" />
+                    <button type="submit" name="command" value="remove:Services:@i" class="btn btn-outline-danger" formnovalidate>Çıkar</button>
+                </div>
+                <span asp-validation-for="Services[i]" class="text-danger small"></span>
+            }
+            <button type="submit" name="command" value="add:Services" class="btn btn-outline-primary btn-sm" formnovalidate>Hizmet ekle</button>
+        </div>
+
+        <h2 class="h6 text-primary">Fotoğraf galerisi (adresler)</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.Gallery.Count; i++)
+            {
+                <div class="input-group mb-2">
+                    <input asp-for="Gallery[i]" class="form-control" placeholder="https://..." aria-label="Fotoğraf @(i + 1)" />
+                    <button type="submit" name="command" value="remove:Gallery:@i" class="btn btn-outline-danger" formnovalidate>Çıkar</button>
+                </div>
+                <span asp-validation-for="Gallery[i]" class="text-danger small"></span>
+            }
+            <button type="submit" name="command" value="add:Gallery" class="btn btn-outline-primary btn-sm" formnovalidate>Fotoğraf ekle</button>
+        </div>
+
+        <h2 class="h6 text-primary">Eğitim</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.Educations.Count; i++)
+            {
+                <div class="border rounded p-3 mb-2">
+                    <div class="row g-2">
+                        <div class="col-md-4"><label asp-for="Educations[i].School" class="form-label small"></label><input asp-for="Educations[i].School" class="form-control" /><span asp-validation-for="Educations[i].School" class="text-danger small"></span></div>
+                        <div class="col-md-4"><label asp-for="Educations[i].Department" class="form-label small"></label><input asp-for="Educations[i].Department" class="form-control" /><span asp-validation-for="Educations[i].Department" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="Educations[i].StartYear" class="form-label small"></label><input asp-for="Educations[i].StartYear" type="number" class="form-control" /><span asp-validation-for="Educations[i].StartYear" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="Educations[i].EndYear" class="form-label small"></label><input asp-for="Educations[i].EndYear" type="number" class="form-control" /><span asp-validation-for="Educations[i].EndYear" class="text-danger small"></span></div>
+                    </div>
+                    <button type="submit" name="command" value="remove:Educations:@i" class="btn btn-outline-danger btn-sm mt-2" formnovalidate>Eğitimi çıkar</button>
+                </div>
+            }
+            <button type="submit" name="command" value="add:Educations" class="btn btn-outline-primary btn-sm" formnovalidate>Eğitim ekle</button>
+        </div>
+
+        <h2 class="h6 text-primary">Deneyim</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.Experiences.Count; i++)
+            {
+                <div class="border rounded p-3 mb-2">
+                    <div class="row g-2">
+                        <div class="col-md-4"><label asp-for="Experiences[i].Place" class="form-label small"></label><input asp-for="Experiences[i].Place" class="form-control" /><span asp-validation-for="Experiences[i].Place" class="text-danger small"></span></div>
+                        <div class="col-md-4"><label asp-for="Experiences[i].Position" class="form-label small"></label><input asp-for="Experiences[i].Position" class="form-control" /><span asp-validation-for="Experiences[i].Position" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="Experiences[i].StartYear" class="form-label small"></label><input asp-for="Experiences[i].StartYear" type="number" class="form-control" /><span asp-validation-for="Experiences[i].StartYear" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="Experiences[i].EndYear" class="form-label small"></label><input asp-for="Experiences[i].EndYear" type="number" class="form-control" /><span asp-validation-for="Experiences[i].EndYear" class="text-danger small"></span></div>
+                    </div>
+                    <button type="submit" name="command" value="remove:Experiences:@i" class="btn btn-outline-danger btn-sm mt-2" formnovalidate>Deneyimi çıkar</button>
+                </div>
+            }
+            <button type="submit" name="command" value="add:Experiences" class="btn btn-outline-primary btn-sm" formnovalidate>Deneyim ekle</button>
+        </div>
+
+        <h2 class="h6 text-primary">Ödüller</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.Awards.Count; i++)
+            {
+                <div class="border rounded p-3 mb-2">
+                    <div class="row g-2">
+                        <div class="col-md-5"><label asp-for="Awards[i].Title" class="form-label small"></label><input asp-for="Awards[i].Title" class="form-control" /><span asp-validation-for="Awards[i].Title" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="Awards[i].Year" class="form-label small"></label><input asp-for="Awards[i].Year" type="number" class="form-control" /><span asp-validation-for="Awards[i].Year" class="text-danger small"></span></div>
+                        <div class="col-md-5"><label asp-for="Awards[i].Description" class="form-label small"></label><input asp-for="Awards[i].Description" class="form-control" /><span asp-validation-for="Awards[i].Description" class="text-danger small"></span></div>
+                    </div>
+                    <button type="submit" name="command" value="remove:Awards:@i" class="btn btn-outline-danger btn-sm mt-2" formnovalidate>Ödülü çıkar</button>
+                </div>
+            }
+            <button type="submit" name="command" value="add:Awards" class="btn btn-outline-primary btn-sm" formnovalidate>Ödül ekle</button>
+        </div>
+
+        <h2 class="h6 text-primary">Klinikler ve çalışma programı</h2>
+        <div class="mb-4">
+            @for (var i = 0; i < Model.ClinicLocations.Count; i++)
+            {
+                <div class="border rounded p-3 mb-3">
+                    <div class="row g-2">
+                        <div class="col-md-4"><label asp-for="ClinicLocations[i].ClinicName" class="form-label small"></label><input asp-for="ClinicLocations[i].ClinicName" class="form-control" /><span asp-validation-for="ClinicLocations[i].ClinicName" class="text-danger small"></span></div>
+                        <div class="col-md-4"><label asp-for="ClinicLocations[i].City" class="form-label small"></label><input asp-for="ClinicLocations[i].City" class="form-control" /><span asp-validation-for="ClinicLocations[i].City" class="text-danger small"></span></div>
+                        <div class="col-md-4"><label asp-for="ClinicLocations[i].District" class="form-label small"></label><input asp-for="ClinicLocations[i].District" class="form-control" /><span asp-validation-for="ClinicLocations[i].District" class="text-danger small"></span></div>
+                        <div class="col-md-6"><label asp-for="ClinicLocations[i].Address" class="form-label small"></label><input asp-for="ClinicLocations[i].Address" class="form-control" /><span asp-validation-for="ClinicLocations[i].Address" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="ClinicLocations[i].Floor" class="form-label small"></label><input asp-for="ClinicLocations[i].Floor" class="form-control" /><span asp-validation-for="ClinicLocations[i].Floor" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="ClinicLocations[i].HourlyFee" class="form-label small"></label><input asp-for="ClinicLocations[i].HourlyFee" class="form-control" inputmode="decimal" /><span asp-validation-for="ClinicLocations[i].HourlyFee" class="text-danger small"></span></div>
+                        <div class="col-md-2"><label asp-for="ClinicLocations[i].Currency" class="form-label small"></label><input asp-for="ClinicLocations[i].Currency" class="form-control" maxlength="3" /><span asp-validation-for="ClinicLocations[i].Currency" class="text-danger small"></span></div>
+                    </div>
+
+                    <h3 class="h6 mt-3 mb-2">Haftalık program</h3>
+                    <span asp-validation-for="ClinicLocations[i].Schedule" class="text-danger small d-block"></span>
+                    @for (var j = 0; j < Model.ClinicLocations[i].Schedule.Count; j++)
+                    {
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-3">
+                                <label asp-for="ClinicLocations[i].Schedule[j].DayOfWeek" class="form-label small"></label>
+                                <select asp-for="ClinicLocations[i].Schedule[j].DayOfWeek" class="form-select" asp-items="dayItems"></select>
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="ClinicLocations[i].Schedule[j].StartTime" class="form-label small"></label>
+                                <input asp-for="ClinicLocations[i].Schedule[j].StartTime" type="time" class="form-control" />
+                                <span asp-validation-for="ClinicLocations[i].Schedule[j].StartTime" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="ClinicLocations[i].Schedule[j].EndTime" class="form-label small"></label>
+                                <input asp-for="ClinicLocations[i].Schedule[j].EndTime" type="time" class="form-control" />
+                                <span asp-validation-for="ClinicLocations[i].Schedule[j].EndTime" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-2">
+                                <label asp-for="ClinicLocations[i].Schedule[j].SlotMinutes" class="form-label small"></label>
+                                <input asp-for="ClinicLocations[i].Schedule[j].SlotMinutes" type="number" class="form-control" />
+                                <span asp-validation-for="ClinicLocations[i].Schedule[j].SlotMinutes" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <button type="submit" name="command" value="remove:Schedule:@i:@j" class="btn btn-outline-danger btn-sm" formnovalidate aria-label="Aralığı çıkar">Çıkar</button>
+                            </div>
+                        </div>
+                    }
+                    <button type="submit" name="command" value="add:Schedule:@i" class="btn btn-outline-primary btn-sm" formnovalidate>Aralık ekle</button>
+                    <button type="submit" name="command" value="remove:ClinicLocations:@i" class="btn btn-outline-danger btn-sm ms-2" formnovalidate>Kliniği çıkar</button>
+                </div>
+            }
+            <button type="submit" name="command" value="add:ClinicLocations" class="btn btn-outline-primary btn-sm" formnovalidate>Klinik ekle</button>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+    </form>
+</div>

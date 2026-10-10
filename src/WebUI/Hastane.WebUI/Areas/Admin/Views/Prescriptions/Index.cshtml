@@ -1,0 +1,49 @@
+@model PrescriptionIndexViewModel
+@{
+    ViewData["Title"] = "Reçeteler";
+}
+
+<h1 class="h4 mb-3">Reçeteler</h1>
+
+<form method="get" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-3">
+        <label for="PatientId" class="form-label small">Hasta Id</label>
+        <input id="PatientId" name="PatientId" value="@Model.Filter.PatientId" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label for="DoctorId" class="form-label small">Doktor Id</label>
+        <input id="DoctorId" name="DoctorId" value="@Model.Filter.DoctorId" class="form-control" />
+    </div>
+    <div class="col-md-4">
+        <label for="AppointmentId" class="form-label small">Randevu Id</label>
+        <input id="AppointmentId" name="AppointmentId" value="@Model.Filter.AppointmentId" class="form-control" />
+    </div>
+    <div class="col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary mt-auto">Süz</button></div>
+</form>
+
+<div class="panel-card p-3">
+    @if (Model.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Reçete bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Tarih</th><th>Doktor</th><th>Hasta Id</th><th class="text-end">İlaç sayısı</th><th class="text-end">İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Items)
+                {
+                    <tr>
+                        <td>@AdminDisplay.Date(p.IssuedAt)</td>
+                        <td>@Model.Lookups.Doctor(p.DoctorId)</td>
+                        <td class="small"><code>@p.PatientId</code></td>
+                        <td class="text-end">@p.ItemCount</td>
+                        <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@p.Id">Ayrıntı</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

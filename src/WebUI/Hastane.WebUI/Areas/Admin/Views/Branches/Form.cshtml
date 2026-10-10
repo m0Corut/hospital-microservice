@@ -1,0 +1,29 @@
+@model BranchFormViewModel
+@{
+    var isEdit = Model.Id is not null;
+    ViewData["Title"] = isEdit ? "Branşı düzenle" : "Branş ekle";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
+    <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <div class="mb-3">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+            <span asp-validation-for="Description" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Icon" class="form-label"></label>
+            <input asp-for="Icon" class="form-control" />
+            <span asp-validation-for="Icon" class="text-danger small"></span>
+        </div>
+        <button type="submit" class="btn btn-primary">Kaydet</button>
+        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+    </form>
+</div>

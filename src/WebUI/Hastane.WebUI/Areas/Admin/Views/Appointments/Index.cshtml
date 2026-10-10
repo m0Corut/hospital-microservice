@@ -1,0 +1,70 @@
+@model AppointmentIndexViewModel
+@{
+    ViewData["Title"] = "Randevular";
+    var statuses = new[] { "Pending", "Confirmed", "Cancelled", "Completed" };
+    var doctorItems = Model.Lookups.Doctors.Values
+        .Select(d => new SelectListItem(AdminDisplay.FullName(d), d.Id, d.Id == Model.Filter.DoctorId)).ToList();
+}
+
+<h1 class="h4 mb-3">Randevular</h1>
+
+<form method="get" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-3">
+        <label for="DoctorId" class="form-label small">Doktor</label>
+        <select id="DoctorId" name="DoctorId" class="form-select" asp-items="doctorItems"><option value="">Tümü</option></select>
+    </div>
+    <div class="col-md-3">
+        <label for="PatientId" class="form-label small">Hasta Id</label>
+        <input id="PatientId" name="PatientId" value="@Model.Filter.PatientId" class="form-control" />
+    </div>
+    <div class="col-md-2">
+        <label for="Status" class="form-label small">Durum</label>
+        <select id="Status" name="Status" class="form-select">
+            <option value="">Tümü</option>
+            @foreach (var s in statuses)
+            {
+                <option value="@s" selected="@(Model.Filter.Status == s)">@AdminDisplay.AppointmentStatus(s)</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label for="From" class="form-label small">Başlangıç</label>
+        <input id="From" name="From" type="date" value="@Model.Filter.From" class="form-control" />
+    </div>
+    <div class="col-md-2">
+        <label for="To" class="form-label small">Bitiş</label>
+        <input id="To" name="To" type="date" value="@Model.Filter.To" class="form-control" />
+    </div>
+    <div class="col-12"><button type="submit" class="btn btn-outline-primary btn-sm">Süz</button></div>
+</form>
+
+<div class="panel-card p-3">
+    @if (Model.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Randevu bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Tarih</th><th>Doktor</th><th>Branş</th><th>Hasta Id</th><th>Durum</th><th class="text-end">İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var a in Model.Items)
+                {
+                    <tr>
+                        <td>@AdminDisplay.Date(a.AppointmentDate)</td>
+                        <td>@Model.Lookups.Doctor(a.DoctorId)</td>
+                        <td>@Model.Lookups.Branch(a.BranchId)</td>
+                        <td class="small"><code>@a.PatientId</code></td>
+                        <td><span class="badge @AdminDisplay.StatusBadge(a.Status)">@AdminDisplay.AppointmentStatus(a.Status)</span></td>
+                        <td class="text-end text-nowrap">
+                            <a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@a.Id">Ayrıntı</a>
+                            <a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@a.Id">Sil</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
