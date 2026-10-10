@@ -7,13 +7,14 @@ using Hastane.Order.Api.Settings;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers()
-    // Enum JSON'da "Received" gibi metin olarak gelir/gider (sayı yerine).
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+    // Enum JSON'da "Received" gibi metin olarak gelir/gider; sayı (ör. 7) kabul edilmez, 400 olur.
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)));
 builder.Services.AddOpenApi();
 
 TypeAdapterConfig.GlobalSettings.Scan(typeof(OrderMappingConfig).Assembly);
@@ -23,7 +24,9 @@ builder.Services.AddMapster();
 // testte WebApplicationFactory'nin verdiği konteyner adresi geçerli olsun.
 // Sağlayıcı: Oracle MySql.EntityFrameworkCore (Pomelo'nun EF Core 10 kararlı sürümü yok), UseMySQL (büyük harf) ile.
 builder.Services.AddDbContext<OrderDbContext>((sp, options) =>
-    options.UseMySQL(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")!));
+    options.UseMySQL(Utf8(sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")!))
+        // Sağlayıcının migration kilidi MariaDB 11.4'te çöküyor (GET_LOCK NULL -> InvalidCastException): NULL-güvenli sürümü tak.
+        .ReplaceService<IHistoryRepository, MariaDbHistoryRepository>());
 
 // Kimlik doğrulama (token geçerli mi?) + yetkilendirme (politikalar) + "token'daki kullanıcı kim?" (ICurrentUser).
 builder.Services.AddHastaneJwtAuthentication(builder.Configuration);
@@ -65,6 +68,17 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// MariaDB sunucusunda bağlantı karakter kümesi varsayılan olarak latin1 gelebilir: "Ateş" sessizce "Ates" olur.
+// Bağlantı cümlesinde belirtilmemişse utf8mb4 zorlanır.
+static string Utf8(string connectionString)
+{
+    var builder = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder(connectionString);
+    if (!connectionString.Contains("charset", StringComparison.OrdinalIgnoreCase)
+        && !connectionString.Contains("characterset", StringComparison.OrdinalIgnoreCase))
+        builder.CharacterSet = "utf8mb4";
+    return builder.ConnectionString;
+}
 
 // Test projesinin WebApplicationFactory<Program> kullanabilmesi için.
 public partial class Program { }
