@@ -41,6 +41,7 @@
                                 <li><a class="dropdown-item" href="~/Branches"><i class="bi bi-grid" aria-hidden="true"></i>Branşlar</a></li>
                             </ul>
                         </li>
+                    <li class="nav-item"><a class="nav-link @NavActive(area == "" && controller is "Shop" or "Cart")" href="~/Shop">Mağaza</a></li>
                         @if (!isAuth)
                         {
                             <li class="nav-item dropdown">
@@ -61,6 +62,8 @@
                                     <li><a class="dropdown-item" href="~/Patient/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçetelerim</a></li>
                                     <li><a class="dropdown-item" href="~/Patient/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemelerim</a></li>
                                     <li><a class="dropdown-item" href="~/Patient/Invoices"><i class="bi bi-receipt" aria-hidden="true"></i>Faturalarım</a></li>
+                                <li><a class="dropdown-item" href="~/Patient/Queue"><i class="bi bi-list-ol" aria-hidden="true"></i>Sıram</a></li>
+                                <li><a class="dropdown-item" href="~/Patient/Orders"><i class="bi bi-bag-check" aria-hidden="true"></i>Siparişlerim</a></li>
                                     <li><a class="dropdown-item" href="~/Patient/Favorites"><i class="bi bi-heart" aria-hidden="true"></i>Favoriler</a></li>
                                     <li><a class="dropdown-item" href="~/Messages"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Mesajlar</span>@await Component.InvokeAsync("MessageBadge")</a></li>
                                     <li><hr class="dropdown-divider" /></li>
@@ -78,6 +81,7 @@
                                     <li><a class="dropdown-item" href="~/Doctor"><i class="bi bi-speedometer2" aria-hidden="true"></i>Panel</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevular</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Calendar"><i class="bi bi-calendar-week" aria-hidden="true"></i>Takvim</a></li>
+                                <li><a class="dropdown-item" href="~/Doctor/Queue"><i class="bi bi-list-ol" aria-hidden="true"></i>Sıra</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Patients"><i class="bi bi-people" aria-hidden="true"></i>Hastalarım</a></li>
                                     <li><a class="dropdown-item" href="~/Messages"><i class="bi bi-chat-dots" aria-hidden="true"></i><span>Mesajlar</span>@await Component.InvokeAsync("MessageBadge")</a></li>
                                     <li><a class="dropdown-item" href="~/Doctor/Schedule"><i class="bi bi-clock-history" aria-hidden="true"></i>Çalışma Saatleri</a></li>
@@ -97,6 +101,7 @@
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle @NavActive(area == "" && controller == "Home" && (action is "About" or "Contact" or "Faq"))" href="#" id="pagesMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Sayfalar</span></a>
                             <ul class="dropdown-menu" aria-labelledby="pagesMenu">
+                            <li><a class="dropdown-item" href="~/Queue/Display"><i class="bi bi-display" aria-hidden="true"></i>Çağrı ekranı</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="About"><i class="bi bi-info-circle" aria-hidden="true"></i>Hakkımızda</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Contact"><i class="bi bi-envelope" aria-hidden="true"></i>İletişim</a></li>
                                 <li><a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Faq"><i class="bi bi-question-circle" aria-hidden="true"></i>SSS</a></li>
@@ -107,7 +112,8 @@
                         @if (isAuth)
                         {
                             @* Bildirim zili (tüm roller): sayı view component'te; servis kapalıysa rozet gizlenir, sayfa bozulmaz. *@
-                            <li class="nav-item me-lg-2">@await Component.InvokeAsync("NotificationBell")</li>
+                            <li class="nav-item me-lg-2">@await Component.InvokeAsync("CartBadge")</li>
+                    <li class="nav-item me-lg-2">@await Component.InvokeAsync("NotificationBell")</li>
                             <li class="nav-item dropdown">
                                 <a class="nav-user dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                                     @if (!string.IsNullOrEmpty(userId))
