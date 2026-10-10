@@ -20,3 +20,7 @@ logs/
 
 # Docker: JWT anahtar dosyaları (docker-up.ps1 üretir)
 secrets/
+
+# Yayınlanmayanlar: kişisel devir notu ve telifi başkasına ait kurs/tema ekran görüntüleri (yalnız yerelde)
+SABAH-LISTESI.md
+docs/arayuz-referans/
