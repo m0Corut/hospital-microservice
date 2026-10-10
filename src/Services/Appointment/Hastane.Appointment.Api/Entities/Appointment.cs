@@ -13,6 +13,9 @@ public class Appointment
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
     public DateTime CreatedAt { get; set; }
 
+    // Hasta şikâyeti / not. Yalnız oluştururken verilir; yeniden planlama değiştirmez.
+    public string? Note { get; set; }
+
     // Bire-bir (0..1): randevunun muayene detayı henüz girilmemiş olabilir.
     public AppointmentDetail? Detail { get; set; }
 }

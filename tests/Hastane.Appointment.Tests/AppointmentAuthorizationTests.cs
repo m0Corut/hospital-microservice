@@ -68,6 +68,7 @@ public class AppointmentAuthorizationTests : IClassFixture<AppointmentApiFactory
     public static TheoryData<string, string> ProtectedEndpoints() => new()
     {
         { "GET", "/api/appointments" },
+        { "GET", "/api/appointments/availability?doctorId=x&date=2030-01-07" },
         { "GET", "/api/appointments/00000000-0000-0000-0000-000000000001" },
         { "POST", "/api/appointments" },
         { "PUT", "/api/appointments/00000000-0000-0000-0000-000000000001" },

@@ -17,6 +17,7 @@ public class AppointmentMappingConfig : IRegister
         config.NewConfig<CreateAppointmentDto, AppointmentEntity>()
             .Ignore(a => a.Id)
             .Ignore(a => a.PatientId) // token'dan atanır
+            .Ignore(a => a.Note) // serviste kırpılıp atanır
             .Ignore(a => a.Status)
             .Ignore(a => a.CreatedAt)
             .Ignore(a => a.Detail!);
