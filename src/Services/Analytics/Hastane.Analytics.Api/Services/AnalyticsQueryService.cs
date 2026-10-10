@@ -40,7 +40,8 @@ public sealed class AnalyticsQueryService : IAnalyticsQueryService
     {
         var from = AnalyticsDay.FirstDayOfLast(days);
         var rows = await _views.Aggregate()
-            .Match(x => string.Compare(x.Day, from, StringComparison.Ordinal) >= 0)
+            // Gün "yyyy-MM-dd" metni: sözlük sırası = tarih sırası, $gte doğrudan çalışır (LINQ string.Compare çevrilemiyor).
+            .Match(Builders<DoctorDailyViews>.Filter.Gte(x => x.Day, from))
             .Group(x => x.DoctorId, g => new TotalRow { Key = g.Key, Total = g.Sum(x => x.Count) })
             .SortByDescending(r => r.Total).ThenBy(r => r.Key)
             .Limit(take)
@@ -52,7 +53,7 @@ public sealed class AnalyticsQueryService : IAnalyticsQueryService
     {
         var from = AnalyticsDay.FirstDayOfLast(days);
         var rows = await _terms.Aggregate()
-            .Match(x => string.Compare(x.Day, from, StringComparison.Ordinal) >= 0)
+            .Match(Builders<SearchTermDaily>.Filter.Gte(x => x.Day, from))
             .Group(x => x.Term, g => new TotalRow { Key = g.Key, Total = g.Sum(x => x.Count) })
             .SortByDescending(r => r.Total).ThenBy(r => r.Key)
             .Limit(take)
