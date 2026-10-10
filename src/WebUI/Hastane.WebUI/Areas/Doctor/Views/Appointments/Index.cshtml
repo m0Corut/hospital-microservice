@@ -1,0 +1,46 @@
+@model AppointmentListViewModel
+@{
+    ViewData["Title"] = "Randevularım";
+    ViewData["Tab"] = "appointments";
+}
+
+<h1 class="h4 mb-3">Randevularım</h1>
+<partial name="_PanelNav" />
+
+<form method="get" asp-area="Doctor" asp-controller="Appointments" asp-action="Index" class="panel-card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label asp-for="Filter.Status" class="form-label small"></label>
+            <select asp-for="Filter.Status" class="form-select">
+                <option value="">Tümü</option>
+                @foreach (var s in Enum.GetValues<DoctorPanelAppointmentStatus>())
+                {
+                    <option value="@s" selected="@(Model.Filter.Status == s)">@DoctorPanelFormat.StatusText(s)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Filter.From" class="form-label small"></label>
+            <input asp-for="Filter.From" type="date" class="form-control" value="@Model.Filter.From?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Filter.To" class="form-label small"></label>
+            <input asp-for="Filter.To" type="date" class="form-control" value="@Model.Filter.To?.ToString("yyyy-MM-dd")" />
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Süz</button>
+            <a class="btn btn-outline-secondary" asp-area="Doctor" asp-controller="Appointments" asp-action="Index">Temizle</a>
+        </div>
+    </div>
+</form>
+
+<div class="panel-card p-4">
+    @if (Model.Rows.Count == 0)
+    {
+        <p class="text-muted mb-0">Bu süzgece uyan randevu yok.</p>
+    }
+    else
+    {
+        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Rows)" />
+    }
+</div>

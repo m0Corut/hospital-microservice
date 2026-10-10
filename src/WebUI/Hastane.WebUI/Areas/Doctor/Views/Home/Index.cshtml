@@ -1,8 +1,65 @@
+@model DoctorHomeViewModel
 @{
     ViewData["Title"] = "Doktor Paneli";
+    ViewData["Tab"] = "home";
 }
 
+<h1 class="h4 mb-3">Doktor paneli</h1>
+<partial name="_PanelNav" />
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="panel-card p-3 h-100">
+            <div class="text-muted small">Bugünkü randevu</div>
+            <div class="display-6">@Model.Today.Count</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-card p-3 h-100">
+            <div class="text-muted small">Onay bekleyen</div>
+            <div class="display-6">@Model.Pending.Count</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel-card p-3 h-100">
+            <div class="text-muted small">Yaklaşan randevu</div>
+            <div class="display-6">@Model.Upcoming.Count</div>
+        </div>
+    </div>
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <h2 class="h5">Bugün</h2>
+    @if (Model.Today.Count == 0)
+    {
+        <p class="text-muted mb-0">Bugün için randevunuz yok.</p>
+    }
+    else
+    {
+        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Today)" />
+    }
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <h2 class="h5">Onay bekleyenler</h2>
+    @if (Model.Pending.Count == 0)
+    {
+        <p class="text-muted mb-0">Onay bekleyen randevu yok.</p>
+    }
+    else
+    {
+        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Pending)" />
+    }
+</div>
+
 <div class="panel-card p-4">
-    <h1 class="h4">Doktor paneli</h1>
-    <p class="text-muted mb-0">Bu bölüm yakında.</p>
+    <h2 class="h5">Yaklaşan randevular</h2>
+    @if (Model.Upcoming.Count == 0)
+    {
+        <p class="text-muted mb-0">Yaklaşan randevu yok.</p>
+    }
+    else
+    {
+        <partial name="_AppointmentTable" model="@((IReadOnlyList<AppointmentRow>)Model.Upcoming)" />
+    }
 </div>

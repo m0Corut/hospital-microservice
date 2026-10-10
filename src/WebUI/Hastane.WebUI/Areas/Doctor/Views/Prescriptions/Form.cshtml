@@ -1,0 +1,78 @@
+@model PrescriptionFormViewModel
+@{
+    var isEdit = Model.PrescriptionId is not null;
+    ViewData["Title"] = isEdit ? "Reçeteyi düzenle" : "Reçete yaz";
+    ViewData["Tab"] = "prescriptions";
+}
+
+<h1 class="h4 mb-3">@ViewData["Title"]</h1>
+<partial name="_PanelNav" />
+
+<div class="panel-card p-4">
+    <p class="text-muted">Hasta: <strong>@Model.PatientLabel</strong></p>
+
+    @* Aynı form: Kaydet, kalem ekle/çıkar düğmeleri "op" ile sayfayı JS'siz yeniden çizer. *@
+    <form method="post" asp-area="Doctor" asp-controller="Prescriptions"
+          asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@(isEdit ? Model.PrescriptionId : null)" novalidate>
+        @* Enter tuşu formdaki İLK gönder düğmesini tetikler: o "Kaldır" olmasın diye görünmez varsayılan Kaydet en başta. *@
+        <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Kaydet</button>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <input type="hidden" asp-for="AppointmentId" />
+        <input type="hidden" asp-for="PrescriptionId" />
+
+        <div class="mb-3">
+            <label asp-for="Notes" class="form-label"></label>
+            <textarea asp-for="Notes" class="form-control" rows="2"></textarea>
+            <span asp-validation-for="Notes" class="text-danger small"></span>
+        </div>
+
+        <h2 class="h6">İlaç kalemleri</h2>
+        @for (var i = 0; i < Model.Items.Count; i++)
+        {
+            <div class="border rounded p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Kalem @(i + 1)</strong>
+                    <button type="submit" name="op" value="remove-item:@i" class="btn btn-outline-danger btn-sm" formnovalidate>Kaldır</button>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label asp-for="Items[i].MedicineName" class="form-label small"></label>
+                        <input asp-for="Items[i].MedicineName" class="form-control" />
+                        <span asp-validation-for="Items[i].MedicineName" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Items[i].Dosage" class="form-label small"></label>
+                        <input asp-for="Items[i].Dosage" class="form-control" />
+                        <span asp-validation-for="Items[i].Dosage" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Items[i].Frequency" class="form-label small"></label>
+                        <input asp-for="Items[i].Frequency" class="form-control" />
+                        <span asp-validation-for="Items[i].Frequency" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Items[i].DurationDays" class="form-label small"></label>
+                        <input asp-for="Items[i].DurationDays" type="number" min="1" max="365" class="form-control" />
+                        <span asp-validation-for="Items[i].DurationDays" class="text-danger small"></span>
+                    </div>
+                    <div class="col-md-9">
+                        <label asp-for="Items[i].Instructions" class="form-label small"></label>
+                        <input asp-for="Items[i].Instructions" class="form-control" />
+                        <span asp-validation-for="Items[i].Instructions" class="text-danger small"></span>
+                    </div>
+                </div>
+            </div>
+        }
+        <span asp-validation-for="Items" class="text-danger small d-block mb-2"></span>
+
+        @if (Model.Items.Count < PrescriptionFormViewModel.MaxItems)
+        {
+            <button type="submit" name="op" value="add-item" class="btn btn-outline-primary btn-sm mb-3" formnovalidate>+ Kalem ekle</button>
+        }
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a class="btn btn-outline-secondary" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.AppointmentId">Vazgeç</a>
+        </div>
+    </form>
+</div>

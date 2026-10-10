@@ -1,0 +1,36 @@
+@model List<PrescriptionListRow>
+@{
+    ViewData["Title"] = "Reçeteler";
+    ViewData["Tab"] = "prescriptions";
+}
+
+<h1 class="h4 mb-3">Reçeteler</h1>
+<partial name="_PanelNav" />
+
+<div class="panel-card p-4">
+    @if (Model.Count == 0)
+    {
+        <p class="text-muted mb-0">Henüz reçete yazmadınız. Reçeteyi bir randevunun sayfasından yazabilirsiniz.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr><th>Tarih</th><th>Hasta</th><th>Kalem</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr>
+                            <td>@DoctorPanelFormat.DateTimeText(p.IssuedAt)</td>
+                            <td>@p.PatientLabel</td>
+                            <td>@p.ItemCount</td>
+                            <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Details" asp-route-id="@p.Id">Aç</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

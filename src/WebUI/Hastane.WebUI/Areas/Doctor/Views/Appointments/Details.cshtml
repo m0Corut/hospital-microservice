@@ -1,0 +1,71 @@
+@model AppointmentDetailViewModel
+@{
+    ViewData["Title"] = "Randevu";
+    ViewData["Tab"] = "appointments";
+}
+
+<h1 class="h4 mb-3">Randevu</h1>
+<partial name="_PanelNav" />
+
+<div class="panel-card p-4 mb-3">
+    <div class="d-flex flex-wrap justify-content-between gap-2">
+        <div>
+            <div class="h5 mb-1">@Model.PatientLabel</div>
+            <div class="text-muted">@DoctorPanelFormat.DateTimeText(Model.Date) · @Model.BranchLabel</div>
+            <div class="small text-muted">Oluşturulma: @DoctorPanelFormat.DateTimeText(Model.CreatedAt)</div>
+        </div>
+        <div><span class="badge fs-6 @DoctorPanelFormat.StatusBadge(Model.Status)">@DoctorPanelFormat.StatusText(Model.Status)</span></div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        @foreach (var next in DoctorPanelFormat.NextStatuses(Model.Status))
+        {
+            <form method="post" asp-area="Doctor" asp-controller="Appointments" asp-action="SetStatus" asp-route-id="@Model.Id">
+                <input type="hidden" name="status" value="@next" />
+                @if (next == DoctorPanelAppointmentStatus.Cancelled)
+                {
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Bu randevu iptal edilsin mi? Bu işlem geri alınamaz.');">@DoctorPanelFormat.ActionText(next)</button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-primary btn-sm">@DoctorPanelFormat.ActionText(next)</button>
+                }
+            </form>
+        }
+        @if (DoctorPanelFormat.CanWritePrescription(Model.Status))
+        {
+            <a class="btn btn-accent btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Create" asp-route-appointmentId="@Model.Id">Reçete yaz</a>
+        }
+    </div>
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <h2 class="h5">Muayene kaydı</h2>
+    @if (Model.DetailUpdatedAt is { } updated)
+    {
+        <p class="small text-muted">Son güncelleme: @DoctorPanelFormat.DateTimeText(updated)</p>
+    }
+    <form method="post" asp-area="Doctor" asp-controller="Appointments" asp-action="SaveDetail" asp-route-id="@Model.Id" novalidate>
+        <partial name="_DetailForm" model="Model.Form" />
+    </form>
+</div>
+
+<div class="panel-card p-4">
+    <h2 class="h5">Bu randevudan yazılan reçeteler</h2>
+    @if (Model.Prescriptions.Count == 0)
+    {
+        <p class="text-muted mb-0">Henüz reçete yazılmadı.</p>
+    }
+    else
+    {
+        <ul class="list-group list-group-flush">
+            @foreach (var p in Model.Prescriptions)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                    <span>@DoctorPanelFormat.DateTimeText(p.IssuedAt) · @p.ItemCount kalem</span>
+                    <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Details" asp-route-id="@p.Id">Aç</a>
+                </li>
+            }
+        </ul>
+    }
+</div>

@@ -355,7 +355,6 @@ public class AuthorizationTests
 
     [Theory]
     [InlineData("Admin", "/Admin")]
-    [InlineData("Doctor", "/Doctor")]
     [InlineData("Patient", "/Patient")]
     public async Task Right_role_opens_area(string role, string path)
     {

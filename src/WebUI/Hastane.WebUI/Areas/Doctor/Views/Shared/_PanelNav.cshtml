@@ -1,0 +1,11 @@
+@{
+    var tab = ViewData["Tab"] as string ?? "";
+    string Active(string name) => tab == name ? "active" : "";
+}
+<ul class="nav nav-pills mb-4 flex-wrap gap-1">
+    <li class="nav-item"><a class="nav-link @Active("home")" asp-area="Doctor" asp-controller="Home" asp-action="Index">Özet</a></li>
+    <li class="nav-item"><a class="nav-link @Active("appointments")" asp-area="Doctor" asp-controller="Appointments" asp-action="Index">Randevularım</a></li>
+    <li class="nav-item"><a class="nav-link @Active("prescriptions")" asp-area="Doctor" asp-controller="Prescriptions" asp-action="Index">Reçeteler</a></li>
+    <li class="nav-item"><a class="nav-link @Active("profile")" asp-area="Doctor" asp-controller="Profile" asp-action="Index">Profilim</a></li>
+    <li class="nav-item"><a class="nav-link @Active("reviews")" asp-area="Doctor" asp-controller="Reviews" asp-action="Index">Yorumlarım</a></li>
+</ul>

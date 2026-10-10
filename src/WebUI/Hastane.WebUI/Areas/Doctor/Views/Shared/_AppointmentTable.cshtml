@@ -1,0 +1,27 @@
+@model IReadOnlyList<AppointmentRow>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Tarih</th>
+                <th>Hasta</th>
+                <th>Şube</th>
+                <th>Durum</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td>@DoctorPanelFormat.DateTimeText(row.Date)</td>
+                    <td>@row.PatientLabel</td>
+                    <td>@row.BranchLabel</td>
+                    <td><span class="badge @DoctorPanelFormat.StatusBadge(row.Status)">@DoctorPanelFormat.StatusText(row.Status)</span></td>
+                    <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@row.Id">Aç</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,19 @@
+@model AppointmentDetailForm
+
+<div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+<div class="mb-3">
+    <label asp-for="Complaint" class="form-label"></label>
+    <textarea asp-for="Complaint" class="form-control" rows="3"></textarea>
+    <span asp-validation-for="Complaint" class="text-danger small"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="Diagnosis" class="form-label"></label>
+    <textarea asp-for="Diagnosis" class="form-control" rows="2"></textarea>
+    <span asp-validation-for="Diagnosis" class="text-danger small"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="DoctorNotes" class="form-label"></label>
+    <textarea asp-for="DoctorNotes" class="form-control" rows="3"></textarea>
+    <span asp-validation-for="DoctorNotes" class="text-danger small"></span>
+</div>
+<button type="submit" class="btn btn-primary">Kaydet</button>
