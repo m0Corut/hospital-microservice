@@ -1,3 +1,4 @@
+using Hastane.Appointment.Api.Settings;
 using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -25,9 +26,22 @@ public class AppointmentApiFactory : WebApplicationFactory<Program>, IAsyncLifet
         builder.UseTestJwt();
         // Zaman aşımı testi 1 sn'de biter (üretim varsayılanı 5 sn).
         builder.UseSetting("Services:TimeoutSeconds", "1");
+        // Notification de sahte (varsayılan: hep 201): mevcut testler gerçek ağa çıkmaz, bildirim varlığından etkilenmez.
+        builder.UseSetting("Services:NotificationBaseUrl", $"http://{FakeNotificationService.Host}");
+        builder.UseSetting("Services:NotificationTimeoutSeconds", "1");
         builder.ConfigureTestServices(services =>
-            services.ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(Doctor.CreateHandler)));
+        {
+            // user-secrets'taki gerçek anahtar testi etkilemesin: seçenek son söz olarak sabit test değerine çekilir.
+            services.PostConfigure<InternalOptions>(o => o.ApiKey = TestInternalKey);
+            services.ConfigureHttpClientDefaults(b =>
+                b.ConfigurePrimaryHttpMessageHandler(() => new RoutingFakeHandler(Doctor, Notification)));
+        });
     }
+
+    public const string TestInternalKey = "test-internal-key-appointment";
+
+    // Notification servisinin sahte hali; gönderilen bildirimler Calls'ta, hata kipleri Mode ile.
+    public FakeNotificationService Notification { get; } = new();
 
     public override async ValueTask DisposeAsync()
     {

@@ -47,6 +47,15 @@ builder.Services.AddHttpClient<IDoctorScheduleLookup, DoctorScheduleLookup>((sp,
     client.Timeout = TimeSpan.FromSeconds(o.TimeoutSeconds);
 });
 
+// Bildirimler Notification servisinin İÇ ucuna (X-Internal-Key). Randevu kaydedildikten sonra çağrılır; hatası yutulur.
+builder.Services.Configure<InternalOptions>(builder.Configuration.GetSection(InternalOptions.SectionName));
+builder.Services.AddHttpClient<INotificationClient, NotificationClient>((sp, client) =>
+{
+    var o = sp.GetRequiredService<IOptions<DownstreamServicesOptions>>().Value;
+    client.BaseAddress = new Uri(o.NotificationBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(o.NotificationTimeoutSeconds);
+});
+
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 builder.Services.AddScoped<IAppointmentDetailService, AppointmentDetailService>();
 
