@@ -8,6 +8,10 @@ public sealed class DoctorHomeViewModel
     public List<AppointmentRow> Today { get; set; } = [];
     public List<AppointmentRow> Upcoming { get; set; } = [];
     public List<AppointmentRow> Pending { get; set; } = [];
+
+    // Özet kutuları: panelde listeler kısaltılır (8), sayılar kısaltılmamış listelerden gelir.
+    public int UpcomingCount { get; set; }
+    public int PendingCount { get; set; }
 }
 
 public sealed class AppointmentFilterViewModel
@@ -129,4 +133,20 @@ public sealed class ReviewsViewModel
     public double AverageRating { get; set; }
     public int RecommendationPercent { get; set; }
     public List<DoctorPanelReviewApiModel> Reviews { get; set; } = [];
+}
+
+public sealed record PatientRow(string Label, int AppointmentCount, DateTime LastDate, Guid LastAppointmentId);
+
+public sealed record CalendarEvent(Guid Id, DateTime Date, string PatientLabel, DoctorPanelAppointmentStatus Status);
+
+public sealed record CalendarDay(DateTime Date, bool IsToday, List<CalendarEvent> Events);
+
+// Haftalık takvim: sunucuda çizilen 7 sütunlu ızgara (JS kütüphanesi yok). Hafta Pazartesi başlar.
+public sealed class CalendarViewModel
+{
+    public DateTime WeekStart { get; init; }
+    public List<CalendarDay> Days { get; init; } = [];
+    public DateTime Previous => WeekStart.AddDays(-7);
+    public DateTime Next => WeekStart.AddDays(7);
+    public int EventCount => Days.Sum(d => d.Events.Count);
 }

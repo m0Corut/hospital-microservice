@@ -20,6 +20,8 @@ public sealed class DoctorSearchItemApiModel
     public string BranchId { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public List<string> Services { get; set; } = [];
+    // İlk 4 klinik fotoğrafı (kart önizlemesi).
+    public List<string> Gallery { get; set; } = [];
     public string? PrimaryCity { get; set; }
     public decimal? MinFee { get; set; }
     public decimal? MaxFee { get; set; }
@@ -34,6 +36,7 @@ public sealed class DoctorSummaryApiModel
     public string? Title { get; set; }
     public string? Degrees { get; set; }
     public string BranchId { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 }
 
 public sealed class DoctorDetailApiModel
@@ -50,6 +53,7 @@ public sealed class DoctorDetailApiModel
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public List<string> Services { get; set; } = [];
+    public List<string> Gallery { get; set; } = [];
     public List<EducationApiModel> Educations { get; set; } = [];
     public List<ExperienceApiModel> Experiences { get; set; } = [];
     public List<AwardApiModel> Awards { get; set; } = [];

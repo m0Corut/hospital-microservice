@@ -17,12 +17,13 @@ public class HomeController(
         var upcomingResult = await appointments.ListAsync(null, DateTime.UtcNow, ApiFailures.Unavailable, ct);
         var prescriptionResult = await prescriptions.ListAsync(ApiFailures.Unavailable, ct);
 
-        var upcoming = (upcomingResult.Value ?? [])
+        var upcomingAll = (upcomingResult.Value ?? [])
             .Where(a => a.Status is "Pending" or "Confirmed")
             .OrderBy(a => a.AppointmentDate)
-            .Take(PanelCount)
             .ToList();
-        var recent = (prescriptionResult.Value ?? []).Take(PanelCount).ToList();
+        var prescriptionAll = prescriptionResult.Value ?? [];
+        var upcoming = upcomingAll.Take(PanelCount).ToList();
+        var recent = prescriptionAll.Take(PanelCount).ToList();
 
         var names = await DoctorNameLookup.LoadAsync(doctors, upcoming.Select(a => a.DoctorId).Concat(recent.Select(p => p.DoctorId)), ct);
 
@@ -32,6 +33,8 @@ public class HomeController(
             Prescriptions = recent.Select(p => new PrescriptionRowViewModel { Prescription = p, DoctorName = names.NameOf(p.DoctorId) }).ToList(),
             AppointmentsUnavailable = !upcomingResult.IsSuccess,
             PrescriptionsUnavailable = !prescriptionResult.IsSuccess,
+            UpcomingCount = upcomingAll.Count,
+            PrescriptionCount = prescriptionAll.Count,
         });
     }
 }

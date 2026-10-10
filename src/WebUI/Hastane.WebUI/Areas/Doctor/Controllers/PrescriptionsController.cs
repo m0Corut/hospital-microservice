@@ -9,9 +9,6 @@ public class PrescriptionsController(
     IDoctorPanelPrescriptionClient prescriptions,
     IDoctorPanelAppointmentClient appointments) : DoctorPanelController
 {
-    private const string AddItemOp = "add-item";
-    private const string RemoveItemOpPrefix = "remove-item:";
-
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var list = (await prescriptions.ListAsync(DoctorId, null, ct)).Value ?? [];
@@ -28,6 +25,23 @@ public class PrescriptionsController(
     }
 
     public async Task<IActionResult> Details(Guid id, CancellationToken ct)
+    {
+        var prescription = (await prescriptions.GetAsync(id, ct)).Value!;
+        var patientLabel = await PatientLabelsAsync([prescription.PatientId], ct);
+
+        return View(new PrescriptionDetailViewModel
+        {
+            Id = prescription.Id,
+            AppointmentId = prescription.AppointmentId,
+            IssuedAt = prescription.IssuedAt,
+            PatientLabel = patientLabel(prescription.PatientId),
+            Notes = prescription.Notes,
+            Items = prescription.Items.OrderBy(i => i.LineNo).ToList(),
+        });
+    }
+
+    // Yazdırılabilir görünüm: menüsüz sade sayfa. Sahiplik Details ile aynı (başkasının reçetesi API'de 404).
+    public async Task<IActionResult> Print(Guid id, CancellationToken ct)
     {
         var prescription = (await prescriptions.GetAsync(id, ct)).Value!;
         var patientLabel = await PatientLabelsAsync([prescription.PatientId], ct);
@@ -75,12 +89,12 @@ public class PrescriptionsController(
         var patientLabel = await PatientLabelsAsync([appointment.PatientId], ct);
         model.PatientLabel = patientLabel(appointment.PatientId);
 
-        if (ApplyItemOperation(model, op)) return View("Form", model);
+        if (PrescriptionFormOperations.ApplyItemOperation(ModelState, model, op)) return View("Form", model);
 
-        if (ModelState.IsValid && ValidateItemCount(model))
+        if (ModelState.IsValid && PrescriptionFormOperations.ValidateItemCount(ModelState, model))
         {
             // PatientId formdan DEĞİL, az önce API'den okunan randevudan gelir; DoctorId'yi servis token'dan alır.
-            var result = await prescriptions.CreateAsync(model.AppointmentId, appointment.PatientId, model.Notes, ToBody(model), ct);
+            var result = await prescriptions.CreateAsync(model.AppointmentId, appointment.PatientId, model.Notes, PrescriptionFormOperations.ToBody(model), ct);
             if (result.TryGetValue(out var created))
             {
                 SetSuccess("Reçete yazıldı.");
@@ -125,11 +139,11 @@ public class PrescriptionsController(
         model.AppointmentId = existing.AppointmentId;
         model.PatientLabel = patientLabel(existing.PatientId);
 
-        if (ApplyItemOperation(model, op)) return View("Form", model);
+        if (PrescriptionFormOperations.ApplyItemOperation(ModelState, model, op)) return View("Form", model);
 
-        if (ModelState.IsValid && ValidateItemCount(model))
+        if (ModelState.IsValid && PrescriptionFormOperations.ValidateItemCount(ModelState, model))
         {
-            var result = await prescriptions.UpdateAsync(id, model.Notes, ToBody(model), ct);
+            var result = await prescriptions.UpdateAsync(id, model.Notes, PrescriptionFormOperations.ToBody(model), ct);
             if (result.IsSuccess)
             {
                 SetSuccess("Reçete güncellendi.");
@@ -155,38 +169,4 @@ public class PrescriptionsController(
         SetSuccess("Reçete silindi.");
         return RedirectToAction(nameof(Index));
     }
-
-    // "Kalem ekle / çıkar" düğmeleri formu JS'siz yeniden çizer. Dönüş true: işlem yapıldı, doğrulama/kaydetme atlanır.
-    private bool ApplyItemOperation(PrescriptionFormViewModel model, string? op)
-    {
-        if (op == AddItemOp)
-        {
-            if (model.Items.Count < PrescriptionFormViewModel.MaxItems)
-                model.Items.Add(new PrescriptionItemForm());
-        }
-        else if (op is not null && op.StartsWith(RemoveItemOpPrefix, StringComparison.Ordinal)
-                 && int.TryParse(op[RemoveItemOpPrefix.Length..], out var index)
-                 && index >= 0 && index < model.Items.Count)
-        {
-            model.Items.RemoveAt(index);
-        }
-        else
-        {
-            return false;
-        }
-
-        // Eski ModelState'teki "Items[2]..." girdileri kayan indekslerle yanlış satırı doldurmasın.
-        ModelState.Clear();
-        return true;
-    }
-
-    private bool ValidateItemCount(PrescriptionFormViewModel model)
-    {
-        if (model.Items.Count is >= 1 and <= PrescriptionFormViewModel.MaxItems) return true;
-        ModelState.AddModelError(nameof(model.Items), $"Reçetede 1 ile {PrescriptionFormViewModel.MaxItems} arasında ilaç kalemi olmalı.");
-        return false;
-    }
-
-    private static List<DoctorPanelPrescriptionItemBody> ToBody(PrescriptionFormViewModel model)
-        => model.Items.Select(i => new DoctorPanelPrescriptionItemBody(i.MedicineName, i.Dosage, i.Frequency, i.DurationDays, i.Instructions)).ToList();
 }

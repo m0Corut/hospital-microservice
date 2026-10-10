@@ -1,0 +1,37 @@
+@model PrescriptionDetailViewModel
+@{
+    Layout = "~/Views/Shared/_PrintLayout.cshtml";
+    ViewData["Title"] = "Reçete";
+    ViewData["DocTitle"] = "Reçete";
+    ViewData["BackUrl"] = Url.Action("Details", "Prescriptions", new { area = "Doctor", id = Model.Id });
+}
+
+<h1 class="h4 mb-1">Reçete</h1>
+<div class="mb-3">
+    <div><span class="text-muted">Hasta:</span> <strong>@Model.PatientLabel</strong></div>
+    <div><span class="text-muted">Doktor:</span> @User.Identity?.Name</div>
+    <div><span class="text-muted">Tarih:</span> @DoctorPanelFormat.DateTimeText(Model.IssuedAt)</div>
+</div>
+
+<table class="table align-middle">
+    <thead>
+        <tr><th>#</th><th>İlaç</th><th>Doz</th><th>Sıklık</th><th>Süre</th><th>Not</th></tr>
+    </thead>
+    <tbody>
+        @foreach (var i in Model.Items)
+        {
+            <tr>
+                <td>@i.LineNo</td>
+                <td>@i.MedicineName</td>
+                <td>@i.Dosage</td>
+                <td>@i.Frequency</td>
+                <td>@i.DurationDays gün</td>
+                <td>@i.Instructions</td>
+            </tr>
+        }
+    </tbody>
+</table>
+@if (!string.IsNullOrWhiteSpace(Model.Notes))
+{
+    <p class="mb-0"><strong>Doktor notu:</strong> @Model.Notes</p>
+}

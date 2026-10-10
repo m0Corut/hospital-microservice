@@ -1,0 +1,24 @@
+@model RescheduleViewModel
+@{
+    ViewData["Title"] = "Randevuyu yeniden planla";
+}
+
+<h1 class="page-title">Randevuyu yeniden planla</h1>
+
+<div class="panel-card p-4" style="max-width: 640px;">
+    <ul class="summary-list mb-3">
+        <li><span class="k">Doktor</span><span class="v">@Model.PartyLabel</span></li>
+        <li><span class="k">Mevcut tarih</span><span class="v">@DisplayText.DateTimeLocal(Model.CurrentDate)</span></li>
+    </ul>
+    <form asp-action="Reschedule" asp-controller="Appointments" asp-area="Patient" asp-route-id="@Model.Id" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <div class="mb-3">
+            <label asp-for="AppointmentLocal" class="form-label"></label>
+            <input asp-for="AppointmentLocal" type="datetime-local" class="form-control" />
+            <span asp-validation-for="AppointmentLocal" class="text-danger small"></span>
+            <div class="form-text">Doktorun çalışma günlerinden birini seçin. Dolu saat seçerseniz sistem sizi uyarır.</div>
+        </div>
+        <button type="submit" class="btn btn-accent">Yeniden planla</button>
+        <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Vazgeç</a>
+    </form>
+</div>

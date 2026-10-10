@@ -44,7 +44,12 @@ public class DoctorsController(
                 }
 
                 cards = page.Items
-                    .Select(d => new DoctorCardViewModel { Doctor = d, Rating = summaries.GetValueOrDefault(d.Id) })
+                    .Select(d => new DoctorCardViewModel
+                    {
+                        Doctor = d,
+                        Rating = summaries.GetValueOrDefault(d.Id),
+                        BranchName = branchItems.FirstOrDefault(b => b.Id == d.BranchId)?.Name,
+                    })
                     .ToList();
             }
             else

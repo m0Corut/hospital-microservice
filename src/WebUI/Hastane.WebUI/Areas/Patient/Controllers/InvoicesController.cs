@@ -30,4 +30,13 @@ public class InvoicesController(IPatientPaymentClient payments, IPublicDoctorCli
         var names = await DoctorNameLookup.LoadAsync(doctors, [invoice.DoctorId], ct);
         return View(new InvoiceDetailViewModel { Invoice = invoice, DoctorName = names.NameOf(invoice.DoctorId) });
     }
+
+    // Yazdırılabilir görünüm: menüsüz sade sayfa. Yetki/sahiplik Details ile aynı (API: başkasının faturası 404).
+    public async Task<IActionResult> Print(Guid id, CancellationToken ct)
+    {
+        var result = await payments.GetInvoiceAsync(id, ct);
+        var invoice = result.Value!;
+        var names = await DoctorNameLookup.LoadAsync(doctors, [invoice.DoctorId], ct);
+        return View(new InvoiceDetailViewModel { Invoice = invoice, DoctorName = names.NameOf(invoice.DoctorId) });
+    }
 }

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" role="img" aria-label="Klinik görseli 05">
+<rect width="200" height="150" fill="#fbe8ee"/>
+<circle cx="170" cy="28" r="40" fill="#f5c6d6" opacity=".6"/>
+<rect y="132" width="200" height="18" fill="#f5c6d6"/>
+<rect x="36" y="96" width="128" height="22" rx="8" fill="#d9467a"/>
+<rect x="46" y="118" width="8" height="26" fill="#d9467a"/><rect x="146" y="118" width="8" height="26" fill="#d9467a"/>
+<rect x="44" y="84" width="42" height="14" rx="7" fill="#fff"/>
+<path d="M150 30v34l-24 14" stroke="#d9467a" stroke-width="6" fill="none" stroke-linecap="round"/><circle cx="124" cy="80" r="10" fill="#fff" stroke="#d9467a" stroke-width="4"/>
+</svg>

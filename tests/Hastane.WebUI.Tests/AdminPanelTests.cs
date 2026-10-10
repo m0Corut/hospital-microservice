@@ -958,7 +958,7 @@ public class AdminOperationsTests
     }
 
     [Fact]
-    public async Task Prescriptions_list_and_detail_are_read_only()
+    public async Task Prescriptions_list_and_detail_offer_edit_delete_and_print()
     {
         await using var host = await WebUiTestHost.StartAsync();
         MapLookups(host);
@@ -985,8 +985,10 @@ public class AdminOperationsTests
         var detail = await HtmlAsync(await client.GetAsync($"/Admin/Prescriptions/Details/{PrescriptionId}"));
         Assert.Contains("Parol", detail);
         Assert.Contains("Bol sıvı", detail);
-        Assert.DoesNotContain("/Admin/Prescriptions/Edit", detail); // salt okunur: düzenleme/silme bağlantısı yok
-        Assert.DoesNotContain("/Admin/Prescriptions/Delete", detail);
+        // Admin reçeteyi API'de DoctorOrAdmin olarak düzenleyip silebilir; yazdırma bağlantısı da var.
+        Assert.Contains($"/Admin/Prescriptions/Edit/{PrescriptionId}", detail);
+        Assert.Contains($"/Admin/Prescriptions/Delete/{PrescriptionId}", detail);
+        Assert.Contains($"/Admin/Prescriptions/Print/{PrescriptionId}", detail);
     }
 
     [Fact]

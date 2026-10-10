@@ -3,140 +3,111 @@
 @{
     ViewData["Title"] = "Doktorlar";
     var f = Model.Filter;
+    var selected = Model.SelectedBranchIds;
     object PageRoute(int page) => new { q = f.Q, branchId = f.BranchId, gender = f.Gender, city = f.City, minFee = f.MinFee, maxFee = f.MaxFee, date = f.Date, sort = f.Sort, page };
 }
 
-<h1 class="h3 mb-3">Doktorlar</h1>
-
-<form method="get" asp-controller="Doctors" asp-action="Index" class="panel-card p-3 mb-4">
-    <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
-    <div class="row g-3">
-        <div class="col-md-6 col-lg-4">
-            <label for="q" class="form-label">Doktor adı ya da uzmanlık</label>
-            <input type="search" id="q" name="q" value="@f.Q" class="form-control" maxlength="100" />
-        </div>
-        <div class="col-md-6 col-lg-4">
-            <label for="branchId" class="form-label">Branş</label>
-            <select id="branchId" name="branchId" class="form-select">
-                <option value="">Tümü</option>
-                @foreach (var branch in Model.Branches)
-                {
-                    <option value="@branch.Id" selected="@(branch.Id == f.BranchId)">@branch.Name</option>
-                }
-            </select>
-        </div>
-        <div class="col-md-6 col-lg-4">
-            <label for="city" class="form-label">Şehir</label>
-            <input type="text" id="city" name="city" value="@f.City" class="form-control" maxlength="100" />
-        </div>
-        <div class="col-6 col-lg-2">
-            <label for="gender" class="form-label">Cinsiyet</label>
-            <select id="gender" name="gender" class="form-select">
-                <option value="">Fark etmez</option>
-                <option value="Female" selected="@(f.Gender == "Female")">Kadın</option>
-                <option value="Male" selected="@(f.Gender == "Male")">Erkek</option>
-                <option value="Other" selected="@(f.Gender == "Other")">Diğer</option>
-            </select>
-        </div>
-        <div class="col-6 col-lg-2">
-            <label for="minFee" class="form-label">En düşük ücret</label>
-            <input type="number" id="minFee" name="minFee" value="@f.MinFee" class="form-control" min="0" step="any" />
-        </div>
-        <div class="col-6 col-lg-2">
-            <label for="maxFee" class="form-label">En yüksek ücret</label>
-            <input type="number" id="maxFee" name="maxFee" value="@f.MaxFee" class="form-control" min="0" step="any" />
-        </div>
-        <div class="col-6 col-lg-3">
-            <label for="date" class="form-label">Müsait gün</label>
-            <input type="date" id="date" name="date" value="@f.Date" class="form-control" />
-        </div>
-        <div class="col-12 col-lg-3">
-            <label for="sort" class="form-label">Sıralama</label>
-            <select id="sort" name="sort" class="form-select">
-                <option value="">Ada göre</option>
-                <option value="feeAsc" selected="@(f.Sort == "feeAsc")">Ücret: önce düşük</option>
-                <option value="feeDesc" selected="@(f.Sort == "feeDesc")">Ücret: önce yüksek</option>
-            </select>
-        </div>
-        <div class="col-12 d-flex gap-2">
-            <button type="submit" class="btn btn-primary">Ara</button>
-            <a class="btn btn-outline-secondary" asp-controller="Doctors" asp-action="Index">Temizle</a>
-        </div>
-    </div>
-</form>
-
-@if (Model.Doctors.Count == 0)
-{
-    <div class="panel-card p-4 text-muted">Aramanıza uygun doktor bulunamadı.</div>
-}
-else
-{
-    <p class="text-muted small">@Model.TotalCount doktor bulundu.</p>
-    <div class="row g-3">
-        @foreach (var card in Model.Doctors)
-        {
-            var d = card.Doctor;
-            var name = DisplayText.DoctorName(d.Title, d.FirstName, d.LastName);
-            <div class="col-md-6 col-lg-4">
-                <div class="card panel-card h-100">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center mb-2">
-                            <span class="branch-icon me-3" aria-hidden="true">@(d.FirstName.Length > 0 ? d.FirstName[..1].ToUpperInvariant() : "?")</span>
-                            <div>
-                                <a class="fw-semibold text-decoration-none" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">@name</a>
-                                @if (!string.IsNullOrWhiteSpace(d.Degrees))
-                                {
-                                    <div class="small text-muted">@d.Degrees</div>
-                                }
-                            </div>
+<div class="row g-4">
+    <aside class="col-lg-3">
+        <form method="get" id="filterForm" asp-controller="Doctors" asp-action="Index" class="panel-card filter-card">
+            <div class="filter-title"><span><i class="bi bi-funnel me-2" aria-hidden="true"></i>Süz</span></div>
+            <div class="filter-body">
+                <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+                <div class="filter-group">
+                    <label for="q" class="form-label">Doktor adı ya da uzmanlık</label>
+                    <input type="search" id="q" name="q" value="@f.Q" class="form-control" maxlength="100" />
+                </div>
+                <div class="filter-group">
+                    <label for="date" class="form-label">Müsait gün</label>
+                    <input type="date" id="date" name="date" value="@f.Date" class="form-control" />
+                </div>
+                <div class="filter-group">
+                    <span class="form-label d-block">Cinsiyet</span>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="gender" id="g-any" value="" checked="@string.IsNullOrEmpty(f.Gender)" /><label class="form-check-label" for="g-any">Fark etmez</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="gender" id="g-male" value="Male" checked="@(f.Gender == "Male")" /><label class="form-check-label" for="g-male">Erkek doktor</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="gender" id="g-female" value="Female" checked="@(f.Gender == "Female")" /><label class="form-check-label" for="g-female">Kadın doktor</label></div>
+                    <div class="form-check"><input class="form-check-input" type="radio" name="gender" id="g-other" value="Other" checked="@(f.Gender == "Other")" /><label class="form-check-label" for="g-other">Diğer</label></div>
+                </div>
+                <div class="filter-group">
+                    <span class="form-label d-block">Branş</span>
+                    @if (Model.Branches.Count == 0)
+                    {
+                        <div class="small text-muted">Branş listesi yüklenemedi.</div>
+                    }
+                    @foreach (var branch in Model.Branches)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="branchId" id="b-@branch.Id" value="@branch.Id" checked="@selected.Contains(branch.Id)" />
+                            <label class="form-check-label" for="b-@branch.Id">@branch.Name</label>
                         </div>
-                        <div class="small mb-1">
-                            @if (card.Rating is { ReviewCount: > 0 } r)
-                            {
-                                <span class="text-warning" aria-hidden="true">&#9733;</span>
-                                <span>@r.AverageRating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)</span>
-                                <span class="text-muted">(@r.ReviewCount yorum, %@r.RecommendationPercent tavsiye)</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">Henüz yorum yok</span>
-                            }
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(d.PrimaryCity))
-                        {
-                            <div class="small text-muted">@d.PrimaryCity</div>
-                        }
-                        <div class="small">@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</div>
-                        @if (d.Services.Count > 0)
-                        {
-                            <div class="mt-2">
-                                @foreach (var service in d.Services.Take(3))
-                                {
-                                    <span class="badge text-bg-light border me-1">@service</span>
-                                }
-                            </div>
-                        }
-                    </div>
-                    <div class="card-footer bg-white border-0 pt-0">
-                        <a class="btn btn-outline-primary btn-sm" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">Profili gör</a>
+                    }
+                </div>
+                <div class="filter-group">
+                    <label for="city" class="form-label">Şehir</label>
+                    <input type="text" id="city" name="city" value="@f.City" class="form-control" maxlength="100" />
+                </div>
+                <div class="filter-group">
+                    <span class="form-label d-block">Ücret aralığı</span>
+                    <div class="row g-2">
+                        <div class="col-6"><input type="number" id="minFee" name="minFee" value="@f.MinFee" class="form-control" min="0" step="any" placeholder="En düşük" aria-label="En düşük ücret" /></div>
+                        <div class="col-6"><input type="number" id="maxFee" name="maxFee" value="@f.MaxFee" class="form-control" min="0" step="any" placeholder="En yüksek" aria-label="En yüksek ücret" /></div>
                     </div>
                 </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-accent">Ara</button>
+                    <a class="btn btn-outline-secondary btn-sm" asp-controller="Doctors" asp-action="Index">Temizle</a>
+                </div>
             </div>
-        }
-    </div>
+        </form>
+    </aside>
 
-    @if (Model.TotalPages > 1)
-    {
-        <nav class="mt-4" aria-label="Sayfalar">
-            <ul class="pagination justify-content-center">
-                <li class="page-item @(f.Page <= 1 ? "disabled" : "")">
-                    <a class="page-link" href="@Url.Action("Index", "Doctors", PageRoute(Math.Max(1, f.Page - 1)))">Önceki</a>
-                </li>
-                <li class="page-item disabled"><span class="page-link">@f.Page / @Model.TotalPages</span></li>
-                <li class="page-item @(f.Page >= Model.TotalPages ? "disabled" : "")">
-                    <a class="page-link" href="@Url.Action("Index", "Doctors", PageRoute(f.Page + 1))">Sonraki</a>
-                </li>
-            </ul>
-        </nav>
-    }
-}
+    <section class="col-lg-9">
+        <div class="result-bar">
+            <h1>
+                @if (Model.Doctors.Count == 0)
+                {
+                    <text>Doktorlar</text>
+                }
+                else
+                {
+                    <text><strong>@Model.TotalCount</strong> doktor bulundu</text>
+                }
+            </h1>
+            <div class="d-flex align-items-center gap-2">
+                <label for="sort" class="small text-muted mb-0">Sıralama</label>
+                <select id="sort" name="sort" form="filterForm" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                    <option value="">Ada göre</option>
+                    <option value="feeAsc" selected="@(f.Sort == "feeAsc")">Ücret: önce düşük</option>
+                    <option value="feeDesc" selected="@(f.Sort == "feeDesc")">Ücret: önce yüksek</option>
+                </select>
+            </div>
+        </div>
+
+        @if (Model.Doctors.Count == 0)
+        {
+            <div class="panel-card"><partial name="_EmptyState" model="@("Aramanıza uygun doktor bulunamadı.")" /></div>
+        }
+        else
+        {
+            @foreach (var card in Model.Doctors)
+            {
+                <partial name="_DoctorCard" model="card" />
+            }
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="mt-4" aria-label="Sayfalar">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(f.Page <= 1 ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Doctors", PageRoute(Math.Max(1, f.Page - 1)))">Önceki</a>
+                        </li>
+                        <li class="page-item disabled"><span class="page-link">@f.Page / @Model.TotalPages</span></li>
+                        <li class="page-item @(f.Page >= Model.TotalPages ? "disabled" : "")">
+                            <a class="page-link" href="@Url.Action("Index", "Doctors", PageRoute(f.Page + 1))">Sonraki</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        }
+    </section>
+</div>

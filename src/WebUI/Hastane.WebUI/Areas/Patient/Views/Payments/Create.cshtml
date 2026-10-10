@@ -3,16 +3,19 @@
     ViewData["Title"] = "Ödeme yap";
 }
 
-<partial name="_PatientNav" />
 
-<div class="row">
-    <div class="col-lg-7">
+<h1 class="page-title">Ödeme yap</h1>
+
+<ol class="stepper" aria-label="Ödeme adımları">
+    <li class="done"><span>Randevu</span></li>
+    <li class="current"><span>Ödeme</span></li>
+    <li><span>Fatura</span></li>
+</ol>
+
+<div class="row g-4">
+    <div class="col-lg-7 order-2 order-lg-1">
         <div class="panel-card p-4">
-            <h1 class="h4 mb-1">Ödeme yap</h1>
-            <p class="text-muted">
-                @Model.DoctorName · @DisplayText.DateTimeLocal(Model.AppointmentDate)<br />
-                Ödenecek tutar: <strong>@DisplayText.Money(Model.Amount, Model.Currency)</strong>
-            </p>
+            <h2 class="h5 mb-3"><i class="bi bi-credit-card me-2 text-primary" aria-hidden="true"></i>Kart bilgileri</h2>
             <div class="alert alert-info py-2 small">Bu bir eğitim projesidir, gerçek para çekilmez. Test kartı: 4242 4242 4242 4242 (herhangi bir gelecek tarih ve 3 haneli CVV).</div>
 
             <form asp-action="Create" asp-controller="Payments" asp-area="Patient" method="post" novalidate autocomplete="off">
@@ -51,5 +54,16 @@
                 <a class="btn btn-outline-secondary" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.AppointmentId">Vazgeç</a>
             </form>
         </div>
+    </div>
+    <div class="col-lg-5 order-1 order-lg-2">
+        <aside class="panel-card p-4" aria-label="Ödeme özeti">
+            <h2 class="h5 mb-3">Ödeme özeti</h2>
+            <ul class="summary-list">
+                <li><span class="k">Doktor</span><span class="v">@Model.DoctorName</span></li>
+                <li><span class="k">Randevu</span><span class="v">@DisplayText.DateTimeLocal(Model.AppointmentDate)</span></li>
+                <li><span class="k">Hizmet</span><span class="v">Randevu ücreti</span></li>
+                <li><span class="k">Ödenecek tutar</span><span class="v h5 mb-0 text-primary">@DisplayText.Money(Model.Amount, Model.Currency)</span></li>
+            </ul>
+        </aside>
     </div>
 </div>

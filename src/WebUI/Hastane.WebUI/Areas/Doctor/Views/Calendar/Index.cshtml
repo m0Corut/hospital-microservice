@@ -1,0 +1,42 @@
+@model CalendarViewModel
+@{
+    ViewData["Title"] = "Takvim";
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+    var last = Model.WeekStart.AddDays(6);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="page-title mb-0">Haftalık takvim</h1>
+    <div class="d-flex align-items-center gap-2">
+        <a class="btn btn-outline-secondary btn-sm" asp-area="Doctor" asp-controller="Calendar" asp-action="Index" asp-route-start="@Model.Previous.ToString("yyyy-MM-dd")" aria-label="Önceki hafta"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+        <span class="fw-semibold">@Model.WeekStart.ToString("dd.MM.yyyy") - @last.ToString("dd.MM.yyyy")</span>
+        <a class="btn btn-outline-secondary btn-sm" asp-area="Doctor" asp-controller="Calendar" asp-action="Index" asp-route-start="@Model.Next.ToString("yyyy-MM-dd")" aria-label="Sonraki hafta"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+        <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Calendar" asp-action="Index">Bu hafta</a>
+    </div>
+</div>
+
+<div class="week-grid">
+    @foreach (var day in Model.Days)
+    {
+        <section class="week-col @(day.IsToday ? "today" : "")" aria-label="@day.Date.ToString("dddd", tr)">
+            <div class="wc-head">@day.Date.ToString("dddd", tr) <span class="fw-normal">@day.Date.ToString("dd.MM")</span></div>
+            <div class="wc-body">
+                @if (day.Events.Count == 0)
+                {
+                    <span class="small text-muted">Randevu yok</span>
+                }
+                @foreach (var e in day.Events)
+                {
+                    <a class="week-event st-@e.Status" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@e.Id">
+                        <strong>@e.Date.ToString("HH:mm")</strong> @e.PatientLabel
+                        <span class="d-block">@DoctorPanelFormat.StatusText(e.Status)</span>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+</div>
+@if (Model.EventCount == 0)
+{
+    <p class="text-muted mt-3 mb-0">Bu hafta için randevu yok.</p>
+}

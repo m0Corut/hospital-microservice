@@ -724,7 +724,7 @@ public class PatientAppointmentTests
         });
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal($"/Patient/Appointments/Details/{Appt1}", Location(response));
+        Assert.Equal($"/Patient/Appointments/Confirmation/{Appt1}", Location(response));
         var sent = host.Gateway.Calls("POST", "/gateway/appointments").Single();
         var json = Json(sent.Body);
         Assert.Equal("d1", json.GetProperty("doctorId").GetString());

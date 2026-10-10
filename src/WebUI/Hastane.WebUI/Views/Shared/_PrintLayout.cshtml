@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] is string t && t.Length > 0 ? t + " · Hastane" : "Hastane")</title>
+    <link rel="icon" href="~/img/logo-mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="print-body">
+    @* Yazdırma sayfası: üst menü ve alt bilgi YOK; yalnız belge. Düğmeler yazdırırken gizlenir (.no-print). *@
+    <div class="print-actions no-print">
+        <a class="btn btn-outline-secondary btn-sm" href="@(ViewData["BackUrl"] ?? "/")">Geri dön</a>
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1" aria-hidden="true"></i>Yazdır</button>
+    </div>
+    <main class="print-sheet">
+        <div class="print-head">
+            <img src="~/img/logo.svg" alt="Hastane" width="150" height="40" />
+            <div class="text-end small text-muted">@(ViewData["DocTitle"] ?? "Belge")<br />@DateTime.Now.ToString("dd.MM.yyyy")</div>
+        </div>
+        @RenderBody()
+        <p class="small text-muted mt-4 mb-0">Eğitim projesi: bu belge gerçek bir sağlık hizmeti ya da mali belge değildir.</p>
+    </main>
+</body>
+</html>

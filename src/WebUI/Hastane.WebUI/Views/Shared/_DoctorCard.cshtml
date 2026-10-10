@@ -1,0 +1,80 @@
+@using Hastane.WebUI.ViewModels.Public
+@using System.Globalization
+@model DoctorCardViewModel
+@{
+    var d = Model.Doctor;
+    var name = DisplayText.DoctorName(d.Title, d.FirstName, d.LastName);
+    var canBook = User.Identity?.IsAuthenticated != true || User.IsInRole(HastaneRoles.Patient);
+    var photos = d.Gallery.Select(UiKit.SafeImageUrl).Where(u => u is not null).Take(4).ToList();
+}
+<article class="doctor-card panel-card">
+    <div class="dc-photo">
+        <a asp-area="" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id" aria-label="@name profili">
+            <partial name="_Avatar" model="@(new AvatarViewModel(d.ImageUrl, d.FirstName + " " + d.LastName, "lg"))" />
+        </a>
+    </div>
+    <div class="dc-main">
+        <h2 class="dc-name"><a asp-area="" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">@name</a></h2>
+        @if (!string.IsNullOrWhiteSpace(d.Degrees))
+        {
+            <div class="dc-degrees">@d.Degrees</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.BranchName))
+        {
+            <div class="dc-branch">@Model.BranchName</div>
+        }
+        <div class="mt-1">
+            @if (Model.Rating is { ReviewCount: > 0 } r)
+            {
+                <partial name="_Stars" model="r.AverageRating" />
+                <strong class="ms-1">@r.AverageRating.ToString("0.0", CultureInfo.InvariantCulture)</strong>
+                <span class="text-muted small">(@r.ReviewCount yorum)</span>
+            }
+            else
+            {
+                <span class="text-muted small">Henüz yorum yok</span>
+            }
+        </div>
+        <div class="dc-meta">
+            @if (!string.IsNullOrWhiteSpace(d.PrimaryCity))
+            {
+                <span><i class="bi bi-geo-alt" aria-hidden="true"></i>@d.PrimaryCity</span>
+            }
+            @if (!string.IsNullOrEmpty(DisplayText.Gender(d.Gender)))
+            {
+                <span><i class="bi bi-person" aria-hidden="true"></i>@DisplayText.Gender(d.Gender)</span>
+            }
+        </div>
+        @if (photos.Count > 0)
+        {
+            <div class="clinic-gallery">
+                @foreach (var photo in photos)
+                {
+                    <img src="@photo" alt="Klinik fotoğrafı" loading="lazy" />
+                }
+            </div>
+        }
+        @if (d.Services.Count > 0)
+        {
+            <div class="service-tags">
+                @foreach (var service in d.Services.Take(4))
+                {
+                    <span class="service-tag">@service</span>
+                }
+            </div>
+        }
+    </div>
+    <div class="dc-side">
+        @if (Model.Rating is { ReviewCount: > 0 } rr)
+        {
+            <div class="dc-fact"><i class="bi bi-hand-thumbs-up" aria-hidden="true"></i>%@rr.RecommendationPercent tavsiye</div>
+            <div class="dc-fact"><i class="bi bi-chat-dots" aria-hidden="true"></i>@rr.ReviewCount geri bildirim</div>
+        }
+        <div class="dc-fact"><i class="bi bi-cash-coin" aria-hidden="true"></i><strong>@DisplayText.FeeRange(d.MinFee, d.MaxFee, d.Currency)</strong></div>
+        <a class="btn btn-outline-accent btn-sm" asp-area="" asp-controller="Doctors" asp-action="Details" asp-route-id="@d.Id">Profili Gör</a>
+        @if (canBook)
+        {
+            <a class="btn btn-accent btn-sm" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu Al</a>
+        }
+    </div>
+</article>

@@ -1,0 +1,30 @@
+@model PanelSideViewModel
+@{
+    var area = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+}
+<aside class="panel-side panel-card no-print" aria-label="Panel menüsü">
+    <div class="panel-profile">
+        <partial name="_Avatar" model="@(new AvatarViewModel(Model.ImageUrl, Model.DisplayName, "lg"))" />
+        <div class="pp-name">@Model.DisplayName</div>
+        <div class="pp-role">@Model.RoleLabel</div>
+    </div>
+    <ul class="panel-menu">
+        @foreach (var item in Model.Items)
+        {
+            var active = string.Equals(area, item.Area, StringComparison.OrdinalIgnoreCase)
+                         && string.Equals(controller, item.Controller, StringComparison.OrdinalIgnoreCase);
+            <li>
+                <a class="@(active ? "active" : "")" asp-area="@item.Area" asp-controller="@item.Controller" asp-action="@item.Action">
+                    <i class="bi bi-@item.Icon" aria-hidden="true"></i><span>@item.Label</span>
+                </a>
+            </li>
+        }
+        <li class="pm-sep" aria-hidden="true"></li>
+        <li>
+            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post">
+                <button type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i><span>Çıkış yap</span></button>
+            </form>
+        </li>
+    </ul>
+</aside>

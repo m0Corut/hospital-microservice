@@ -4,54 +4,114 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@(ViewData["Title"] is string t && t.Length > 0 ? t + " · Hastane" : "Hastane")</title>
+    <link rel="icon" href="~/img/logo-mark.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap-icons/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="d-flex flex-column min-vh-100">
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-light bg-white site-nav">
+    @{
+        var isAuth = User.Identity?.IsAuthenticated == true;
+        var userName = User.Identity?.Name ?? string.Empty;
+        var roles = User.FindAll(HastaneClaims.Role).Select(c => UiText.RoleName(c.Value)).ToList();
+        var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+        var area = ViewContext.RouteData.Values["area"]?.ToString() ?? string.Empty;
+        string NavActive(bool on) => on ? "active" : "";
+    }
+    <header class="no-print">
+        <nav class="navbar navbar-expand-lg navbar-light site-nav">
             <div class="container">
-                <a class="navbar-brand fw-bold" href="~/">
-                    <span class="brand-mark" aria-hidden="true">+</span> Hastane
+                <a class="navbar-brand" href="~/" aria-label="Hastane ana sayfa">
+                    <img src="~/img/logo.svg" alt="Hastane" width="150" height="38" />
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
                         aria-controls="mainNav" aria-expanded="false" aria-label="Menüyü aç">
-                    <span class="navbar-toggler-icon"></span>
+                    <i class="bi bi-list fs-2" aria-hidden="true"></i>
                 </button>
                 <div class="collapse navbar-collapse" id="mainNav">
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item"><a class="nav-link" href="~/Branches">Branşlar</a></li>
-                        <li class="nav-item"><a class="nav-link" href="~/Doctors">Doktorlar</a></li>
+                        <li class="nav-item"><a class="nav-link @NavActive(area == "" && controller == "Home")" href="~/">Ana Sayfa</a></li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle @NavActive(area == "" && (controller is "Doctors" or "Branches"))" href="~/Doctors" id="doctorsMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Doktorlar</span></a>
+                            <ul class="dropdown-menu" aria-labelledby="doctorsMenu">
+                                <li><a class="dropdown-item" href="~/Doctors"><i class="bi bi-search" aria-hidden="true"></i>Doktor ara</a></li>
+                                <li><a class="dropdown-item" href="~/Branches"><i class="bi bi-grid" aria-hidden="true"></i>Branşlar</a></li>
+                            </ul>
+                        </li>
                         @if (User.IsInRole(HastaneRoles.Admin))
                         {
-                            <li class="nav-item"><a class="nav-link" href="~/Admin">Yönetim</a></li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActive(area == "Admin")" href="~/Admin" id="adminMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Yönetim</span></a>
+                                <ul class="dropdown-menu" aria-labelledby="adminMenu">
+                                    <li><a class="dropdown-item" href="~/Admin"><i class="bi bi-speedometer2" aria-hidden="true"></i>Panel</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Branches"><i class="bi bi-grid" aria-hidden="true"></i>Branşlar</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Doctors"><i class="bi bi-person-badge" aria-hidden="true"></i>Doktorlar</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Users"><i class="bi bi-people" aria-hidden="true"></i>Kullanıcılar</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevular</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemeler</a></li>
+                                    <li><a class="dropdown-item" href="~/Admin/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçeteler</a></li>
+                                </ul>
+                            </li>
                         }
                         @if (User.IsInRole(HastaneRoles.Doctor))
                         {
-                            <li class="nav-item"><a class="nav-link" href="~/Doctor">Doktor Paneli</a></li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActive(area == "Doctor")" href="~/Doctor" id="doctorPanelMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Doktor Paneli</span></a>
+                                <ul class="dropdown-menu" aria-labelledby="doctorPanelMenu">
+                                    <li><a class="dropdown-item" href="~/Doctor"><i class="bi bi-speedometer2" aria-hidden="true"></i>Özet</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevular</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Calendar"><i class="bi bi-calendar-week" aria-hidden="true"></i>Takvim</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Patients"><i class="bi bi-people" aria-hidden="true"></i>Hastalarım</a></li>
+                                    <li><a class="dropdown-item" href="~/Doctor/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçeteler</a></li>
+                                </ul>
+                            </li>
                         }
                         @if (User.IsInRole(HastaneRoles.Patient))
                         {
-                            <li class="nav-item"><a class="nav-link" href="~/Patient">Randevularım</a></li>
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle @NavActive(area == "Patient")" href="~/Patient" id="patientMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span>Randevularım</span></a>
+                                <ul class="dropdown-menu" aria-labelledby="patientMenu">
+                                    <li><a class="dropdown-item" href="~/Patient/Appointments"><i class="bi bi-calendar-check" aria-hidden="true"></i>Randevu listesi</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Prescriptions"><i class="bi bi-file-earmark-medical" aria-hidden="true"></i>Reçetelerim</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Payments"><i class="bi bi-credit-card" aria-hidden="true"></i>Ödemelerim</a></li>
+                                    <li><a class="dropdown-item" href="~/Patient/Invoices"><i class="bi bi-receipt" aria-hidden="true"></i>Faturalarım</a></li>
+                                </ul>
+                            </li>
                         }
                     </ul>
                     <ul class="navbar-nav align-items-lg-center">
-                        @if (User.Identity?.IsAuthenticated == true)
+                        @if (isAuth)
                         {
-                            var roles = User.FindAll(HastaneClaims.Role).Select(c => UiText.RoleName(c.Value)).ToList();
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    @User.Identity.Name
-                                    @if (roles.Count > 0)
-                                    {
-                                        <span class="badge text-bg-info ms-1">@string.Join(", ", roles)</span>
-                                    }
+                                <a class="nav-user dropdown-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <partial name="_Avatar" model="@(new AvatarViewModel(null, userName, "sm"))" />
+                                    <span class="name">@userName</span>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                                    <li class="px-3 py-2">
+                                        <div class="fw-semibold">@userName</div>
+                                        @if (roles.Count > 0)
+                                        {
+                                            <span class="badge text-bg-info">@string.Join(", ", roles)</span>
+                                        }
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    @if (User.IsInRole(HastaneRoles.Admin))
+                                    {
+                                        <li><a class="dropdown-item" href="~/Admin"><i class="bi bi-speedometer2" aria-hidden="true"></i>Yönetim paneli</a></li>
+                                    }
+                                    @if (User.IsInRole(HastaneRoles.Doctor))
+                                    {
+                                        <li><a class="dropdown-item" href="~/Doctor"><i class="bi bi-speedometer2" aria-hidden="true"></i>Doktor paneli</a></li>
+                                    }
+                                    @if (User.IsInRole(HastaneRoles.Patient))
+                                    {
+                                        <li><a class="dropdown-item" href="~/Patient"><i class="bi bi-speedometer2" aria-hidden="true"></i>Hasta paneli</a></li>
+                                    }
                                     <li>
-                                        <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="px-3">
-                                            <button type="submit" class="btn btn-outline-primary btn-sm w-100">Çıkış yap</button>
+                                        <form asp-controller="Account" asp-action="Logout" asp-area="" method="post" class="px-3 pt-2 pb-1">
+                                            <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i>Çıkış yap</button>
                                         </form>
                                     </li>
                                 </ul>
@@ -60,7 +120,7 @@
                         else
                         {
                             <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Account" asp-action="Login">Giriş yap</a></li>
-                            <li class="nav-item ms-lg-2"><a class="btn btn-primary btn-sm" asp-area="" asp-controller="Account" asp-action="Register">Kayıt ol</a></li>
+                            <li class="nav-item ms-lg-2"><a class="btn btn-accent btn-sm" asp-area="" asp-controller="Account" asp-action="Register">Kayıt ol</a></li>
                         }
                     </ul>
                 </div>
@@ -82,10 +142,50 @@
         </div>
     </main>
 
-    <footer class="site-footer py-3 mt-auto">
-        <div class="container d-flex flex-wrap justify-content-between small">
-            <span>&copy; @DateTime.Now.Year Hastane</span>
-            <span>Eğitim projesi: gerçek bir sağlık hizmeti değildir.</span>
+    <footer class="site-footer mt-auto no-print">
+        <div class="container py-5">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="footer-brand mb-3"><img src="~/img/logo.svg" alt="Hastane" width="150" height="38" /></div>
+                    <p class="small mb-0">Branşınıza göre doktor arayın, yorumları okuyun ve randevunuzu çevrimiçi alın.</p>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <h3>Hakkında</h3>
+                    <ul class="small">
+                        <li><a href="~/">Ana Sayfa</a></li>
+                        <li><a href="~/Branches">Branşlar</a></li>
+                        <li><a href="~/Doctors">Doktor ara</a></li>
+                    </ul>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <h3>Hızlı bağlantılar</h3>
+                    <ul class="small">
+                        @if (isAuth)
+                        {
+                            <li><a href="~/Doctors">Randevu al</a></li>
+                        }
+                        else
+                        {
+                            <li><a asp-area="" asp-controller="Account" asp-action="Login">Giriş yap</a></li>
+                            <li><a asp-area="" asp-controller="Account" asp-action="Register">Kayıt ol</a></li>
+                        }
+                    </ul>
+                </div>
+                <div class="col-lg-3">
+                    <h3>İletişim</h3>
+                    <ul class="small">
+                        <li><i class="bi bi-geo-alt me-2" aria-hidden="true"></i>Örnek Mah. Sağlık Cad. No: 1</li>
+                        <li><i class="bi bi-telephone me-2" aria-hidden="true"></i>0 (000) 000 00 00</li>
+                        <li><i class="bi bi-envelope me-2" aria-hidden="true"></i>iletisim@hastane.test</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="footer-note py-3">
+            <div class="container d-flex flex-wrap justify-content-between gap-2">
+                <span>&copy; @DateTime.Now.Year Hastane</span>
+                <span>Eğitim projesi: gerçek bir sağlık hizmeti değildir.</span>
+            </div>
         </div>
     </footer>
 

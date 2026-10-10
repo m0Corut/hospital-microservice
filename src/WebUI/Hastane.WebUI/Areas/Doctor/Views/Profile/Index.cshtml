@@ -1,12 +1,10 @@
 @model ProfileFormViewModel
 @{
     ViewData["Title"] = "Profilim";
-    ViewData["Tab"] = "profile";
     var dayOptions = new[] { DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday };
 }
 
 <h1 class="h4 mb-3">Profilim</h1>
-<partial name="_PanelNav" />
 
 <form method="post" asp-area="Doctor" asp-controller="Profile" asp-action="Index" novalidate>
     @* Enter tuşu formdaki İLK gönder düğmesini tetikler: o "Kaldır/Ekle" olmasın diye görünmez varsayılan Kaydet en başta. *@

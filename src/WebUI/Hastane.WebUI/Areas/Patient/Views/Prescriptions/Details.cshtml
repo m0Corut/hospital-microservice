@@ -4,7 +4,6 @@
     var p = Model.Prescription;
 }
 
-<partial name="_PatientNav" />
 
 <div class="panel-card p-4 mb-4">
     <h1 class="h4 mb-1">Reçete</h1>
@@ -39,4 +38,5 @@
 </div>
 
 <a class="btn btn-outline-secondary" asp-action="Index">Reçetelerime dön</a>
+<a class="btn btn-outline-primary" asp-action="Print" asp-route-id="@Model.Prescription.Id"><i class="bi bi-printer me-1" aria-hidden="true"></i>Yazdır</a>
 <a class="btn btn-outline-primary" asp-controller="Appointments" asp-action="Details" asp-route-id="@p.AppointmentId">İlgili randevu</a>

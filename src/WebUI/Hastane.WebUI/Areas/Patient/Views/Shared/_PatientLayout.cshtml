@@ -1,0 +1,22 @@
+@{
+    // Patient paneli iskeleti: ortak _Layout içinde profil kartlı kenar menü + içerik. Yetki burada değil, PatientAreaController'dadır.
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var side = new PanelSideViewModel(
+        User.Identity?.Name ?? string.Empty,
+        "Hasta",
+        null,
+        [
+            new("speedometer2", "Panel", "Patient", "Home"),
+            new("calendar-check", "Randevularım", "Patient", "Appointments"),
+            new("file-earmark-medical", "Reçetelerim", "Patient", "Prescriptions"),
+            new("credit-card", "Ödemelerim", "Patient", "Payments"),
+            new("receipt", "Faturalarım", "Patient", "Invoices"),
+        ]);
+}
+
+<div class="panel-shell">
+    <partial name="_PanelSide" model="side" />
+    <div class="panel-content">
+        @RenderBody()
+    </div>
+</div>

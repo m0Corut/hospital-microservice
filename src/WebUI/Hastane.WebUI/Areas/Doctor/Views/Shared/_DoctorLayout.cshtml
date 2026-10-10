@@ -1,0 +1,24 @@
+@{
+    // Doctor paneli iskeleti: ortak _Layout içinde profil kartlı kenar menü + içerik. Yetki burada değil, DoctorAreaController'dadır.
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var side = new PanelSideViewModel(
+        User.Identity?.Name ?? string.Empty,
+        "Doktor",
+        null,
+        [
+            new("speedometer2", "Özet", "Doctor", "Home"),
+            new("calendar-check", "Randevularım", "Doctor", "Appointments"),
+            new("calendar-week", "Takvim", "Doctor", "Calendar"),
+            new("people", "Hastalarım", "Doctor", "Patients"),
+            new("file-earmark-medical", "Reçeteler", "Doctor", "Prescriptions"),
+            new("person-vcard", "Profilim", "Doctor", "Profile"),
+            new("star", "Yorumlarım", "Doctor", "Reviews"),
+        ]);
+}
+
+<div class="panel-shell">
+    <partial name="_PanelSide" model="side" />
+    <div class="panel-content">
+        @RenderBody()
+    </div>
+</div>

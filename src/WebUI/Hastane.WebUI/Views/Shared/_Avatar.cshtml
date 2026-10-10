@@ -1,0 +1,15 @@
+@model AvatarViewModel
+@{
+    var url = UiKit.SafeImageUrl(Model.ImageUrl);
+}
+@if (url is not null)
+{
+    <img class="avatar avatar-@Model.Size" src="@url" alt="@Model.Name" loading="lazy" />
+}
+else
+{
+    <svg class="avatar avatar-@Model.Size" viewBox="0 0 100 100" role="img" aria-label="@Model.Name" xmlns="http://www.w3.org/2000/svg">
+        <rect width="100" height="100" fill="@UiKit.AvatarColor(Model.Name)" />
+        <text x="50" y="50" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="40" font-weight="700" font-family="Segoe UI, system-ui, sans-serif">@UiKit.Initials(Model.Name)</text>
+    </svg>
+}

@@ -3,13 +3,29 @@
     ViewData["Title"] = "Randevu al";
 }
 
-<partial name="_PatientNav" />
+<h1 class="page-title">Randevu al</h1>
 
-<div class="row">
+<ol class="stepper" aria-label="Randevu adımları">
+    <li class="done"><span>Doktor</span></li>
+    <li class="current"><span>Tarih ve saat</span></li>
+    <li><span>Onay</span></li>
+</ol>
+
+<div class="row g-4">
     <div class="col-lg-7">
         <div class="panel-card p-4">
-            <h1 class="h4 mb-1">Randevu al</h1>
-            <p class="text-muted">Doktor: <strong>@Model.DoctorName</strong></p>
+            <div class="d-flex align-items-center gap-3 pb-3 mb-3 border-bottom">
+                <partial name="_Avatar" model="@(new AvatarViewModel(Model.DoctorImageUrl, Model.DoctorName, "lg"))" />
+                <div>
+                    <div class="small text-muted">Doktor</div>
+                    <div class="h5 mb-0">@Model.DoctorName</div>
+                    @if (!string.IsNullOrWhiteSpace(Model.DoctorDegrees))
+                    {
+                        <div class="small text-muted">@Model.DoctorDegrees</div>
+                    }
+                    <div class="small"><i class="bi bi-cash-coin text-primary me-1" aria-hidden="true"></i>@Model.FeeText</div>
+                </div>
+            </div>
 
             <form asp-action="Create" asp-controller="Appointments" asp-area="Patient" method="post" novalidate>
                 <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
@@ -20,14 +36,14 @@
                     <span asp-validation-for="AppointmentLocal" class="text-danger small"></span>
                     <div class="form-text">Doktorun çalışma günlerinden birini seçin. Dolu saatler için sistem sizi uyarır.</div>
                 </div>
-                <button type="submit" class="btn btn-primary">Randevuyu oluştur</button>
+                <button type="submit" class="btn btn-accent">Randevuyu oluştur</button>
                 <a class="btn btn-outline-secondary" asp-area="" asp-controller="Doctors" asp-action="Details" asp-route-id="@Model.DoctorId">Vazgeç</a>
             </form>
         </div>
     </div>
-    <div class="col-lg-5 mt-4 mt-lg-0">
+    <div class="col-lg-5">
         <div class="panel-card p-4">
-            <h2 class="h6">Doktorun çalışma programı</h2>
+            <h2 class="h6"><i class="bi bi-clock me-1 text-primary" aria-hidden="true"></i>Doktorun çalışma programı</h2>
             @if (Model.Schedule.Count == 0)
             {
                 <p class="text-muted small mb-0">Program bilgisi yok.</p>

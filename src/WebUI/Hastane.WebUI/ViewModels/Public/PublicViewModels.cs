@@ -45,6 +45,7 @@ public sealed class DoctorCardViewModel
 {
     public required DoctorSearchItemApiModel Doctor { get; init; }
     public DoctorRatingSummaryApiModel? Rating { get; init; }
+    public string? BranchName { get; init; }
 }
 
 public sealed class DoctorSearchViewModel
@@ -56,6 +57,10 @@ public sealed class DoctorSearchViewModel
     public List<DoctorCardViewModel> Doctors { get; init; } = [];
     public long TotalCount { get; init; }
     public bool SearchFailed { get; init; }
+
+    // Çoklu branş seçimi: form aynı ada birden çok değer gönderir, bağlayıcı virgülle birleştirir (API'nin branchIds biçimi).
+    public HashSet<string> SelectedBranchIds => (Filter.BranchId ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet();
 
     public int TotalPages => (int)Math.Max(1, (TotalCount + PageSize - 1) / PageSize);
 }
