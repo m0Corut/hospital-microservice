@@ -1,0 +1,549 @@
+# Tüm sistemi Docker'da çalıştırır (demo / yayın ortamı). docker-compose.yml'in (altyapı) ÜSTÜNE biner:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build
+#   (ya da: pwsh -File scripts/docker-up.ps1)
+#
+# Profiller:  extra  = Elasticsearch + Kafka + Analytics     proxy = Caddy (80/443, otomatik HTTPS)
+#             seed   = örnek veri aracı:  docker compose -f ... --profile seed run --rm devseed
+#
+# Kurallar:
+#  - Sır YOK: her şey .env'den ${...} ile gelir (.env.example'a bak). JWT anahtarları ./secrets/ altındaki dosyalardan (docker-up.ps1 üretir).
+#  - Servisler birbirine konteyner adıyla ulaşır (http://identity:8080). Konteyner içinde "localhost" konteynerin KENDİSİDİR.
+#  - Servis portları dışarı AÇILMAZ. Yalnız Gateway (5000) ve WebUI (5010) yayımlanır, o da varsayılan olarak yalnız 127.0.0.1'e;
+#    dışarıya Caddy (proxy profili) çıkar. Altyapı portları da 127.0.0.1'e daraltıldı (Docker, ufw kurallarını atlar!).
+#  - ASPNETCORE_ENVIRONMENT=Docker: Development değil (OpenAPI/geliştirici davranışı kapalı); migration Database__MigrateOnStartup ile açılır.
+
+x-app-env: &app-env
+  ASPNETCORE_ENVIRONMENT: Docker
+  Database__MigrateOnStartup: "true"
+  Jwt__PublicKeyPemFile: /run/secrets/jwt_public_key
+  Internal__ApiKey: ${INTERNAL_API_KEY:?.env içinde INTERNAL_API_KEY yok (docker-up.ps1 üretir)}
+  Kafka__BootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:-}
+
+# aspnet imajında curl yok: bash'in /dev/tcp'si ile 8080 portu açık mı diye bakılır.
+x-app-health: &app-health
+  test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 40s
+
+services:
+  # ------------------------------------------------------------------ altyapı: yalnız yerelden erişim + sağlık denetimleri
+  mongo:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:27017:27017"
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 20s
+
+  sqlserver:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:1433:1433"
+    environment:
+      MSSQL_MEMORY_LIMIT_MB: ${SQL_MEMORY_LIMIT_MB:-2048}
+    healthcheck:
+      # $$ : compose değil konteyner kabuğu genişletir; parola dosyaya yazılmaz.
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" -b -o /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  mariadb:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:3307:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$$MARIADB_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:6379:6379"
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:5672:5672"
+      - "${BIND_ADDRESS:-127.0.0.1}:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  seq:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:5341:80"
+
+  mailhog:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:1025:1025"
+      - "${BIND_ADDRESS:-127.0.0.1}:8025:8025"
+
+  elasticsearch:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health > /dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  kafka:
+    ports: !override
+      - "${BIND_ADDRESS:-127.0.0.1}:9092:9092"
+    environment:
+      # Ana makineden localhost:9092, ağdaki servislerden kafka:9094. Tek dinleyici olsaydı Kafka istemciye
+      # "localhost:9092'ye bağlan" derdi; konteynerde localhost o konteynerin kendisi olduğundan bağlantı kopardı.
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,DOCKER://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,DOCKER://kafka:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,DOCKER:PLAINTEXT
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 15s
+      retries: 12
+      start_period: 40s
+
+  # ------------------------------------------------------------------ servisler
+  identity:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Identity/Hastane.Identity.Api
+        PROJECT_NAME: Hastane.Identity.Api
+    image: hastane/identity:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__IdentityDb: Server=sqlserver,1433;Database=hastane_identity;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Jwt__PrivateKeyPemFile: /run/secrets/jwt_private_key
+      WebUi__BaseUrl: ${PUBLIC_WEB_URL:-http://localhost:5010}
+      Services__NotificationBaseUrl: http://notification:8080
+      Storage__PhotoPath: /data/photos
+      Seed__AdminEmail: ${ADMIN_EMAIL:?.env içinde ADMIN_EMAIL yok}
+      Seed__AdminPassword: ${ADMIN_PASSWORD:?.env içinde ADMIN_PASSWORD yok}
+    secrets:
+      - jwt_public_key
+      - jwt_private_key
+    volumes:
+      - identity-photos:/data/photos
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  branch:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Branch/Hastane.Branch.Api
+        PROJECT_NAME: Hastane.Branch.Api
+    image: hastane/branch:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  doctor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Doctor/Hastane.Doctor.Api
+        PROJECT_NAME: Hastane.Doctor.Api
+    image: hastane/doctor:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      Elasticsearch__Url: ${ELASTICSEARCH_URL:-}
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+        required: false
+
+  review:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Review/Hastane.Review.Api
+        PROJECT_NAME: Hastane.Review.Api
+    image: hastane/review:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  appointment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Appointment/Hastane.Appointment.Api
+        PROJECT_NAME: Hastane.Appointment.Api
+    image: hastane/appointment:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_appointment;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Services__DoctorBaseUrl: http://doctor:8080
+      Services__NotificationBaseUrl: http://notification:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  prescription:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Prescription/Hastane.Prescription.Api
+        PROJECT_NAME: Hastane.Prescription.Api
+    image: hastane/prescription:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_prescription;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  patient:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Patient/Hastane.Patient.Api
+        PROJECT_NAME: Hastane.Patient.Api
+    image: hastane/patient:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_patient;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Services__AppointmentBaseUrl: http://appointment:8080
+      Services__DoctorBaseUrl: http://doctor:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Queue/Hastane.Queue.Api
+        PROJECT_NAME: Hastane.Queue.Api
+    image: hastane/queue:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_queue;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Services__AppointmentBaseUrl: http://appointment:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  pharmacy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Pharmacy/Hastane.Pharmacy.Api
+        PROJECT_NAME: Hastane.Pharmacy.Api
+    image: hastane/pharmacy:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_pharmacy;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  market:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Market/Hastane.Market.Api
+        PROJECT_NAME: Hastane.Market.Api
+    image: hastane/market:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_market;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
+      Market__SeedDemoData: ${MARKET_SEED_DEMO_DATA:-false}
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  order:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Order/Hastane.Order.Api
+        PROJECT_NAME: Hastane.Order.Api
+    image: hastane/order:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=mariadb;Port=3306;Database=hastane_order;User=root;Password=${MARIADB_ROOT_PASSWORD}
+      Services__MarketBaseUrl: http://market:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  payment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Payment/Hastane.Payment.Api
+        PROJECT_NAME: Hastane.Payment.Api
+    image: hastane/payment:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      ConnectionStrings__DefaultConnection: Server=sqlserver,1433;Database=hastane_payment;User Id=sa;Password=${SQL_SA_PASSWORD};TrustServerCertificate=True
+      Services__AppointmentBaseUrl: http://appointment:8080
+      Services__DoctorBaseUrl: http://doctor:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+
+  notification:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Notification/Hastane.Notification.Api
+        PROJECT_NAME: Hastane.Notification.Api
+    image: hastane/notification:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      Smtp__Host: mailhog
+      Smtp__Port: "1025"
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Chat/Hastane.Chat.Api
+        PROJECT_NAME: Hastane.Chat.Api
+    image: hastane/chat:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      Services__AppointmentBaseUrl: http://appointment:8080
+      Services__DoctorBaseUrl: http://doctor:8080
+      Services__IdentityBaseUrl: http://identity:8080
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  analytics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Services/Analytics/Hastane.Analytics.Api
+        PROJECT_NAME: Hastane.Analytics.Api
+    image: hastane/analytics:${HASTANE_TAG:-latest}
+    profiles: ["extra"]
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      DatabaseSettings__ConnectionString: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      Kafka__BootstrapServers: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9094}
+    secrets:
+      - jwt_public_key
+    healthcheck: *app-health
+    depends_on:
+      mongo:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  # ------------------------------------------------------------------ Gateway (Ocelot) ve WebUI
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/Gateway/Hastane.Gateway
+        PROJECT_NAME: Hastane.Gateway
+    image: hastane/gateway:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      # ocelot.Docker.json yüklenir (konteyner adları). Üreten betik: scripts/sync-ocelot-docker.ps1
+      ASPNETCORE_ENVIRONMENT: Docker
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:5000:8080"
+    healthcheck: *app-health
+
+  webui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: src/WebUI/Hastane.WebUI
+        PROJECT_NAME: Hastane.WebUI
+    image: hastane/webui:${HASTANE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      # Caddy gibi ters vekilin X-Forwarded-Proto/For başlıklarına güven: çerez "Secure" olsun, adresler https üretilsin.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Gateway__BaseUrl: http://gateway:8080
+      # Tarayıcının SignalR (kuyruk ekranı) için bağlanacağı adres. Caddy ile: https://alanadi (yol /gateway/hubs/queue).
+      Gateway__PublicBaseUrl: ${PUBLIC_GATEWAY_URL:-http://localhost:5000}
+      DataProtection__KeyPath: /data/keys
+      Jwt__PublicKeyPemFile: /run/secrets/jwt_public_key
+    secrets:
+      - jwt_public_key
+    volumes:
+      - webui-keys:/data/keys
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:5010:8080"
+    healthcheck: *app-health
+    depends_on:
+      gateway:
+        condition: service_healthy
+      identity:
+        condition: service_healthy
+
+  # ------------------------------------------------------------------ isteğe bağlı: örnek veri ve ters vekil
+  devseed:
+    profiles: ["seed"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROJECT_PATH: tools/Hastane.DevSeed
+        PROJECT_NAME: Hastane.DevSeed
+    image: hastane/devseed:${HASTANE_TAG:-latest}
+    restart: "no"
+    command:
+      - --admin-email
+      - ${ADMIN_EMAIL}
+      - --admin-password
+      - ${ADMIN_PASSWORD}
+      - --gateway
+      - http://gateway:8080
+      - --web-base
+      - ${PUBLIC_WEB_URL:-http://localhost:5010}
+      - --password
+      - ${SEED_PASSWORD:-Hastane123!}
+    depends_on:
+      gateway:
+        condition: service_healthy
+
+  caddy:
+    profiles: ["proxy"]
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      webui:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+
+secrets:
+  jwt_public_key:
+    file: ./secrets/jwt-public.pem
+  jwt_private_key:
+    file: ./secrets/jwt-private.pem
+
+volumes:
+  identity-photos:
+  webui-keys:
+  caddy-data:
+  caddy-config:

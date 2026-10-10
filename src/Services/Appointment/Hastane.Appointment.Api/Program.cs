@@ -4,6 +4,7 @@ using Hastane.Appointment.Api.Integration;
 using Hastane.Appointment.Api.Mapping;
 using Hastane.Appointment.Api.Services;
 using Hastane.Appointment.Api.Settings;
+using Hastane.Shared.Hosting;
 using Hastane.Shared.Security;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
@@ -64,8 +65,12 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+}
 
-    // Yalnız geliştirmede: bekleyen migration'ları açılışta uygular (üretimde veritabanı şemasını
+// Development'ta ya da Database:MigrateOnStartup=true verilince (Docker ortamı).
+if (app.ShouldMigrateOnStartup())
+{
+    // Bekleyen migration'ları açılışta uygular (üretimde veritabanı şemasını
     // uygulama değil, kontrollü bir dağıtım adımı değiştirmeli).
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppointmentDbContext>().Database.Migrate();

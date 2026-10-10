@@ -7,6 +7,7 @@
   <ItemGroup>
     <!-- Rota dosyası çıktı klasörüne kopyalanır; Program.cs çalışma anında buradan okur. -->
     <Content Update="ocelot.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="ocelot.Docker.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
