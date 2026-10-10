@@ -14,6 +14,10 @@
   <ItemGroup Label="Veritabanı">
     <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
   </ItemGroup>
+  <ItemGroup Label="CQRS (Pharmacy)">
+    <!-- MediatR 12.5.0 = son Apache-2.0 sürüm. 13.0.0 ve sonrası (14.x dahil) ticari lisans anahtarı ister (nuspec: license file + requireLicenseAcceptance). -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+  </ItemGroup>
   <ItemGroup Label="Güvenlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>

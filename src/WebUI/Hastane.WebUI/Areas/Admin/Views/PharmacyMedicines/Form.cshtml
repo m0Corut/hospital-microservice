@@ -1,0 +1,77 @@
+@using Hastane.WebUI.ViewModels.Pharmacy
+@model PharmacyMedicineFormViewModel
+@{
+    var isEdit = Model.Id is not null;
+    ViewData["Title"] = isEdit ? "İlacı düzenle" : "İlaç ekle";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
+    <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <input type="hidden" asp-for="RowVersion" />
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" maxlength="150" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Form" class="form-label"></label>
+                <select asp-for="Form" asp-items="PharmacyDisplay.FormChoices(Model.Form)" class="form-select"></select>
+                <span asp-validation-for="Form" class="text-danger small"></span>
+            </div>
+            <div class="col-md-8">
+                <label asp-for="ActiveIngredient" class="form-label"></label>
+                <input asp-for="ActiveIngredient" class="form-control" maxlength="150" />
+                <span asp-validation-for="ActiveIngredient" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Strength" class="form-label"></label>
+                <input asp-for="Strength" class="form-control" maxlength="50" />
+                <span asp-validation-for="Strength" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Barcode" class="form-label"></label>
+                <input asp-for="Barcode" class="form-control" maxlength="20" />
+                <span asp-validation-for="Barcode" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Price" class="form-label"></label>
+                <input asp-for="Price" class="form-control" inputmode="decimal" />
+                <span asp-validation-for="Price" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="MinStock" class="form-label"></label>
+                <input asp-for="MinStock" class="form-control" type="number" min="0" />
+                <span asp-validation-for="MinStock" class="text-danger small"></span>
+            </div>
+            @if (isEdit)
+            {
+                <div class="col-md-4">
+                    <label class="form-label">Mevcut stok</label>
+                    <input class="form-control" value="@Model.CurrentStock" disabled />
+                    <div class="form-text">Stok yalnız <a asp-action="Stock" asp-route-id="@Model.Id">Stok</a> ekranından değişir.</div>
+                </div>
+            }
+            else
+            {
+                <div class="col-md-4">
+                    <label asp-for="Stock" class="form-label"></label>
+                    <input asp-for="Stock" class="form-control" type="number" min="0" />
+                    <span asp-validation-for="Stock" class="text-danger small"></span>
+                </div>
+            }
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="RequiresPrescription" class="form-check-input" />
+                    <label asp-for="RequiresPrescription" class="form-check-label"></label>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+        </div>
+    </form>
+</div>
