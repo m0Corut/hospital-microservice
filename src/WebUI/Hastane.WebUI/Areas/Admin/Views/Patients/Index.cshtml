@@ -1,0 +1,53 @@
+@model PatientIndexViewModel
+@{
+    ViewData["Title"] = "Hastalar";
+    var pager = new PagerViewModel
+    {
+        Action = "Index", Page = Model.Page.Page, PageSize = Model.Page.PageSize, TotalCount = Model.Page.TotalCount,
+        Filters = new Dictionary<string, string?> { ["search"] = Model.Search },
+    };
+}
+
+<h1 class="h4 mb-3">Hastalar</h1>
+
+<form method="get" asp-area="Admin" asp-controller="Patients" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-10">
+        <label for="search" class="form-label small">Ara (ad, soyad, e-posta)</label>
+        <input id="search" name="search" value="@Model.Search" class="form-control" maxlength="100" />
+    </div>
+    <div class="col-md-2 d-grid"><button type="submit" class="btn btn-outline-primary mt-auto">Süz</button></div>
+</form>
+
+<div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+<div class="panel-card p-3">
+    @if (Model.Page.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Hasta bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead><tr><th>Ad soyad</th><th>E-posta</th><th class="text-end">İşlem</th></tr></thead>
+                <tbody>
+                @foreach (var p in Model.Page.Items)
+                {
+                    <tr>
+                        <td>@p.FirstName @p.LastName</td>
+                        <td class="small">@p.Email</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-primary btn-sm" asp-controller="Users" asp-action="Details" asp-route-id="@p.Id">Ayrıntı</a>
+                            <a class="btn btn-outline-secondary btn-sm" asp-controller="Appointments" asp-action="Index" asp-route-PatientId="@p.Id">Randevuları</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-muted">Toplam @Model.Page.TotalCount hasta</span>
+            <partial name="_Pager" model="pager" />
+        </div>
+    }
+</div>

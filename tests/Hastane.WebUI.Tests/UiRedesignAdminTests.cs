@@ -33,16 +33,27 @@ public class AdminHomeSummaryTests
     public async Task Home_asks_each_endpoint_for_a_single_row()
     {
         await using var host = await WebUiTestHost.StartAsync();
-        var doctors = MapCapturingQuery(host, "GET", "/gateway/doctors/search", 200, Paged([], page: 1, pageSize: 1, total: 3));
-        var payments = MapCapturingQuery(host, "GET", "/gateway/payments", 200, Paged([], page: 1, pageSize: 1, total: 4));
-        var invoices = MapCapturingQuery(host, "GET", "/gateway/invoices", 200, Paged([], page: 1, pageSize: 1, total: 5));
+        // Grafikler de ödemeleri çektiği için ödeme ucu birden çok sorgu alır; özet kutusunun pageSize=1 sorgusu bunların arasında olmalı.
+        var doctors = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var payments = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var invoices = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        void Record(string path, System.Collections.Concurrent.ConcurrentQueue<string> sink, int total)
+            => host.Gateway.Map("GET", path, ctx =>
+            {
+                sink.Enqueue(ctx.Request.QueryString.Value ?? "");
+                ctx.Response.StatusCode = 200;
+                return ctx.Response.WriteAsJsonAsync(Paged([], page: 1, pageSize: 1, total: total));
+            });
+        Record("/gateway/doctors/search", doctors, 3);
+        Record("/gateway/payments", payments, 4);
+        Record("/gateway/invoices", invoices, 5);
         var client = await AdminClientAsync(host);
 
         await client.GetAsync("/Admin");
 
-        Assert.Equal("?page=1&pageSize=1", doctors());
-        Assert.Equal("?page=1&pageSize=1", payments());
-        Assert.Equal("?page=1&pageSize=1", invoices());
+        Assert.Contains("?page=1&pageSize=1", doctors);
+        Assert.Contains("?page=1&pageSize=1", payments);
+        Assert.Equal(["?page=1&pageSize=1"], invoices);
     }
 
     [Fact]
