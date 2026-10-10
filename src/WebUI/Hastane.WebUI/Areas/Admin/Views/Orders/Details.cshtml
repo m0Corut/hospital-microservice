@@ -1,0 +1,80 @@
+@using Hastane.WebUI.ViewModels.Orders
+@model AdminOrderDetailViewModel
+@{
+    var o = Model.Order;
+    ViewData["Title"] = "Sipariş " + o.OrderNumber;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Sipariş <code>@o.OrderNumber</code></h1>
+    <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+</div>
+
+@if (o.StockReleasePending)
+{
+    <div class="alert alert-warning" role="alert">
+        Stok iadesi Market servisine iletilemedi (iade bekliyor). Stoğun elle kontrol edilmesi gerekir.
+    </div>
+}
+
+<div class="panel-card p-4 mb-3">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Durum</dt><dd class="col-sm-9"><span class="badge @OrderDisplay.Badge(o.Status)">@OrderDisplay.Status(o.Status)</span></dd>
+        <dt class="col-sm-3">Hasta</dt><dd class="col-sm-9">@o.PatientName <span class="text-muted small">(<code>@o.PatientUserId</code>)</span></dd>
+        <dt class="col-sm-3">Teslimat adresi</dt><dd class="col-sm-9">@o.ShippingAddress</dd>
+        @if (!string.IsNullOrWhiteSpace(o.Note))
+        {
+            <dt class="col-sm-3">Not</dt><dd class="col-sm-9">@o.Note</dd>
+        }
+        <dt class="col-sm-3">Ödeme</dt><dd class="col-sm-9">@OrderDisplay.PaymentMethod(o.PaymentMethod)</dd>
+        <dt class="col-sm-3">Toplam</dt><dd class="col-sm-9">@OrderDisplay.Money(o.TotalAmount, o.Currency)</dd>
+        <dt class="col-sm-3">Oluşturulma</dt><dd class="col-sm-9">@AdminDisplay.Date(o.CreatedAt)</dd>
+        <dt class="col-sm-3">Son güncelleme</dt><dd class="col-sm-9">@AdminDisplay.Date(o.UpdatedAt)</dd>
+        @if (!string.IsNullOrWhiteSpace(o.CancelReason))
+        {
+            <dt class="col-sm-3">İptal nedeni</dt><dd class="col-sm-9">@o.CancelReason</dd>
+        }
+    </dl>
+</div>
+
+<div class="panel-card p-3 mb-3">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead><tr><th>Ürün</th><th class="text-end">Birim fiyat</th><th class="text-end">Adet</th><th class="text-end">Tutar</th></tr></thead>
+            <tbody>
+                @foreach (var item in o.Items)
+                {
+                    <tr>
+                        <td>@item.ProductName</td>
+                        <td class="text-end">@OrderDisplay.Money(item.UnitPrice, o.Currency)</td>
+                        <td class="text-end">@item.Quantity</td>
+                        <td class="text-end">@OrderDisplay.Money(item.LineTotal, o.Currency)</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr><th colspan="3" class="text-end">Toplam</th><th class="text-end">@OrderDisplay.Money(o.TotalAmount, o.Currency)</th></tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 align-items-start">
+    @foreach (var next in Model.NextStatuses)
+    {
+        <form asp-action="UpdateStatus" asp-route-id="@o.Id" method="post">
+            <input type="hidden" name="status" value="@next" />
+            <button type="submit" class="btn btn-primary btn-sm">@OrderDisplay.StatusAction(next)</button>
+        </form>
+    }
+
+    @if (Model.CanCancel)
+    {
+        <form asp-action="Cancel" asp-route-id="@o.Id" method="post">
+            <div class="input-group input-group-sm">
+                <input type="text" name="Reason" class="form-control" maxlength="300" placeholder="İptal nedeni (isteğe bağlı)" aria-label="İptal nedeni" />
+                <button type="submit" class="btn btn-outline-danger">Siparişi iptal et</button>
+            </div>
+        </form>
+    }
+</div>
