@@ -8,6 +8,8 @@ public sealed class ReviewApiModel
     public int Rating { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
+    // Yorum isteği yapan kullanıcıya mı ait (API token'dan hesaplar; anonimde false). Düzenle/sil düğmeleri buna bağlı.
+    public bool IsMine { get; set; }
 }
 
 public sealed class DoctorRatingSummaryApiModel

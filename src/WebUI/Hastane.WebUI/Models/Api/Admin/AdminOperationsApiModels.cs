@@ -20,6 +20,8 @@ public sealed class AdminAppointmentApiModel
     public DateTime AppointmentDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    // Hastanın randevu alırken yazdığı şikâyet / not (yoksa null).
+    public string? Note { get; set; }
     // Yalnız GET /appointments/{id} dolu döner; listede yok.
     public AdminAppointmentDetailApiModel? Detail { get; set; }
 }

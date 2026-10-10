@@ -1,5 +1,6 @@
 using System.Net;
 using static Hastane.WebUI.Tests.PublicPatientTestHelpers;
+using static Hastane.WebUI.Tests.SlotTestHelpers;
 
 namespace Hastane.WebUI.Tests;
 
@@ -120,16 +121,21 @@ public class PatientRescheduleTests
     }
 
     [Fact]
-    public async Task Form_shows_doctor_and_current_date()
+    public async Task Form_shows_doctor_current_date_day_buttons_and_istanbul_slots()
     {
         var (host, client) = await StartAsync();
         await using var _h = host;
+        var availability = host.Gateway.MapAvailability(SlotUtc(3, 14), SlotUtc(3, 14, 30));
 
-        var html = await (await client.GetAsync($"/Patient/Appointments/Reschedule/{Appt1}")).Content.ReadHtmlAsync();
+        var html = await (await client.GetAsync($"/Patient/Appointments/Reschedule/{Appt1}?date={DayText(3)}")).Content.ReadHtmlAsync();
 
         Assert.Contains("Randevuyu yeniden planla", html);
         Assert.Contains("Dr. Ali Veli", html);
-        Assert.Contains("datetime-local", html);
+        Assert.DoesNotContain("datetime-local", html);
+        Assert.Equal($"?doctorId=d1&date={DayText(3)}", availability.LastQuery); // doktor randevudan gelir, formdan değil
+        Assert.Contains(">14:00</label>", html);
+        Assert.Contains(">14:30</label>", html);
+        Assert.Equal(14, System.Text.RegularExpressions.Regex.Matches(html, $"href=\"/Patient/Appointments/Reschedule/{Appt1}\\?date=").Count);
     }
 
     [Fact]
@@ -145,17 +151,18 @@ public class PatientRescheduleTests
     }
 
     [Fact]
-    public async Task Post_puts_utc_date_with_branch_from_api_and_ignores_form_branch()
+    public async Task Post_puts_slot_utc_start_with_branch_from_api_and_ignores_form_branch()
     {
         var (host, client) = await StartAsync();
         await using var _h = host;
+        host.Gateway.MapAvailability(SlotUtc(4, 9));
         host.Gateway.MapJson("PUT", $"/gateway/appointments/{Appt1}", 200, Appointment(Appt1));
-        var localText = LocalFuture(7);
-        var expectedUtc = DateTime.SpecifyKind(DateTime.Parse(localText, System.Globalization.CultureInfo.InvariantCulture), DateTimeKind.Local).ToUniversalTime();
+        var slot = SlotUtc(4, 9);
 
         var response = await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new()
         {
-            ["AppointmentLocal"] = localText,
+            ["SlotStart"] = SlotValue(slot),
+            ["Date"] = DayText(4),
             ["BranchId"] = "kotu-sube",
         });
 
@@ -166,39 +173,58 @@ public class PatientRescheduleTests
         var json = Json(sent.Body);
         Assert.Equal(Appt1, json.GetProperty("id").GetGuid());
         Assert.Equal("b0", json.GetProperty("branchId").GetString());
-        Assert.Equal(expectedUtc, json.GetProperty("appointmentDate").GetDateTime());
+        Assert.Equal(slot, json.GetProperty("appointmentDate").GetDateTime());
         Assert.False(json.TryGetProperty("doctorId", out _));
         Assert.False(json.TryGetProperty("patientId", out _));
     }
 
-    [Fact]
-    public async Task Post_409_slot_taken_is_shown_in_form_and_keeps_the_entered_date()
+    [Theory]
+    [InlineData(409, "Bu doktorun bu saatte başka bir randevusu var.")]
+    [InlineData(400, "Seçilen saat doktorun çalışma programında değil")]
+    public async Task Post_api_error_is_shown_in_form_and_keeps_the_selected_day_and_slot(int status, string message)
     {
         var (host, client) = await StartAsync();
         await using var _h = host;
-        host.Gateway.MapJson("PUT", $"/gateway/appointments/{Appt1}", 409, Problem(409, "Bu doktorun bu saatte başka bir randevusu var."));
-        var localText = LocalFuture(7);
+        var availability = host.Gateway.MapAvailability(SlotUtc(4, 9), SlotUtc(4, 10));
+        host.Gateway.MapJson("PUT", $"/gateway/appointments/{Appt1}", status, Problem(status, message));
+        var slot = SlotUtc(4, 9);
 
-        var response = await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new() { ["AppointmentLocal"] = localText });
+        var response = await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new() { ["SlotStart"] = SlotValue(slot), ["Date"] = DayText(4) });
         var html = await response.Content.ReadHtmlAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Bu doktorun bu saatte başka bir randevusu var.", html);
-        Assert.Contains(localText, html);
+        Assert.Contains(message, html);
+        Assert.Equal($"?doctorId=d1&date={DayText(4)}", availability.LastQuery);
+        Assert.Contains($"value=\"{SlotValue(slot)}\" checked", html);
     }
 
     [Fact]
-    public async Task Post_with_past_or_missing_date_never_reaches_the_api()
+    public async Task Post_503_is_a_form_message()
     {
         var (host, client) = await StartAsync();
         await using var _h = host;
-        var past = DateTime.Now.AddDays(-2).ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        host.Gateway.MapAvailability(SlotUtc(4, 9));
+        host.Gateway.MapStatus("PUT", $"/gateway/appointments/{Appt1}", 503);
 
-        var pastHtml = await (await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new() { ["AppointmentLocal"] = past })).Content.ReadHtmlAsync();
+        var response = await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new() { ["SlotStart"] = SlotValue(SlotUtc(4, 9)), ["Date"] = DayText(4) });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Doktorun programına şu an ulaşılamıyor", await response.Content.ReadHtmlAsync());
+    }
+
+    [Fact]
+    public async Task Post_with_past_or_missing_slot_never_reaches_the_api()
+    {
+        var (host, client) = await StartAsync();
+        await using var _h = host;
+        host.Gateway.MapAvailability(SlotUtc(4, 9));
+        var past = SlotValue(DateTime.UtcNow.AddDays(-2));
+
+        var pastHtml = await (await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}", new() { ["SlotStart"] = past })).Content.ReadHtmlAsync();
         var missingHtml = await (await host.PostAsync(client, $"/Patient/Appointments/Reschedule/{Appt1}")).Content.ReadHtmlAsync();
 
         Assert.Contains("Randevu tarihi gelecekte olmalı.", pastHtml);
-        Assert.Contains("Tarih ve saat seçin.", missingHtml);
+        Assert.Contains("Bir saat seçin.", missingHtml);
         Assert.Empty(host.Gateway.Calls("PUT", $"/gateway/appointments/{Appt1}"));
     }
 
@@ -209,7 +235,7 @@ public class PatientRescheduleTests
         await using var _h = host;
 
         var response = await client.PostAsync($"/Patient/Appointments/Reschedule/{Appt1}",
-            new FormUrlEncodedContent(new Dictionary<string, string> { ["AppointmentLocal"] = LocalFuture(7) }));
+            new FormUrlEncodedContent(new Dictionary<string, string> { ["SlotStart"] = SlotValue(SlotUtc(4, 9)) }));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(host.Gateway.Calls("PUT", $"/gateway/appointments/{Appt1}"));

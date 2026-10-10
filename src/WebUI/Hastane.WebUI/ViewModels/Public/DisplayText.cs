@@ -1,4 +1,5 @@
 using System.Globalization;
+using Hastane.WebUI.ViewModels.Shared;
 
 namespace Hastane.WebUI.ViewModels.Public;
 
@@ -68,10 +69,10 @@ public static class DisplayText
 
     // API UTC verir; ekranda yerel saat, dd.MM.yyyy HH:mm.
     public static string DateTimeLocal(DateTime utc)
-        => EnsureUtc(utc).ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
+        => AppointmentTime.ToClinicLocal(utc).ToString("dd.MM.yyyy HH:mm", CultureInfo.InvariantCulture);
 
     public static string DateLocal(DateTime utc)
-        => EnsureUtc(utc).ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+        => AppointmentTime.ToClinicLocal(utc).ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
 
     public static string Money(decimal amount, string? currency)
         => amount.ToString("N2", Tr) + " " + (currency ?? string.Empty);

@@ -610,14 +610,18 @@ public class AdminUserAndRoleTests
     }
 
     [Fact]
-    public async Task Lookup_page_explains_that_there_is_no_user_list()
+    public async Task Users_page_lists_users_from_the_paged_endpoint_with_detail_links()
     {
         await using var host = await WebUiTestHost.StartAsync();
+        host.Gateway.MapJson("GET", "/gateway/users", 200, new { items = new[] { User(["Patient"]) }, totalCount = 1, page = 1, pageSize = 20 });
+        host.Gateway.MapJson("GET", "/gateway/roles", 200, new[] { new { name = "Admin" }, new { name = "Doctor" }, new { name = "Patient" } });
         var client = await AdminClientAsync(host);
 
         var html = await HtmlAsync(await client.GetAsync("/Admin/Users"));
 
-        Assert.Contains("kullanıcı listesi sunmaz", html);
+        Assert.Contains("Zeynep Kaya", html);
+        Assert.Contains("zeynep@test.local", html);
+        Assert.Contains("href=\"/Admin/Users/Details/user-9\"", html);
     }
 
     [Fact]

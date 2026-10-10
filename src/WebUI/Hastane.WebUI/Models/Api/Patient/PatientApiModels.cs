@@ -10,6 +10,8 @@ public class AppointmentApiModel
     public DateTime AppointmentDate { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    // Hastanın randevu alırken yazdığı şikâyet / not (en çok 500 karakter; yoksa null).
+    public string? Note { get; set; }
 }
 
 public sealed class AppointmentDetailApiModel : AppointmentApiModel
@@ -26,7 +28,16 @@ public sealed class AppointmentVisitApiModel
 }
 
 // PatientId gönderilmez: hasta için sunucu token'dan alır.
-public sealed record CreateAppointmentRequest(string DoctorId, string BranchId, DateTime AppointmentDate);
+public sealed record CreateAppointmentRequest(string DoctorId, string BranchId, DateTime AppointmentDate, string? Note = null);
+
+// GET appointments/availability: doktorun o gün için boş slotları. Start/End UTC; saat gösterimi AppointmentTime ile İstanbul'a çevrilir.
+public sealed class AvailableSlotApiModel
+{
+    public DateTime Start { get; set; }
+    public DateTime End { get; set; }
+    public string ClinicName { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+}
 
 public sealed record UpdateAppointmentStatusRequest(string Status);
 

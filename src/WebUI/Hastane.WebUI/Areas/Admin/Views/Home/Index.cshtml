@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Yönetim";
     var tiles = new List<(string Icon, string Tone, string Label, long Value)>();
+    if (Model.Users is { } users) tiles.Add(("people", "tone-blue", "Kullanıcı sayısı", users));
     if (Model.Doctors is { } doctors) tiles.Add(("person-badge", "tone-teal", "Doktor", doctors));
     if (Model.Payments is { } payments) tiles.Add(("credit-card", "tone-blue", "Ödeme", payments));
     if (Model.Invoices is { } invoices) tiles.Add(("receipt", "tone-violet", "Fatura", invoices));
@@ -33,7 +34,7 @@
         {
             ("Branches", "grid", "Branşlar", "Branş ekle, düzenle, sil."),
             ("Doctors", "person-badge", "Doktorlar", "Doktor kayıtları, eğitim, deneyim, klinik ve çalışma programı."),
-            ("Users", "people", "Kullanıcılar", "Kullanıcıyı Id ile bul, rol ver, doktor kaydına bağla."),
+            ("Users", "people", "Kullanıcılar", "Kullanıcıları ara ve süz, rol ver, doktor kaydına bağla."),
             ("Roles", "shield-lock", "Roller", "Rolleri listele, yeni rol oluştur."),
             ("Appointments", "calendar-check", "Randevular", "Tüm randevular, ayrıntı, durum ve silme."),
             ("Payments", "credit-card", "Ödemeler", "Ödeme listesi, ayrıntı ve iade."),

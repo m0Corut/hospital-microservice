@@ -190,7 +190,7 @@
                                 <p class="mb-1 text-break">@r.Comment</p>
                             }
 
-                            @if (Model.IsPatient && row.LooksOwned)
+                            @if (Model.IsPatient && row.IsMine)
                             {
                                 <details class="mt-2">
                                     <summary class="small text-primary" role="button">Düzenle</summary>
@@ -275,12 +275,22 @@
                 {
                     <a class="btn btn-accent btn-lg w-100" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu al</a>
                 }
+                else if (!Model.IsSignedIn)
+                {
+                    <a class="btn btn-accent btn-lg w-100" asp-area="" asp-controller="Account" asp-action="Login"
+                       asp-route-returnUrl="@Url.Action("Create", "Appointments", new { area = "Patient", doctorId = d.Id })">Randevu al</a>
+                    <p class="small text-muted mt-2 mb-0">Randevu için giriş yapmanız gerekir.</p>
+                }
                 else
                 {
                     <p class="small text-muted mb-0">Randevu almak için hasta hesabıyla giriş yapın.</p>
                 }
                 <hr />
                 <h2 class="h6">İletişim</h2>
+                @if (!Model.IsSignedIn)
+                {
+                    <p class="small text-muted mb-0">Telefon ve e-posta bilgisi için giriş yapın.</p>
+                }
                 @if (!string.IsNullOrWhiteSpace(d.Phone))
                 {
                     <div class="small"><i class="bi bi-telephone me-1 text-primary" aria-hidden="true"></i>Telefon: @d.Phone</div>

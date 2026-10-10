@@ -11,6 +11,10 @@
             <div class="h5 mb-1">@Model.PatientLabel</div>
             <div class="text-muted">@DoctorPanelFormat.DateTimeText(Model.Date) · @Model.BranchLabel</div>
             <div class="small text-muted">Oluşturulma: @DoctorPanelFormat.DateTimeText(Model.CreatedAt)</div>
+            @if (!string.IsNullOrWhiteSpace(Model.Note))
+            {
+                <div class="mt-2"><span class="small text-muted">Hasta notu:</span> <span class="text-break">@Model.Note</span></div>
+            }
         </div>
         <div><span class="badge fs-6 @DoctorPanelFormat.StatusBadge(Model.Status)">@DoctorPanelFormat.StatusText(Model.Status)</span></div>
     </div>

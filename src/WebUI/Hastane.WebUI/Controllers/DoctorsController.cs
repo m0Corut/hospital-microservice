@@ -75,8 +75,8 @@ public class DoctorsController(
         });
     }
 
-    // Ayrıntı ucu (telefon, e-posta) giriş ister; anonim ziyaretçi burada girişe yönlendirilir, API'ye gitmeden.
-    [HttpGet("Doctors/{id}"), Authorize]
+    // Profil herkese açık. Anonim ziyaretçi /public ucunu görür (telefon, e-posta YOK); girişli kullanıcı ayrıntı ucunu görür.
+    [HttpGet("Doctors/{id}"), AllowAnonymous]
     public async Task<IActionResult> Details(string id, CancellationToken ct)
         => View(await BuildProfileAsync(id, new ReviewFormModel { Rating = 5 }, ct));
 
@@ -132,14 +132,14 @@ public class DoctorsController(
     private async Task<DoctorProfileViewModel> BuildProfileAsync(string id, ReviewFormModel form, CancellationToken ct)
     {
         // Doktor yoksa 404 sayfası (varsayılan). Puan/yorum/branş yardımcı bilgi: kapalıysa profil yine açılır.
-        var doctorResult = await doctors.GetAsync(id, ct);
+        var signedIn = User.Identity?.IsAuthenticated == true;
+        var doctorResult = signedIn ? await doctors.GetAsync(id, ct) : await doctors.GetPublicAsync(id, ct);
         var doctor = doctorResult.Value!;
 
         var summary = await reviews.GetSummaryAsync(id, ApiFailures.All, ct);
         var reviewList = await reviews.GetByDoctorAsync(id, ApiFailures.All, ct);
         var branchList = await branches.GetAllAsync(ApiFailures.All, ct);
 
-        var me = User.Identity?.Name;
         return new DoctorProfileViewModel
         {
             Doctor = doctor,
@@ -149,11 +149,12 @@ public class DoctorsController(
                 .Select(r => new ReviewRowViewModel
                 {
                     Review = r,
-                    LooksOwned = me is not null && string.Equals(r.ReviewerName, me, StringComparison.Ordinal),
+                    IsMine = r.IsMine,
                 })
                 .ToList(),
             ReviewsUnavailable = !reviewList.IsSuccess,
             IsPatient = User.IsInRole(HastaneRoles.Patient),
+            IsSignedIn = signedIn,
             ReviewForm = form,
         };
     }

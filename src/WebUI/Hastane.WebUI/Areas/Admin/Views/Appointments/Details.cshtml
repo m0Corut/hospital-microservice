@@ -17,6 +17,10 @@
         <dt class="col-sm-3">Branş</dt><dd class="col-sm-9">@Model.Lookups.Branch(a.BranchId)</dd>
         <dt class="col-sm-3">Hasta Id</dt><dd class="col-sm-9"><code>@a.PatientId</code></dd>
         <dt class="col-sm-3">Oluşturulma</dt><dd class="col-sm-9">@AdminDisplay.Date(a.CreatedAt)</dd>
+        @if (!string.IsNullOrWhiteSpace(a.Note))
+        {
+            <dt class="col-sm-3">Hasta notu</dt><dd class="col-sm-9 text-break">@a.Note</dd>
+        }
     </dl>
 </div>
 

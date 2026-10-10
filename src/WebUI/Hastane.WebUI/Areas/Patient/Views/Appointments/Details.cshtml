@@ -18,6 +18,11 @@
         <dd class="col-sm-9">@DisplayText.DateTimeLocal(a.AppointmentDate)</dd>
         <dt class="col-sm-3">Oluşturulma</dt>
         <dd class="col-sm-9">@DisplayText.DateTimeLocal(a.CreatedAt)</dd>
+        @if (!string.IsNullOrWhiteSpace(a.Note))
+        {
+            <dt class="col-sm-3">Şikâyet / not</dt>
+            <dd class="col-sm-9 text-break">@a.Note</dd>
+        }
         <dt class="col-sm-3">Ödeme</dt>
         <dd class="col-sm-9">
             @if (Model.Payment is { } p)

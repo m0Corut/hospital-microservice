@@ -33,6 +33,14 @@ public sealed class RoleIndexViewModel
     public RoleCreateViewModel NewRole { get; init; } = new();
 }
 
+public sealed class UserIndexViewModel
+{
+    public string? Search { get; init; }
+    public string? Role { get; init; }
+    public required AdminPagedApiModel<AdminUserApiModel> Page { get; init; }
+    public List<string> Roles { get; init; } = [];
+}
+
 public sealed class UserDetailsViewModel
 {
     public required AdminUserApiModel User { get; init; }

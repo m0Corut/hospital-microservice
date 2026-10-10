@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Hastane.WebUI.Models.Api.Patient;
 using Hastane.WebUI.Models.Api.Public;
+using Hastane.WebUI.ViewModels.Shared;
 
 namespace Hastane.WebUI.ViewModels.Patient;
 
@@ -31,10 +32,20 @@ public sealed class CreateAppointmentViewModel
     [Required(ErrorMessage = "Doktor seçilmedi.")]
     public string DoctorId { get; set; } = string.Empty;
 
-    // Yerel tarih-saat (datetime-local). Sunucu UTC'ye çevirip API'ye yollar.
-    [Required(ErrorMessage = "Tarih ve saat seçin.")]
-    [Display(Name = "Tarih ve saat")]
-    public DateTime? AppointmentLocal { get; set; }
+    // Seçilen slotun UTC başlangıcı ("yyyy-MM-ddTHH:mm:ssZ"): saat seçicinin radio'sundan gelir, serbest tarih girişi yok.
+    [Required(ErrorMessage = "Bir saat seçin.")]
+    [Display(Name = "Saat")]
+    public string? SlotStart { get; set; }
+
+    // Gösterilen gün (yyyy-MM-dd); hatayla dönüşte aynı gün yeniden çizilir.
+    public string? Date { get; set; }
+
+    [Display(Name = "Şikâyet / not")]
+    [StringLength(500, ErrorMessage = "Not en çok 500 karakter olabilir.")]
+    public string? Note { get; set; }
+
+    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    public SlotPickerViewModel Picker { get; set; } = new();
 
     // Yalnız gösterim için; POST'ta yeniden doldurulur (formdan alınmaz).
     public string DoctorName { get; set; } = string.Empty;

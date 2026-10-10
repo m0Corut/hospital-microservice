@@ -10,13 +10,14 @@ namespace Hastane.WebUI.Areas.Doctor.Controllers;
 public class AppointmentsController(
     IDoctorPanelAppointmentClient appointments,
     IDoctorPanelPrescriptionClient prescriptions,
-    IAppointmentRescheduleClient reschedule) : DoctorPanelController
+    IAppointmentRescheduleClient reschedule,
+    IAppointmentAvailabilityClient availability) : DoctorPanelController
 {
     public async Task<IActionResult> Index(AppointmentFilterViewModel filter, CancellationToken ct)
     {
         // Tarih süzgeci yerel gün sınırlarıyla UTC'ye çevrilir; "bitiş" günün sonunu da kapsar.
-        var fromUtc = filter.From is { } f ? f.Date.ToUniversalTime() : (DateTime?)null;
-        var toUtc = filter.To is { } t ? t.Date.AddDays(1).AddTicks(-1).ToUniversalTime() : (DateTime?)null;
+        var fromUtc = filter.From is { } f ? AppointmentTime.ClinicLocalToUtc(f.Date) : (DateTime?)null;
+        var toUtc = filter.To is { } t ? AppointmentTime.ClinicLocalToUtc(t.Date.AddDays(1)).AddTicks(-1) : (DateTime?)null;
 
         var result = await appointments.ListAsync(DoctorId, filter.Status, fromUtc, toUtc, ct);
         var list = (result.Value ?? []).OrderByDescending(a => a.AppointmentDate).ToList();
@@ -48,7 +49,7 @@ public class AppointmentsController(
 
     // Yeniden planlama: yalnız bekleyen / onaylı randevu. Sahiplik (başkasının randevusu 404) ve çakışma (409) API'dedir.
     [HttpGet]
-    public async Task<IActionResult> Reschedule(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Reschedule(Guid id, string? date, CancellationToken ct)
     {
         var appointment = (await appointments.GetAsync(id, ct)).Value!;
         if (!DoctorPanelFormat.CanReschedule(appointment.Status))
@@ -57,7 +58,7 @@ public class AppointmentsController(
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        return View(await BuildRescheduleAsync(appointment, new RescheduleViewModel { Id = id }, ct));
+        return View(await BuildRescheduleAsync(appointment, new RescheduleViewModel { Id = id, Date = date }, ct));
     }
 
     [HttpPost]
@@ -66,7 +67,7 @@ public class AppointmentsController(
         // Şube, hasta ve durum formdan değil API'den alınır.
         var appointment = (await appointments.GetAsync(id, ct)).Value!;
         model.Id = id;
-        var utc = AppointmentTime.LocalToFutureUtc(model.AppointmentLocal, ModelState, nameof(model.AppointmentLocal));
+        var utc = AppointmentTime.ParseSlot(model.SlotStart, ModelState, nameof(model.SlotStart));
 
         if (ModelState.IsValid && utc is { } newDate)
         {
@@ -77,7 +78,8 @@ public class AppointmentsController(
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            ModelState.AddApiProblem(result, "Randevu yeniden planlanamadı.");
+            // 400: çalışma programı dışı saat; 409: dolu saat / değiştirilemez; 503: doktor servisi kapalı.
+            ModelState.AddBookingProblem(result, "Randevu yeniden planlanamadı.");
         }
 
         return View(await BuildRescheduleAsync(appointment, model, ct));
@@ -88,6 +90,9 @@ public class AppointmentsController(
         var patientLabel = await PatientLabelsAsync([appointment.PatientId], ct);
         model.PartyLabel = patientLabel(appointment.PatientId);
         model.CurrentDate = appointment.AppointmentDate;
+        model.Picker = await AppointmentTime.BuildPickerAsync(availability, appointment.DoctorId, model.Date,
+            day => Url.Action(nameof(Reschedule), new { id = model.Id, date = AppointmentTime.DateText(day) })!, ct);
+        model.Picker.SelectedStart = model.SlotStart;
         return model;
     }
 
@@ -125,6 +130,7 @@ public class AppointmentsController(
             Status = appointment.Status,
             PatientLabel = patientLabel(appointment.PatientId),
             BranchLabel = branchLabel(appointment.BranchId),
+            Note = appointment.Note,
             DetailUpdatedAt = appointment.Detail?.UpdatedAt,
             Form = submitted ?? new AppointmentDetailForm
             {

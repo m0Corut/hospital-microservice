@@ -8,7 +8,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h4 mb-0">@user.FirstName @user.LastName</h1>
-    <a class="btn btn-link btn-sm" asp-action="Index">Başka kullanıcı ara</a>
+    <a class="btn btn-link btn-sm" asp-action="Index">Kullanıcı listesine dön</a>
 </div>
 
 <div class="panel-card p-4 mb-4">
@@ -24,6 +24,9 @@
             else
             {
                 @(Model.LinkedDoctorName ?? user.DoctorId)
+                <form asp-action="UnlinkDoctor" asp-route-id="@user.Id" method="post" class="d-inline ms-2">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Kullanıcının doktor kaydı bağı kaldırılsın mı?');">Bağı kaldır</button>
+                </form>
             }
         </dd>
     </dl>

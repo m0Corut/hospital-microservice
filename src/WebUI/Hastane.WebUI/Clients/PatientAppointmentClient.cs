@@ -21,7 +21,7 @@ public sealed class PatientAppointmentClient(IGatewayClient gateway) : IPatientA
     {
         var query = new List<string>();
         if (!string.IsNullOrWhiteSpace(status)) query.Add("status=" + Uri.EscapeDataString(status));
-        if (fromUtc is { } from) query.Add("from=" + Uri.EscapeDataString(from.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture)));
+        if (fromUtc is { } from) query.Add("from=" + Uri.EscapeDataString((from.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(from, DateTimeKind.Utc) : from.ToUniversalTime()).ToString("yyyy-MM-ddTHH:mm:ss'Z'", System.Globalization.CultureInfo.InvariantCulture)));
         var path = query.Count == 0 ? "/gateway/appointments" : "/gateway/appointments?" + string.Join('&', query);
         return gateway.GetAsync<List<AppointmentApiModel>>(path, handle, ct);
     }
@@ -30,7 +30,8 @@ public sealed class PatientAppointmentClient(IGatewayClient gateway) : IPatientA
         => gateway.GetAsync<AppointmentDetailApiModel>($"/gateway/appointments/{id}", ct: ct);
 
     public Task<ApiResult<AppointmentApiModel>> CreateAsync(CreateAppointmentRequest request, CancellationToken ct)
-        => gateway.PostAsync<AppointmentApiModel>("/gateway/appointments", request, ct: ct);
+        // Unavailable ele alınır: doktor servisi kapalıysa API 503 verir, ekran bunu form mesajı yapar.
+        => gateway.PostAsync<AppointmentApiModel>("/gateway/appointments", request, ApiFailures.Unavailable, ct);
 
     // Durum değişikliği yalnız PATCH {id}/status; geçiş kuralları ve "hasta yalnız iptal edebilir" kuralı API'de.
     public Task<ApiResult> SetStatusAsync(Guid id, string status, CancellationToken ct)
