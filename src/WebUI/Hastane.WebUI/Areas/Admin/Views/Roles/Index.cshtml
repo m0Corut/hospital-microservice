@@ -1,0 +1,33 @@
+@model RoleIndexViewModel
+@{
+    ViewData["Title"] = "Roller";
+}
+
+<h1 class="h4 mb-3">Roller</h1>
+
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="panel-card p-3">
+            <h2 class="h6">Mevcut roller</h2>
+            @if (Model.Roles.Count == 0)
+            {
+                <p class="text-muted mb-0">Henüz rol yok.</p>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var r in Model.Roles)
+                    {
+                        <li class="list-group-item">@r.Name</li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="panel-card p-3">
+            <h2 class="h6">Yeni rol oluştur</h2>
+            <partial name="_RoleForm" model="Model.NewRole" />
+        </div>
+    </div>
+</div>

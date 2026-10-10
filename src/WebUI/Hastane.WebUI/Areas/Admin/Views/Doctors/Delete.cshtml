@@ -1,0 +1,13 @@
+@model AdminDoctorApiModel
+@{
+    ViewData["Title"] = "Doktoru sil";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4">Doktoru sil</h1>
+    <p><strong>@Model.Title @Model.FirstName @Model.LastName</strong> kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+        <button type="submit" class="btn btn-danger">Evet, sil</button>
+        <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+    </form>
+</div>

@@ -1,0 +1,17 @@
+@model AppointmentDetailsViewModel
+@{
+    ViewData["Title"] = "Randevuyu sil";
+    var a = Model.Appointment;
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4">Randevuyu sil</h1>
+    <p>
+        <strong>@AdminDisplay.Date(a.AppointmentDate)</strong> tarihli, @Model.Lookups.Doctor(a.DoctorId) doktorunun randevusunu
+        silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+    </p>
+    <form asp-action="Delete" asp-route-id="@a.Id" method="post">
+        <button type="submit" class="btn btn-danger">Evet, sil</button>
+        <a class="btn btn-link" asp-action="Details" asp-route-id="@a.Id">Vazgeç</a>
+    </form>
+</div>

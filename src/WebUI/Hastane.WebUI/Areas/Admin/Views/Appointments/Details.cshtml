@@ -1,0 +1,39 @@
+@model AppointmentDetailsViewModel
+@{
+    ViewData["Title"] = "Randevu";
+    var a = Model.Appointment;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Randevu ayrıntısı</h1>
+    <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+</div>
+
+<div class="panel-card p-4 mb-4">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Tarih</dt><dd class="col-sm-9">@AdminDisplay.Date(a.AppointmentDate)</dd>
+        <dt class="col-sm-3">Durum</dt><dd class="col-sm-9"><span class="badge @AdminDisplay.StatusBadge(a.Status)">@AdminDisplay.AppointmentStatus(a.Status)</span></dd>
+        <dt class="col-sm-3">Doktor</dt><dd class="col-sm-9">@Model.Lookups.Doctor(a.DoctorId)</dd>
+        <dt class="col-sm-3">Branş</dt><dd class="col-sm-9">@Model.Lookups.Branch(a.BranchId)</dd>
+        <dt class="col-sm-3">Hasta Id</dt><dd class="col-sm-9"><code>@a.PatientId</code></dd>
+        <dt class="col-sm-3">Oluşturulma</dt><dd class="col-sm-9">@AdminDisplay.Date(a.CreatedAt)</dd>
+    </dl>
+</div>
+
+<div class="panel-card p-4 mb-4">
+    <h2 class="h6">Muayene notları</h2>
+    @if (a.Detail is null)
+    {
+        <p class="text-muted mb-0">Muayene detayı henüz girilmemiş.</p>
+    }
+    else
+    {
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Şikâyet</dt><dd class="col-sm-9">@a.Detail.Complaint</dd>
+            <dt class="col-sm-3">Tanı</dt><dd class="col-sm-9">@a.Detail.Diagnosis</dd>
+            <dt class="col-sm-3">Doktor notları</dt><dd class="col-sm-9">@a.Detail.DoctorNotes</dd>
+        </dl>
+    }
+</div>
+
+<a class="btn btn-outline-danger btn-sm" asp-action="Delete" asp-route-id="@a.Id">Randevuyu sil</a>

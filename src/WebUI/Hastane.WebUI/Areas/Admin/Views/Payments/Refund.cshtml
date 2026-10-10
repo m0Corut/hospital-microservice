@@ -1,0 +1,17 @@
+@model PaymentDetailsViewModel
+@{
+    ViewData["Title"] = "Ödemeyi iade et";
+    var p = Model.Payment;
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4">Ödemeyi iade et</h1>
+    <p>
+        <strong>@AdminDisplay.Money(p.Amount, p.Currency)</strong> tutarındaki ödemeyi (@Model.Lookups.Doctor(p.DoctorId))
+        iade etmek istediğinize emin misiniz? İade kurallarını ödeme servisi denetler; uygun değilse işlem reddedilir.
+    </p>
+    <form asp-action="Refund" asp-route-id="@p.Id" method="post">
+        <button type="submit" class="btn btn-danger">Evet, iade et</button>
+        <a class="btn btn-link" asp-action="Details" asp-route-id="@p.Id">Vazgeç</a>
+    </form>
+</div>

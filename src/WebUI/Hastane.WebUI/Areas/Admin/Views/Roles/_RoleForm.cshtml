@@ -1,0 +1,12 @@
+@model RoleCreateViewModel
+
+<form asp-area="Admin" asp-controller="Roles" asp-action="Create" method="post" novalidate>
+    <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+        <div class="form-text">Yalnız harf ve rakam, en çok 50 karakter.</div>
+    </div>
+    <button type="submit" class="btn btn-primary">Oluştur</button>
+</form>

@@ -2,7 +2,34 @@
     ViewData["Title"] = "Yönetim";
 }
 
-<div class="panel-card p-4">
+<div class="panel-card p-4 mb-4">
     <h1 class="h4">Yönetim paneli</h1>
-    <p class="text-muted mb-0">Bu bölüm yakında.</p>
+    <p class="text-muted mb-0">Branş, doktor, kullanıcı, randevu, ödeme ve reçete kayıtlarını buradan yönetirsiniz. Toplu sayılar (kaç randevu, kaç doktor gibi) yakında; servisler henüz özet sayı vermiyor.</p>
+</div>
+
+<div class="row g-3">
+    @{
+        var sections = new (string Controller, string Title, string Text)[]
+        {
+            ("Branches", "Branşlar", "Branş ekle, düzenle, sil."),
+            ("Doctors", "Doktorlar", "Doktor kayıtları, eğitim, deneyim, klinik ve çalışma programı."),
+            ("Users", "Kullanıcılar", "Kullanıcıyı Id ile bul, rol ver, doktor kaydına bağla."),
+            ("Roles", "Roller", "Rolleri listele, yeni rol oluştur."),
+            ("Appointments", "Randevular", "Tüm randevular, ayrıntı ve silme."),
+            ("Payments", "Ödemeler", "Ödeme listesi, ayrıntı ve iade."),
+            ("Invoices", "Faturalar", "Fatura listesi ve ayrıntısı."),
+            ("Prescriptions", "Reçeteler", "Reçeteleri salt okunur görüntüle."),
+        };
+    }
+    @foreach (var s in sections)
+    {
+        <div class="col-md-6">
+            <a class="card card-branch text-decoration-none text-body" asp-area="Admin" asp-controller="@s.Controller" asp-action="Index">
+                <div class="card-body">
+                    <h2 class="h6 text-primary">@s.Title</h2>
+                    <p class="small text-muted mb-0">@s.Text</p>
+                </div>
+            </a>
+        </div>
+    }
 </div>

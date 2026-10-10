@@ -1,0 +1,44 @@
+@model PaymentDetailsViewModel
+@{
+    ViewData["Title"] = "Ödeme";
+    var p = Model.Payment;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">Ödeme ayrıntısı</h1>
+    <a class="btn btn-link btn-sm" asp-action="Index">Listeye dön</a>
+</div>
+
+<div class="panel-card p-4 mb-3">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">Durum</dt><dd class="col-sm-9"><span class="badge @AdminDisplay.StatusBadge(p.Status)">@AdminDisplay.PaymentStatus(p.Status)</span></dd>
+        <dt class="col-sm-3">Tutar</dt><dd class="col-sm-9">@AdminDisplay.Money(p.Amount, p.Currency)</dd>
+        <dt class="col-sm-3">Doktor</dt><dd class="col-sm-9">@Model.Lookups.Doctor(p.DoctorId)</dd>
+        <dt class="col-sm-3">Hasta Id</dt><dd class="col-sm-9"><code>@p.PatientId</code></dd>
+        <dt class="col-sm-3">Randevu</dt><dd class="col-sm-9"><a asp-controller="Appointments" asp-action="Details" asp-route-id="@p.AppointmentId">Randevuya git</a></dd>
+        <dt class="col-sm-3">Kart</dt><dd class="col-sm-9">@(p.CardBrand is null ? "-" : $"{p.CardBrand} **** {p.CardLast4}")</dd>
+        <dt class="col-sm-3">Oluşturulma</dt><dd class="col-sm-9">@AdminDisplay.Date(p.CreatedAt)</dd>
+        <dt class="col-sm-3">Ödeme zamanı</dt><dd class="col-sm-9">@AdminDisplay.Date(p.PaidAt)</dd>
+        <dt class="col-sm-3">İade zamanı</dt><dd class="col-sm-9">@AdminDisplay.Date(p.RefundedAt)</dd>
+        @if (!string.IsNullOrEmpty(p.FailureReason))
+        {
+            <dt class="col-sm-3">Hata nedeni</dt><dd class="col-sm-9">@p.FailureReason</dd>
+        }
+        <dt class="col-sm-3">Fatura</dt>
+        <dd class="col-sm-9">
+            @if (p.InvoiceId is { } invoiceId)
+            {
+                <a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoiceId">@p.InvoiceNumber</a>
+            }
+            else
+            {
+                <span class="text-muted">Yok</span>
+            }
+        </dd>
+    </dl>
+</div>
+
+@if (p.Status == "Paid")
+{
+    <a class="btn btn-outline-danger btn-sm" asp-action="Refund" asp-route-id="@p.Id">İade et</a>
+}

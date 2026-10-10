@@ -1,0 +1,95 @@
+@model UserDetailsViewModel
+@{
+    ViewData["Title"] = "Kullanıcı";
+    var user = Model.User;
+    var isDoctor = user.Roles.Contains(HastaneRoles.Doctor);
+    var addable = Model.AllRoles.Where(r => !user.Roles.Contains(r)).ToList();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h4 mb-0">@user.FirstName @user.LastName</h1>
+    <a class="btn btn-link btn-sm" asp-action="Index">Başka kullanıcı ara</a>
+</div>
+
+<div class="panel-card p-4 mb-4">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">E-posta</dt><dd class="col-sm-9">@user.Email</dd>
+        <dt class="col-sm-3">Id</dt><dd class="col-sm-9"><code>@user.Id</code></dd>
+        <dt class="col-sm-3">Bağlı doktor</dt>
+        <dd class="col-sm-9">
+            @if (user.DoctorId is null)
+            {
+                <span class="text-muted">Yok</span>
+            }
+            else
+            {
+                @(Model.LinkedDoctorName ?? user.DoctorId)
+            }
+        </dd>
+    </dl>
+</div>
+
+<div class="panel-card p-4 mb-4">
+    <h2 class="h6">Roller</h2>
+    @if (user.Roles.Count == 0)
+    {
+        <p class="text-muted">Kullanıcının rolü yok.</p>
+    }
+    else
+    {
+        <ul class="list-group list-group-flush mb-3">
+            @foreach (var role in user.Roles)
+            {
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>@UiText.RoleName(role) <span class="text-muted small">(@role)</span></span>
+                    <form asp-action="RemoveRole" asp-route-id="@user.Id" method="post" class="m-0">
+                        <input type="hidden" name="role" value="@role" />
+                        <button type="submit" class="btn btn-outline-danger btn-sm">Rolü kaldır</button>
+                    </form>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (addable.Count > 0)
+    {
+        <form asp-action="AddRole" asp-route-id="@user.Id" method="post" class="row g-2">
+            <div class="col-md-8">
+                <label for="role" class="form-label visually-hidden">Rol</label>
+                <select id="role" name="role" class="form-select">
+                    <option value="">Rol seçin</option>
+                    @foreach (var r in addable)
+                    {
+                        <option value="@r">@UiText.RoleName(r)</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 d-grid"><button type="submit" class="btn btn-primary">Rol ekle</button></div>
+        </form>
+    }
+</div>
+
+<div class="panel-card p-4">
+    <h2 class="h6">Doktor kaydına bağla</h2>
+    @if (!isDoctor)
+    {
+        <p class="text-muted small mb-0">Bağlamak için kullanıcının önce Doctor rolü olmalı.</p>
+    }
+    else if (Model.DoctorChoices.Count == 0)
+    {
+        <p class="text-muted small mb-0">Bağlanacak doktor kaydı bulunamadı.</p>
+    }
+    else
+    {
+        <form asp-action="LinkDoctor" asp-route-id="@user.Id" method="post" class="row g-2">
+            <div class="col-md-8">
+                <label for="doctorId" class="form-label visually-hidden">Doktor</label>
+                <select id="doctorId" name="doctorId" class="form-select" asp-items="Model.DoctorChoices">
+                    <option value="">Doktor seçin</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-grid"><button type="submit" class="btn btn-primary">Bağla</button></div>
+        </form>
+        <div class="form-text">Bir doktor kaydı yalnız bir kullanıcıya bağlanabilir.</div>
+    }
+</div>
