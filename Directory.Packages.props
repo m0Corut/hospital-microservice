@@ -22,6 +22,10 @@
     <!-- MediatR 12.5.0 = son Apache-2.0 sürüm. 13.0.0 ve sonrası (14.x dahil) ticari lisans anahtarı ister (nuspec: license file + requireLicenseAcceptance). -->
     <PackageVersion Include="MediatR" Version="12.5.0" />
   </ItemGroup>
+  <ItemGroup Label="Redis">
+    <!-- StackExchange.Redis 3.4.0: MIT lisanslı, ücretsiz. Market sepeti ve ürün önbelleği. -->
+    <PackageVersion Include="StackExchange.Redis" Version="3.4.0" />
+  </ItemGroup>
   <ItemGroup Label="Güvenlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>
@@ -48,6 +52,7 @@
     <PackageVersion Include="Testcontainers.MongoDb" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MsSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.MariaDb" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
     <PackageVersion Include="Testcontainers" Version="4.16.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.12" />
   </ItemGroup>

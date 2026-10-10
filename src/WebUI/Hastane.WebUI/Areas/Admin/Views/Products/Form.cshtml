@@ -1,0 +1,61 @@
+@using Hastane.WebUI.ViewModels.Shop
+@model ProductFormViewModel
+@{
+    ViewData["Title"] = Model.IsEdit ? "Ürünü düzenle" : "Ürün ekle";
+}
+
+<div class="panel-card p-4">
+    <h1 class="h4 mb-3">@ViewData["Title"]</h1>
+    <form asp-action="@(Model.IsEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label asp-for="Name" class="form-label"></label>
+                <input asp-for="Name" class="form-control" maxlength="120" />
+                <span asp-validation-for="Name" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Category" class="form-label"></label>
+                <select asp-for="Category" class="form-select">
+                    <option value="">Seçin</option>
+                    @foreach (var (key, label, _) in ShopDisplay.Categories)
+                    {
+                        <option value="@key">@label</option>
+                    }
+                </select>
+                <span asp-validation-for="Category" class="text-danger small"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Description" class="form-label"></label>
+                <textarea asp-for="Description" class="form-control" rows="4" maxlength="2000"></textarea>
+                <span asp-validation-for="Description" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Price" class="form-label"></label>
+                <input asp-for="Price" class="form-control" inputmode="decimal" placeholder="149,90" />
+                <span asp-validation-for="Price" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="Stock" class="form-label"></label>
+                <input asp-for="Stock" type="number" min="0" max="100000" class="form-control" />
+                <span asp-validation-for="Stock" class="text-danger small"></span>
+            </div>
+            <div class="col-md-4">
+                <label asp-for="ImageUrl" class="form-label"></label>
+                <input asp-for="ImageUrl" class="form-control" placeholder="/img/products/vitamin-c.svg" />
+                <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+            </div>
+            <div class="col-12">
+                <div class="form-check">
+                    <input asp-for="IsActive" class="form-check-input" />
+                    <label asp-for="IsActive" class="form-check-label"></label>
+                    <div class="form-text">Kapalıysa ürün mağazada görünmez ve sepetlerde "artık satışta değil" olarak işaretlenir.</div>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Kaydet</button>
+            <a class="btn btn-link" asp-action="Index">Vazgeç</a>
+        </div>
+    </form>
+</div>

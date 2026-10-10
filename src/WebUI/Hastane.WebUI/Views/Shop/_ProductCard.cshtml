@@ -1,0 +1,39 @@
+@using Hastane.WebUI.ViewModels.Shop
+@model ProductCardViewModel
+@{
+    var p = Model.Product;
+    var note = ShopDisplay.StockNote(p.Stock);
+    var returnUrl = Context.Request.Path.Value + Context.Request.QueryString.Value;
+}
+<article class="product-card panel-card">
+    <a class="pc-image" asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@p.Id" aria-label="@p.Name">
+        <img src="@ShopDisplay.Image(p.ImageUrl)" alt="@p.Name" loading="lazy" />
+    </a>
+    <div class="pc-body">
+        <div class="pc-category">@ShopDisplay.CategoryLabel(p.Category)</div>
+        <h2 class="pc-name"><a asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@p.Id">@p.Name</a></h2>
+        <div class="pc-price">@ShopDisplay.Money(p.Price, p.Currency)</div>
+        @if (note is not null)
+        {
+            <div><span class="badge @(p.Stock <= 0 ? "text-bg-secondary" : "text-bg-warning")">@note</span></div>
+        }
+        <div class="pc-actions">
+            <a class="btn btn-outline-accent btn-sm" asp-area="" asp-controller="Shop" asp-action="Details" asp-route-id="@p.Id">Ayrıntı</a>
+            @if (p.Stock > 0)
+            {
+                @if (Model.CanBuy)
+                {
+                    <form asp-area="" asp-controller="Shop" asp-action="AddToCart" asp-route-id="@p.Id" method="post">
+                        <input type="hidden" name="quantity" value="1" />
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <button type="submit" class="btn btn-accent btn-sm"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>Sepete ekle</button>
+                    </form>
+                }
+                else if (!Model.IsSignedIn)
+                {
+                    <a class="btn btn-accent btn-sm" asp-area="" asp-controller="Account" asp-action="Login" asp-route-returnUrl="@returnUrl"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>Sepete ekle</a>
+                }
+            }
+        </div>
+    </div>
+</article>
