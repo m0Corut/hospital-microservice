@@ -20,9 +20,11 @@ public class UsersController : ControllerBase
     private readonly IUserService _users;
     private readonly IRoleService _roles;
     private readonly ICurrentUser _currentUser;
+    private readonly IPhotoService _photos;
 
-    public UsersController(IUserService users, IRoleService roles, ICurrentUser currentUser)
+    public UsersController(IUserService users, IRoleService roles, ICurrentUser currentUser, IPhotoService photos)
     {
+        _photos = photos;
         _users = users;
         _roles = roles;
         _currentUser = currentUser;
@@ -39,6 +41,21 @@ public class UsersController : ControllerBase
 
         var user = await _users.GetByIdAsync(id, ct);
         return user is null ? NotFound() : Ok(user);
+    }
+
+    // Avatar herkese görünür (anonim). Yalnız sunucunun ürettiği dosya sunulur; içerik türü uzantıdan, sniff kapalı.
+    // Kısa önbellek: fotoğraf değişince eskisi uzun süre görünmesin.
+    [HttpGet("{id}/photo")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPhoto(string id, CancellationToken ct)
+    {
+        var photo = await _photos.OpenAsync(id, ct);
+        if (photo is null) return NotFound();
+
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.ContentSecurityPolicy = "default-src 'none'";
+        Response.Headers.CacheControl = "public, max-age=60";
+        return File(photo.Content, photo.ContentType);
     }
 
     // Diğer servisler (Patient, Appointment) birden çok kullanıcıyı tek istekte ister: ?ids=a,b,c

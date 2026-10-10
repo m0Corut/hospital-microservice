@@ -1,8 +1,11 @@
+using Hastane.Identity.Api.Integration;
 using Hastane.TestSupport;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.MsSql;
 
 namespace Hastane.Identity.Tests;
@@ -15,6 +18,15 @@ public class IdentityApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string SeedAdminEmail = "ilk-admin@example.com";
     public const string SeedAdminPassword = "Adm1nPassw0rd";
+
+    public const string InternalApiKey = "test-internal-key-123";
+    public const string WebUiBaseUrl = "http://webui.test:5010";
+
+    // Gerçek Notification yerine: giden e-posta isteklerini kaydeder, istenirse "kapalı" gibi davranır.
+    public FakeNotificationHandler Notification { get; } = new();
+
+    // Fotoğraflar test boyunca bu geçici klasöre yazılır (gerçek %LOCALAPPDATA% kirlenmez); sınıf bitince silinir.
+    public string PhotoDirectory { get; } = Path.Combine(Path.GetTempPath(), "hastane-identity-tests", Guid.NewGuid().ToString("N"));
 
     private readonly MsSqlContainer _sql = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
 
@@ -35,13 +47,28 @@ public class IdentityApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         {
             ["Seed:AdminEmail"] = SeedAdmin ? SeedAdminEmail : "",
             ["Seed:AdminPassword"] = SeedAdmin ? SeedAdminPassword : "",
+            ["Internal:ApiKey"] = InternalApiKey,
+            ["Services:NotificationBaseUrl"] = "http://notification.test",
+            ["WebUi:BaseUrl"] = WebUiBaseUrl,
+            ["Storage:PhotoPath"] = PhotoDirectory,
         }));
+        builder.ConfigureTestServices(services =>
+            services.AddHttpClient<INotificationEmailClient, NotificationEmailClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => Notification));
     }
 
     public override async ValueTask DisposeAsync()
     {
         await base.DisposeAsync();
         await _sql.DisposeAsync();
+        try
+        {
+            if (Directory.Exists(PhotoDirectory)) Directory.Delete(PhotoDirectory, recursive: true);
+        }
+        catch (IOException)
+        {
+            // geçici klasör; silinemezse işletim sistemi temizler
+        }
     }
 }
 
