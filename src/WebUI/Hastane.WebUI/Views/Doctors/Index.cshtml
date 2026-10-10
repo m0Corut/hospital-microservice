@@ -7,10 +7,12 @@
     object PageRoute(int page) => new { q = f.Q, branchId = f.BranchId, gender = f.Gender, city = f.City, minFee = f.MinFee, maxFee = f.MaxFee, date = f.Date, sort = f.Sort, page };
 }
 
+<a class="back-link" href="~/"><i class="bi bi-arrow-left" aria-hidden="true"></i>Ana sayfaya dön</a>
+
 <div class="row g-4">
     <aside class="col-lg-3">
         <form method="get" id="filterForm" asp-controller="Doctors" asp-action="Index" class="panel-card filter-card">
-            <div class="filter-title"><span><i class="bi bi-funnel me-2" aria-hidden="true"></i>Süz</span></div>
+            <div class="filter-title"><span><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filtrele</span></div>
             <div class="filter-body">
                 <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
                 <div class="filter-group">

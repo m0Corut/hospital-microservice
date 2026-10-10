@@ -107,7 +107,10 @@ a:hover { text-decoration: underline; }
 .step-card .step-no { width: 3.2rem; height: 3.2rem; border-radius: 50%; background: var(--h-primary-soft); color: var(--h-primary); display: inline-flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: .8rem; }
 
 /* ---------- Doktor arama + kart ---------- */
-.filter-card { position: sticky; top: 5rem; }
+/* Geniş ekranda kayarken yanda kalır; ekrandan uzunsa kendi içinde kayar (Ara düğmesi her zaman erişilir). Dar ekranda normal akış. */
+@media (min-width: 992px) { .filter-card { position: sticky; top: 5rem; max-height: calc(100vh - 6rem); overflow-y: auto; } }
+.back-link { display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1rem; color: var(--h-navy); font-weight: 600; text-decoration: none; }
+.back-link:hover { color: var(--h-accent); }
 .filter-card .filter-title { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--h-line); font-weight: 650; color: var(--h-navy); }
 .filter-card .filter-body { padding: 1.1rem 1.25rem; }
 .filter-card .filter-group { margin-bottom: 1.1rem; }
@@ -305,3 +308,6 @@ a:hover { text-decoration: underline; }
     .panel-card.p-4 { padding: 1.1rem !important; }
     .profile-head { padding: 1.1rem; }
 }
+
+/* Hata özeti: ASP.NET hata yokken kutuya "validation-summary-valid" sınıfı verir; o durumda boş kırmızı kutu görünmesin. */
+.validation-summary-valid { display: none !important; }

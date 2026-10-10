@@ -10,6 +10,8 @@
     var photos = d.Gallery.Select(UiKit.SafeImageUrl).Where(u => u is not null).ToList();
 }
 
+<a class="back-link" href="~/Doctors"><i class="bi bi-arrow-left" aria-hidden="true"></i>Doktorlara dön</a>
+
 <section class="panel-card profile-head mb-4">
     <partial name="_Avatar" model="@(new AvatarViewModel(d.ImageUrl, d.FirstName + " " + d.LastName, "xl"))" />
     <div class="ph-main">
