@@ -1,0 +1,104 @@
+@model DoctorApplicationIndexViewModel
+@{
+    ViewData["Title"] = "Doktor başvuruları";
+    var pager = new PagerViewModel
+    {
+        Action = "Index", Page = Model.Page.Page, PageSize = Model.Page.PageSize, TotalCount = Model.Page.TotalCount,
+        Filters = new Dictionary<string, string?> { ["status"] = Model.Status },
+    };
+    var statuses = new[] { ("", "Tümü"), ("Pending", "Bekliyor"), ("Approved", "Onaylandı"), ("Rejected", "Reddedildi") };
+}
+
+<h1 class="h4 mb-3">Doktor başvuruları</h1>
+
+@if (!string.IsNullOrEmpty(Model.ApprovedUserId))
+{
+    <div class="alert alert-info small">
+        <strong>@Model.ApprovedName</strong> için başvuru onaylandı. Şimdi doktor kaydını oluşturun ve bu kullanıcıya bağlayın:
+        <a class="alert-link" asp-area="Admin" asp-controller="Doctors" asp-action="Create">Doktor kaydı oluştur</a>
+        ·
+        <a class="alert-link" asp-area="Admin" asp-controller="Users" asp-action="Details" asp-route-id="@Model.ApprovedUserId">Kullanıcıyı aç</a>
+    </div>
+}
+
+<form method="get" asp-area="Admin" asp-controller="DoctorApplications" asp-action="Index" class="panel-card p-3 mb-3 row g-2">
+    <div class="col-md-8">
+        <label for="status" class="form-label small">Durum</label>
+        <select id="status" name="status" class="form-select">
+            @foreach (var (value, label) in statuses)
+            {
+                <option value="@value" selected="@(string.Equals(Model.Status ?? "", value, StringComparison.Ordinal))">@label</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-4 d-grid"><button type="submit" class="btn btn-outline-primary mt-auto">Süz</button></div>
+</form>
+
+<div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+
+<div class="panel-card p-3">
+    @if (Model.Page.Items.Count == 0)
+    {
+        <p class="text-muted mb-0">Başvuru bulunamadı.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr><th>Ad soyad</th><th>E-posta</th><th>Branş</th><th>Lisans</th><th>Not</th><th>Tarih</th><th>Durum</th><th class="text-end">İşlem</th></tr>
+                </thead>
+                <tbody>
+                @foreach (var a in Model.Page.Items)
+                {
+                    <tr>
+                        <td>@a.FirstName @a.LastName</td>
+                        <td class="small">@a.Email</td>
+                        <td>@Model.BranchName(a.BranchId)</td>
+                        <td class="small">@a.LicenseNumber</td>
+                        <td class="small">@(string.IsNullOrWhiteSpace(a.Note) ? "-" : a.Note)</td>
+                        <td class="small">@AdminDisplay.Date(a.CreatedAt)</td>
+                        <td>
+                            <span class="badge @DoctorApplicationIndexViewModel.StatusBadge(a.Status)">@DoctorApplicationIndexViewModel.StatusText(a.Status)</span>
+                            @if (a.Status == "Rejected" && !string.IsNullOrWhiteSpace(a.DecisionNote))
+                            {
+                                <div class="small text-muted mt-1">@a.DecisionNote</div>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (a.Status == "Pending")
+                            {
+                                <form asp-area="Admin" asp-controller="DoctorApplications" asp-action="Approve" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@a.Id" />
+                                    <input type="hidden" name="status" value="@Model.Status" />
+                                    <input type="hidden" name="page" value="@Model.Page.Page" />
+                                    <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Bu başvuru onaylansın mı?');">Onayla</button>
+                                </form>
+                                <details class="mt-2 text-start">
+                                    <summary class="small text-danger">Reddet</summary>
+                                    <form asp-area="Admin" asp-controller="DoctorApplications" asp-action="Reject" method="post" class="mt-1">
+                                        <input type="hidden" name="id" value="@a.Id" />
+                                        <input type="hidden" name="status" value="@Model.Status" />
+                                        <input type="hidden" name="page" value="@Model.Page.Page" />
+                                        <label for="note-@a.Id" class="form-label small mb-1">Red notu (zorunlu)</label>
+                                        <textarea id="note-@a.Id" name="note" class="form-control form-control-sm mb-1" rows="2" maxlength="500" required></textarea>
+                                        <button type="submit" class="btn btn-outline-danger btn-sm">Reddet</button>
+                                    </form>
+                                </details>
+                            }
+                            else if (a.Status == "Approved")
+                            {
+                                <a class="btn btn-outline-primary btn-sm" asp-area="Admin" asp-controller="Users" asp-action="Details" asp-route-id="@a.UserId">Kullanıcı</a>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <span class="small text-muted">Toplam @Model.Page.TotalCount başvuru</span>
+            <partial name="_Pager" model="pager" />
+        </div>
+    }
+</div>

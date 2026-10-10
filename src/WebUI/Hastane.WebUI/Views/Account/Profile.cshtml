@@ -6,7 +6,32 @@
 <h1 class="page-title">Hesap ayarları</h1>
 
 <div class="row g-4">
-    <div class="col-lg-7">
+    <div class="col-lg-5 order-lg-2">
+        <div class="panel-card p-4 mb-4" id="profile-photo">
+            <h2 class="h5 mb-3"><i class="bi bi-camera me-1 text-primary" aria-hidden="true"></i>Profil fotoğrafı</h2>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <partial name="_Avatar" model="@(new AvatarViewModel(Model.PhotoUrl, Model.DisplayName, "xl"))" />
+                <div class="small text-muted">PNG, JPEG ya da WebP; en çok 2 MB.</div>
+            </div>
+            <form asp-action="UploadPhoto" asp-controller="Account" asp-area="" method="post" enctype="multipart/form-data" class="mb-2">
+                <label for="photo-file" class="form-label small">Yeni fotoğraf seç</label>
+                <input id="photo-file" name="file" type="file" class="form-control mb-2" accept="image/png,image/jpeg,image/webp" required />
+                <button type="submit" class="btn btn-accent btn-sm">Yükle</button>
+            </form>
+            @if (Model.PhotoUrl is not null)
+            {
+                <form asp-action="RemovePhoto" asp-controller="Account" asp-area="" method="post">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Profil fotoğrafınız kaldırılsın mı?');">Fotoğrafı kaldır</button>
+                </form>
+            }
+        </div>
+        <div class="panel-card p-4">
+            <h2 class="h5 mb-2"><i class="bi bi-person-badge me-1 text-primary" aria-hidden="true"></i>Doktor başvurusu</h2>
+            <p class="small text-muted mb-2">Doktor olarak başvurduysanız durumunu buradan görürsünüz.</p>
+            <a class="btn btn-outline-primary btn-sm" asp-action="DoctorApplication" asp-controller="Account" asp-area="">Başvuru durumum</a>
+        </div>
+    </div>
+    <div class="col-lg-7 order-lg-1">
         <div class="panel-card p-4">
             <h2 class="h5 mb-3"><i class="bi bi-person-gear me-1 text-primary" aria-hidden="true"></i>Kişisel bilgiler</h2>
             <form asp-action="Profile" asp-controller="Account" asp-area="" method="post" novalidate>

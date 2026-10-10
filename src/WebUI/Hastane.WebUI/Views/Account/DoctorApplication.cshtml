@@ -1,0 +1,55 @@
+@model DoctorApplicationStatusViewModel
+@{
+    ViewData["Title"] = "Doktor başvurum";
+    var app = Model.Application;
+}
+
+<h1 class="page-title">Doktor başvurum</h1>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="panel-card p-4">
+            @if (app is null)
+            {
+                <h2 class="h5 mb-2">Başvurunuz yok</h2>
+                <p class="text-muted mb-0">Bu hesap için bir doktor başvurusu bulunmuyor. Doktor başvurusu doktor olarak kayıt sırasında yapılır; bu hesap zaten oluşturulduğundan buradan yeni başvuru açılamaz.</p>
+            }
+            else
+            {
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">Başvuru durumu</h2>
+                    <span class="badge @DoctorApplicationStatusViewModel.StatusBadge(app.Status)">@DoctorApplicationStatusViewModel.StatusText(app.Status)</span>
+                </div>
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4">Ad soyad</dt><dd class="col-sm-8">@app.FirstName @app.LastName</dd>
+                    <dt class="col-sm-4">E-posta</dt><dd class="col-sm-8">@app.Email</dd>
+                    <dt class="col-sm-4">Branş</dt><dd class="col-sm-8">@(Model.BranchName ?? "-")</dd>
+                    <dt class="col-sm-4">Lisans numarası</dt><dd class="col-sm-8">@app.LicenseNumber</dd>
+                    <dt class="col-sm-4">Başvuru tarihi</dt><dd class="col-sm-8">@app.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd>
+                    @if (app.DecidedAt is not null)
+                    {
+                        <dt class="col-sm-4">Karar tarihi</dt><dd class="col-sm-8">@app.DecidedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</dd>
+                    }
+                </dl>
+                @if (app.Status == "Pending")
+                {
+                    <div class="alert alert-info py-2 small mt-3 mb-0">Başvurunuz inceleniyor. Karar verildiğinde bu sayfada görünür.</div>
+                }
+                else if (app.Status == "Approved")
+                {
+                    <div class="alert alert-success py-2 small mt-3 mb-0">Başvurunuz onaylandı. Yeniden giriş yapın (yetkileriniz yenilensin).</div>
+                }
+                else if (app.Status == "Rejected")
+                {
+                    <div class="alert alert-danger py-2 small mt-3 mb-0">
+                        <strong>Başvurunuz reddedildi.</strong>
+                        @if (!string.IsNullOrWhiteSpace(app.DecisionNote))
+                        {
+                            <div class="mt-1">Gerekçe: @app.DecisionNote</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
