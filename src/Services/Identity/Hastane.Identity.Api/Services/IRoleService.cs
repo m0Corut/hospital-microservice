@@ -25,4 +25,6 @@ public interface IRoleService
     Task<UserOpOutcome> AddToRoleAsync(string userId, string role, CancellationToken ct);
     Task<UserOpOutcome> RemoveFromRoleAsync(string userId, string role, CancellationToken ct);
     Task<UserOpOutcome> LinkDoctorAsync(string userId, string doctorId, CancellationToken ct);
+    // Bağ yoksa da Ok (idempotent); yalnız kullanıcı yoksa UserNotFound.
+    Task<UserOpOutcome> UnlinkDoctorAsync(string userId, CancellationToken ct);
 }

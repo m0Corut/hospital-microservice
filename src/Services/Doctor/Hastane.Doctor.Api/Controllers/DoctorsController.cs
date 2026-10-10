@@ -51,6 +51,15 @@ public class DoctorsController : ControllerBase
         catch (DoctorValidationException ex) { return ValidationProblem(new ValidationProblemDetails(ex.Errors)); }
     }
 
+    // Herkese açık profil (anonim): GetByIdDoctorDto'dan AYRI bir DTO, Phone/Email alanı hiç yok.
+    [AllowAnonymous]
+    [HttpGet("{id}/public")]
+    public async Task<ActionResult<PublicDoctorDto>> GetPublic(string id, CancellationToken ct)
+    {
+        var doctor = await _service.GetPublicByIdAsync(id, ct);
+        return doctor is null ? NotFound() : Ok(doctor);
+    }
+
     // Ayrıntıda telefon + e-posta var (listede yok): yalnız giriş yapmış kullanıcıya.
     [Authorize(Policy = HastanePolicies.AuthenticatedUser)]
     [HttpGet("{id}")]

@@ -4,10 +4,11 @@ namespace Hastane.Review.Api.Services;
 
 public interface IReviewService
 {
-    Task<List<ResultReviewDto>> GetAllAsync(CancellationToken ct);
+    /// <summary>viewerId: isteği yapanın token "sub"ı (anonimde null); yalnız IsMine hesabında kullanılır.</summary>
+    Task<List<ResultReviewDto>> GetAllAsync(string? viewerId, CancellationToken ct);
     /// <summary>Yeniden eskiye (CreatedAt azalan).</summary>
-    Task<List<ResultReviewDto>> GetByDoctorIdAsync(string doctorId, CancellationToken ct);
-    Task<ResultReviewDto?> GetByIdAsync(string id, CancellationToken ct);
+    Task<List<ResultReviewDto>> GetByDoctorIdAsync(string doctorId, string? viewerId, CancellationToken ct);
+    Task<ResultReviewDto?> GetByIdAsync(string id, string? viewerId, CancellationToken ct);
     /// <summary>Yorum sahibi (reviewerId, reviewerName) çağıranın token'ından gelir, DTO'dan değil.</summary>
     Task<ResultReviewDto> CreateAsync(CreateReviewDto dto, string reviewerId, string reviewerName, CancellationToken ct);
     /// <summary>

@@ -34,6 +34,11 @@ public class DoctorMappingConfig : IRegister
             .Map(d => d.MinFee, s => DoctorDerived.MinFee(s.ClinicLocations))
             .Map(d => d.MaxFee, s => DoctorDerived.MaxFee(s.ClinicLocations))
             .Map(d => d.Currency, s => DoctorDerived.Currency(s.ClinicLocations));
+        config.NewConfig<DoctorEntity, PublicDoctorDto>()
+            .Map(d => d.PrimaryCity, s => DoctorDerived.PrimaryCity(s.ClinicLocations))
+            .Map(d => d.MinFee, s => DoctorDerived.MinFee(s.ClinicLocations))
+            .Map(d => d.MaxFee, s => DoctorDerived.MaxFee(s.ClinicLocations))
+            .Map(d => d.Currency, s => DoctorDerived.Currency(s.ClinicLocations));
         config.NewConfig<DoctorEntity, DoctorSearchItemDto>()
             .Map(d => d.Gallery, s => s.Gallery.Take(4).ToList())
             .Map(d => d.PrimaryCity, s => DoctorDerived.PrimaryCity(s.ClinicLocations))

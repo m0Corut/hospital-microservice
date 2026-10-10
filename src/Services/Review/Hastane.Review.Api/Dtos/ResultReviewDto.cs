@@ -8,4 +8,8 @@ public class ResultReviewDto
     public int Rating { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    // "Bu yorum benim mi?": istek token'lıysa ve ReviewerId == sub ise true; anonimde / başkasının yorumunda false.
+    // ReviewerId'nin kendisi bilerek yanıtta YOK; istemci yalnız kendi yorumunu ayırt eder, başkasının kimliğini öğrenmez.
+    public bool IsMine { get; set; }
 }

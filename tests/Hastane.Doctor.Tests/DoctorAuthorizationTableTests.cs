@@ -21,6 +21,7 @@ public class DoctorAuthorizationTableTests : IClassFixture<DoctorApiFactory>
         ["GET api/doctors/search"] = "Anonymous",
         ["GET api/doctors/batch"] = "Anonymous",
         ["GET api/doctors/{id}"] = "Policy:AuthenticatedUser",
+        ["GET api/doctors/{id}/public"] = "Anonymous",
         ["POST api/doctors"] = "Policy:AdminOnly",
         ["PUT api/doctors/{id}"] = "Policy:DoctorOrAdmin",
         ["DELETE api/doctors/{id}"] = "Policy:AdminOnly",

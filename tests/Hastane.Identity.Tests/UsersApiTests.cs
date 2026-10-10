@@ -156,10 +156,14 @@ public class UsersApiTests : IClassFixture<IdentityApiFactory>
     }
 
     [Fact]
-    public async Task GetByIds_WithoutQuery_ReturnsEmptyList()
+    public async Task GetUsers_WithoutIds_IsNowThePagedAdminList()
     {
-        var list = await _admin.GetFromJsonAsync<List<UserSummaryDto>>("/api/users", Ct);
-        Assert.Empty(list!);
+        // Gece N3b: ids hiç verilmezse uç artık sayfalı admin listesidir (düz liste değil).
+        var response = await _admin.GetAsync("/api/users", Ct);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadFromJsonAsync<PagedResult<UserSummaryDto>>(Ct);
+        Assert.Equal(1, page!.Page);
+        Assert.Equal(20, page.PageSize);
     }
 
     [Fact]

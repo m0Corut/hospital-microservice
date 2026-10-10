@@ -70,6 +70,41 @@ public class AuthController : ControllerBase
         return user is null ? NotFound() : Ok(user);
     }
 
+    // Id istekten DEĞİL token'dan gelir: kimse başkasının profilini güncelleyemez. Giriş yapmış herkes.
+    [HttpPut("me")]
+    public async Task<ActionResult<UserSummaryDto>> UpdateMe(UpdateProfileDto dto, CancellationToken ct)
+    {
+        var user = await _users.UpdateProfileAsync(_currentUser.UserId ?? string.Empty, dto, ct);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordDto dto, CancellationToken ct)
+    {
+        var outcome = await _auth.ChangePasswordAsync(_currentUser.UserId ?? string.Empty, dto, ct);
+        switch (outcome.Status)
+        {
+            case ChangePasswordStatus.Success:
+                return NoContent();
+            case ChangePasswordStatus.UserNotFound:
+                return NotFound();
+            case ChangePasswordStatus.LockedOut:
+                return StatusCode(StatusCodes.Status423Locked, Fail(StatusCodes.Status423Locked,
+                    "Hesap geçici olarak kilitlendi", "Çok fazla başarısız deneme. Lütfen daha sonra tekrar deneyin."));
+            case ChangePasswordStatus.WrongCurrentPassword:
+                // Genel mesaj: kalan deneme sayısı gibi ayrıntı verilmez.
+                return BadRequest(Fail(StatusCodes.Status400BadRequest, "Şifre değiştirilemedi",
+                    "Mevcut şifre hatalı."));
+            case ChangePasswordStatus.SamePassword:
+                ModelState.AddModelError(nameof(ChangePasswordDto.NewPassword), "Yeni şifre mevcut şifreyle aynı olamaz.");
+                return ValidationProblem(ModelState);
+            default:
+                foreach (var error in outcome.Errors!)
+                    ModelState.AddModelError(error.Code, error.Description);
+                return ValidationProblem(ModelState);
+        }
+    }
+
     // traceId gibi her istekte değişen alan eklememek için ProblemDetails elle kurulur: iki 401 gövdesi harfi harfine aynı olsun.
     private static ProblemDetails Fail(int status, string title, string detail)
         => new() { Status = status, Title = title, Detail = detail };

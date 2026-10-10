@@ -88,8 +88,12 @@ public class DoctorService : IDoctorService
 
         // Sayfa: skip/limit MongoDB'de. TotalCount: AYNI filtreyle ayrı sayım; çünkü Find().Limit() yalnız
         // bu sayfanın satırlarını döndürür, "toplam kaç eşleşme var" bilgisini taşımaz.
-        var items = await _doctors.Find(filter).Project<DoctorEntity>(CardProjection).Sort(sort)
-            .Skip(SkipCount(query.Page, query.PageSize)).Limit(query.PageSize).ToListAsync(ct);
+        var skip = SkipCount(query.Page, query.PageSize);
+        var sortKey = query.Sort?.Trim().ToLowerInvariant();
+        var items = sortKey is "feeasc" or "feedesc"
+            ? await SearchByFeeAsync(filter, sortKey == "feedesc", skip, query.PageSize, ct)
+            : await _doctors.Find(filter).Project<DoctorEntity>(CardProjection).Sort(sort)
+                .Skip(skip).Limit(query.PageSize).ToListAsync(ct);
         var total = await _doctors.CountDocumentsAsync(filter, cancellationToken: ct);
 
         return new PagedResult<DoctorSearchItemDto>
@@ -99,6 +103,33 @@ public class DoctorService : IDoctorService
             Page = query.Page,
             PageSize = query.PageSize,
         };
+    }
+
+    // Ücret sıralaması: yalnız HourlyFee > 0 olan konumlar "ücret" sayılır (DoctorDerived.MinFee ile aynı tanım).
+    // Düz Sort() dizinin ham en küçük/en büyük öğesine bakar; 0 TL'lik konum yüzünden [0, 200] doktoru başa çıkardı
+    // ve hiç ücreti olmayanlar (alan yok = en küçük) feeAsc'ta başı tutardı. Sort içinde dizi süzülemediği için
+    // aggregation: önce pozitif ücretler ayıklanır (__fees), sonra "ücretsiz mi" (__noFee) ve min/max hesaplanır,
+    // sıralama (__noFee, ücret, soyad, _id): ücretsiz doktorlar HER İKİ yönde de SONA gider.
+    // __ ile başlayan yardımcı alanlar son $project'te düşer, DTO'ya sızmaz.
+    private async Task<List<DoctorEntity>> SearchByFeeAsync(FilterDefinition<DoctorEntity> filter, bool descending,
+        int skip, int limit, CancellationToken ct)
+    {
+        var feeKey = descending ? "__max" : "__min";
+        var pipeline = _doctors.Aggregate()
+            .Match(filter)
+            .AppendStage<BsonDocument>(BsonDocument.Parse(
+                "{ $addFields: { __fees: { $map: { input: { $filter: { input: { $ifNull: ['$ClinicLocations', []] }, as: 'l', cond: { $gt: ['$$l.HourlyFee', 0] } } }, as: 'l', in: '$$l.HourlyFee' } } } }"))
+            .AppendStage<BsonDocument>(BsonDocument.Parse(
+                "{ $addFields: { __noFee: { $eq: [{ $size: '$__fees' }, 0] }, __min: { $min: '$__fees' }, __max: { $max: '$__fees' } } }"))
+            .AppendStage<BsonDocument>(new BsonDocument("$sort", new BsonDocument
+            {
+                { "__noFee", 1 }, { feeKey, descending ? -1 : 1 }, { "LastName", 1 }, { "_id", 1 },
+            }))
+            .AppendStage<BsonDocument>(new BsonDocument("$skip", skip))
+            .AppendStage<BsonDocument>(new BsonDocument("$limit", limit))
+            .AppendStage<DoctorEntity>(BsonDocument.Parse(
+                "{ $project: { FirstName: 1, LastName: 1, Title: 1, Degrees: 1, Gender: 1, BranchId: 1, ImageUrl: 1, Services: 1, Gallery: 1, 'ClinicLocations.City': 1, 'ClinicLocations.HourlyFee': 1, 'ClinicLocations.Currency': 1 } }"));
+        return await pipeline.ToListAsync(ct);
     }
 
     // Derin sayfa pahalıdır: MongoDB skip kadar belgeyi de tek tek sayıp atlar. Üst sınır (MaxPage) bu maliyeti
@@ -160,6 +191,10 @@ public class DoctorService : IDoctorService
         if (!string.IsNullOrWhiteSpace(q.City))
             locationParts.Add(lf.Eq(l => l.City, q.City.Trim()));
 
+        // Ücret filtresi verilince konumun ücreti TANIMLI (> 0) olmalı: 0 ya da alan yok "ücretsiz/tanımsız" sayılır,
+        // kartta görünen MinFee ile aynı tanım. Filtre verilmezse ücretsiz doktorlar listede kalır.
+        if (q.MinFee is not null || q.MaxFee is not null)
+            locationParts.Add(lf.Gt(l => l.HourlyFee, 0m));
         if (q.MinFee is { } min) locationParts.Add(lf.Gte(l => l.HourlyFee, min));
         if (q.MaxFee is { } max) locationParts.Add(lf.Lte(l => l.HourlyFee, max));
 
@@ -194,6 +229,16 @@ public class DoctorService : IDoctorService
 
         if (errors.Count > 0) throw new DoctorValidationException(errors);
         return filters.Count == 0 ? f.Empty : f.And(filters);
+    }
+
+    public async Task<PublicDoctorDto?> GetPublicByIdAsync(string id, CancellationToken ct)
+    {
+        if (!ObjectId.TryParse(id, out _)) return null;
+        // Telefon ve e-posta veritabanından hiç çekilmez (projeksiyon) VE DTO'da alan yok: iki kat güvence.
+        var entity = await _doctors.Find(d => d.Id == id)
+            .Project<DoctorEntity>(Builders<DoctorEntity>.Projection.Exclude(d => d.Phone).Exclude(d => d.Email))
+            .FirstOrDefaultAsync(ct);
+        return entity is null ? null : _mapper.Map<PublicDoctorDto>(entity);
     }
 
     public async Task<List<DoctorSummaryDto>> GetBatchAsync(string? ids, CancellationToken ct)
