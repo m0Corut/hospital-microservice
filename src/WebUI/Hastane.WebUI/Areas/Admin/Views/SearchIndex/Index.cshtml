@@ -1,0 +1,51 @@
+@model DoctorSearchIndexViewModel
+@{
+    ViewData["Title"] = "Arama dizini";
+    var s = Model.Status;
+}
+
+<h1 class="h4 mb-3">Arama dizini</h1>
+
+<p class="text-muted small">
+    Doktor araması Elasticsearch dizinini kullanır. Dizin MongoDB'den <strong>türetilmiş bir kopyadır</strong>: asıl kayıt MongoDB'dedir.
+    Dizin yazımı başarısız olursa doktor kaydı yine de kaydedilir; sayılar uyuşmuyorsa dizini yeniden oluşturun.
+</p>
+
+<div class="panel-card p-3 mb-3">
+    @if (s is null)
+    {
+        <p class="text-danger mb-0">Doktor servisine ulaşılamadı; durum okunamadı.</p>
+    }
+    else if (!s.Enabled)
+    {
+        <p class="mb-0"><span class="badge bg-secondary">Kapalı</span> Elasticsearch ayarlı değil; arama yalnız MongoDB ile çalışıyor.</p>
+    }
+    else
+    {
+        <dl class="row mb-0">
+            <dt class="col-sm-4">Elasticsearch</dt>
+            <dd class="col-sm-8">
+                @if (s.Reachable) { <span class="badge bg-success">Ulaşılabilir</span> }
+                else { <span class="badge bg-danger">Ulaşılamıyor</span> }
+            </dd>
+            <dt class="col-sm-4">Dizin adı</dt>
+            <dd class="col-sm-8">@s.Index</dd>
+            <dt class="col-sm-4">Dizindeki doktor</dt>
+            <dd class="col-sm-8">@(s.IndexedCount?.ToString() ?? "-")</dd>
+            <dt class="col-sm-4">MongoDB'deki doktor</dt>
+            <dd class="col-sm-8">@s.MongoCount</dd>
+            <dt class="col-sm-4">Durum</dt>
+            <dd class="col-sm-8">
+                @if (s.InSync) { <span class="badge bg-success">Eşit</span> }
+                else { <span class="badge bg-warning text-dark">Uyuşmuyor</span> }
+            </dd>
+        </dl>
+    }
+</div>
+
+@if (s is { Enabled: true })
+{
+    <form asp-area="Admin" asp-controller="SearchIndex" asp-action="Rebuild" method="post">
+        <button type="submit" class="btn btn-primary" onclick="return confirm('Tüm doktorlar MongoDB&#39;den arama dizinine yeniden yazılsın mı?');">Yeniden oluştur</button>
+    </form>
+}

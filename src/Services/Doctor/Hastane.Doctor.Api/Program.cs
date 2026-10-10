@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Hastane.Doctor.Api.Mapping;
+using Hastane.Doctor.Api.Search;
 using Hastane.Doctor.Api.Services;
 using Hastane.Doctor.Api.Settings;
 using Hastane.Shared.Security;
@@ -26,6 +27,9 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
     new MongoClient(sp.GetRequiredService<IOptions<DatabaseSettings>>().Value.ConnectionString));
 
 builder.Services.AddScoped<IDoctorService, DoctorService>();
+
+// Arama dizini (Elasticsearch): Elasticsearch:Url boşsa KAPALI, arama yalnız Mongo ile çalışır.
+builder.Services.AddDoctorSearch(builder.Configuration);
 
 // Açılışta dizinleri (BranchId, Gender, ClinicLocations.City) idempotent oluşturur.
 builder.Services.AddHostedService<DoctorIndexInitializer>();

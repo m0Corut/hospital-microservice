@@ -19,6 +19,17 @@ public interface IDoctorService
     /// <summary>Sayfalı arama. Geçersiz parametrede DoctorValidationException.</summary>
     Task<PagedResult<DoctorSearchItemDto>> SearchAsync(DoctorSearchQuery query, CancellationToken ct);
 
+    /// <summary>Arama + hangi motorun yanıtladığı ("elasticsearch" | "mongo"; X-Search-Engine başlığı için).</summary>
+    Task<(PagedResult<DoctorSearchItemDto> Result, string Engine)> SearchWithEngineAsync(DoctorSearchQuery query, CancellationToken ct);
+
+    /// <summary>Yazdıkça öneri (en çok 8): ad/soyad/hizmet. Boş q: boş liste. Çok uzun q: DoctorValidationException.</summary>
+    Task<List<DoctorSuggestionDto>> SuggestAsync(string? q, CancellationToken ct);
+
+    /// <summary>Tüm doktorları Mongo'dan arama dizinine yeniden yazar; yazılan sayı. Dizin kapalıysa null. Dizin hatasında SearchIndexException.</summary>
+    Task<int?> RebuildSearchIndexAsync(CancellationToken ct);
+
+    Task<SearchIndexStatusDto> GetSearchIndexStatusAsync(CancellationToken ct);
+
     /// <summary>Virgülle ayrılmış id'lerle toplu özet. Geçersiz id atılır, tekrarlar silinir, en çok 100 id.</summary>
     Task<List<DoctorSummaryDto>> GetBatchAsync(string? ids, CancellationToken ct);
 }

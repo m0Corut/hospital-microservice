@@ -21,4 +21,9 @@
     <ProjectReference Include="..\Hastane.TestSupport\Hastane.TestSupport.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Her sınıf kendi Mongo (ve Elasticsearch) konteynerini açar; paralel koşarsa Docker belleği taşar. -->
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

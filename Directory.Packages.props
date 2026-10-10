@@ -14,6 +14,10 @@
   <ItemGroup Label="Veritabanı">
     <PackageVersion Include="MongoDB.Driver" Version="3.12.0" />
   </ItemGroup>
+  <ItemGroup Label="Arama">
+    <!-- Elasticsearch 8.x istemcisi (Apache-2.0); sunucu 8.15. 9.x serisi yerine 8.x: sunucu sürümüyle uyumlu çizgi. -->
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.19.27" />
+  </ItemGroup>
   <ItemGroup Label="Güvenlik">
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.12" />
   </ItemGroup>

@@ -15,7 +15,8 @@
                 <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
                 <div class="filter-group">
                     <label for="q" class="form-label">Doktor adı ya da uzmanlık</label>
-                    <input type="search" id="q" name="q" value="@f.Q" class="form-control" maxlength="100" />
+                    <input type="search" id="q" name="q" value="@f.Q" class="form-control" maxlength="100" list="q-suggest" autocomplete="off" />
+                    <datalist id="q-suggest"></datalist>
                 </div>
                 <div class="filter-group">
                     <label for="date" class="form-label">Müsait gün</label>
@@ -111,3 +112,34 @@
         }
     </section>
 </div>
+
+@section Scripts {
+    <script>
+        // Yazdıkça öneri: /doctor-suggest (Doctor servisi suggest ucu). Hata olursa sessizce vazgeçilir, arama kutusu aynen çalışır.
+        (function () {
+            var input = document.getElementById('q');
+            var list = document.getElementById('q-suggest');
+            if (!input || !list || !window.fetch) return;
+            var timer = null, last = '';
+            input.addEventListener('input', function () {
+                var value = input.value.trim();
+                clearTimeout(timer);
+                if (value.length < 2 || value === last) return;
+                timer = setTimeout(function () {
+                    last = value;
+                    fetch('/doctor-suggest?q=' + encodeURIComponent(value), { headers: { 'Accept': 'application/json' } })
+                        .then(function (r) { return r.ok ? r.json() : []; })
+                        .then(function (items) {
+                            list.innerHTML = '';
+                            items.forEach(function (text) {
+                                var option = document.createElement('option');
+                                option.value = text;
+                                list.appendChild(option);
+                            });
+                        })
+                        .catch(function () { });
+                }, 200);
+            });
+        })();
+    </script>
+}
