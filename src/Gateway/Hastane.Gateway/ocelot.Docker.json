@@ -361,6 +361,24 @@
       ]
     },
     {
+      "UpstreamPathTemplate": "/gateway/analytics/{everything}",
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "DownstreamScheme": "http",
+      "DownstreamPathTemplate": "/api/analytics/{everything}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "analytics",
+          "Port": 8080
+        }
+      ]
+    },
+    {
       "UpstreamPathTemplate": "/gateway/hubs/queue",
       "UpstreamHttpMethod": [
         "GET"

@@ -7,11 +7,12 @@ namespace Hastane.WebUI.Tests;
 
 internal static class SocialTestHelpers
 {
-    // Menü "kabuğu" çağrıları (zil, mesaj rozeti) her girişli sayfa çiziminde gider; "servise hiç gidilmez" iddialarını
+    // Menü "kabuğu" çağrıları (zil, mesaj rozeti, sepet rozeti) her girişli sayfa çiziminde gider; "servise hiç gidilmez" iddialarını
     // etkilemesin diye bu sayaç yalnız alan çağrılarını sayar. Kabuk çağrıları ayrı testlerde (Bell_*, Message_badge_*) sınanır.
     public static int ApiCallCount(this FakeGateway gateway)
         => gateway.Requests.Count(r => !r.Path.StartsWith("/gateway/notifications/me", StringComparison.Ordinal)
-                                       && r.Path != "/gateway/chat/unread");
+                                       && r.Path != "/gateway/chat/unread"
+                                       && r.Path != "/gateway/cart");
 
     public static object Notification(string id, string title, string? link, bool read = false) => new
     {

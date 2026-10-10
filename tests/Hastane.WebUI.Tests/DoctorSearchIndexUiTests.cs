@@ -38,13 +38,13 @@ public class DoctorSearchIndexUiTests
         {
             await using var host = await WebUiTestHost.StartAsync();
             var client = await ClientAsync(host, role);
-            var before = host.Gateway.Requests.Count;
 
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/Admin/SearchIndex")).StatusCode);
             var post = await PostAsync(host, client, "/", "/Admin/SearchIndex/Rebuild");
             Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
 
-            Assert.Equal(before, host.Gateway.Requests.Count);
+            // 403 sayfası menü kabuğunu (şube listesi, rozetler) çizer; iddia: dizin uçlarına hiç gidilmedi.
+            Assert.DoesNotContain(host.Gateway.Requests, r => r.Path.StartsWith("/gateway/doctors/search-index", StringComparison.Ordinal));
         }
     }
 

@@ -123,5 +123,5 @@ public static class OrderDisplay
 
     public static bool AdminCanCancel(string status) => status is "Received" or "Preparing";
 
-    public static string Money(decimal amount, string currency) => AdminDisplay.Money(amount, currency);
+    public static string Money(decimal amount, string currency) => Hastane.WebUI.ViewModels.Public.DisplayText.Money(amount, currency);
 }

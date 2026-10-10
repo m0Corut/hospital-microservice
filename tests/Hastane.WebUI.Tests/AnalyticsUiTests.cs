@@ -62,13 +62,13 @@ public class AnalyticsUiTests
         {
             await using var host = await WebUiTestHost.StartAsync();
             var client = await ClientAsync(host, role);
-            var before = host.Gateway.Requests.Count;
 
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/Admin/Analytics")).StatusCode);
             var post = await PostAsync(host, client, "/", "/Admin/Analytics/Rebuild");
             Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
 
-            Assert.Equal(before, host.Gateway.Requests.Count);
+            // 403 sayfası menü kabuğunu (şube listesi, rozetler) çizer; iddia: analitik uçlarına hiç gidilmedi.
+            Assert.DoesNotContain(host.Gateway.Requests, r => r.Path.StartsWith("/gateway/analytics", StringComparison.Ordinal));
         }
     }
 

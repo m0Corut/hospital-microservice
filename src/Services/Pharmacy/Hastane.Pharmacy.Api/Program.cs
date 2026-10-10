@@ -1,3 +1,4 @@
+using Hastane.Shared.Hosting;
 using System.Text.Json.Serialization;
 using Hastane.Pharmacy.Api.Behaviors;
 using Hastane.Pharmacy.Api.Data;
@@ -66,10 +67,11 @@ var app = builder.Build();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
-{
     app.MapOpenApi();
 
-    // Yalnız geliştirmede: bekleyen migration'ları açılışta uygular (üretimde şemayı uygulama değil, kontrollü bir dağıtım adımı değiştirmeli).
+// Açılışta migration: Development'ta varsayılan açık; Docker gibi ortamlarda Database:MigrateOnStartup ile (Hastane.Shared.Hosting).
+if (app.ShouldMigrateOnStartup())
+{
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<PharmacyDbContext>().Database.Migrate();
 }

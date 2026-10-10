@@ -1,3 +1,4 @@
+using Hastane.Shared.Hosting;
 using System.Text.Json.Serialization;
 using Hastane.Market.Api.Caching;
 using Hastane.Market.Api.Data;
@@ -46,10 +47,11 @@ builder.Services.AddHastaneCurrentUser();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
-{
     app.MapOpenApi();
 
-    // Yalnız geliştirmede: bekleyen migration'ları açılışta uygular (üretimde şemayı kontrollü bir dağıtım adımı değiştirmeli).
+// Açılışta migration (+ istenirse demo ürünler): Development'ta varsayılan açık; Docker'da Database:MigrateOnStartup ile.
+if (app.ShouldMigrateOnStartup())
+{
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<MarketDbContext>();
     db.Database.Migrate();
