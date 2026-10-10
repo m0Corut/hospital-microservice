@@ -1,0 +1,46 @@
+@model PaymentDetailViewModel
+@{
+    ViewData["Title"] = "Ödeme ayrıntısı";
+    var p = Model.Payment;
+}
+
+<partial name="_PatientNav" />
+
+<div class="panel-card p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+            <h1 class="h4 mb-1">Ödeme ayrıntısı</h1>
+            <div class="text-muted">@Model.DoctorName</div>
+        </div>
+        <span class="badge fs-6 @DisplayText.PaymentBadge(p.Status)">@DisplayText.PaymentStatus(p.Status)</span>
+    </div>
+    <dl class="row mt-3 mb-0">
+        <dt class="col-sm-3">Tutar</dt>
+        <dd class="col-sm-9">@DisplayText.Money(p.Amount, p.Currency)</dd>
+        <dt class="col-sm-3">Tarih</dt>
+        <dd class="col-sm-9">@DisplayText.DateTimeLocal(p.CreatedAt)</dd>
+        @if (p.PaidAt is { } paidAt)
+        {
+            <dt class="col-sm-3">Ödeme zamanı</dt>
+            <dd class="col-sm-9">@DisplayText.DateTimeLocal(paidAt)</dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(p.CardLast4))
+        {
+            <dt class="col-sm-3">Kart</dt>
+            <dd class="col-sm-9">@p.CardBrand **** @p.CardLast4</dd>
+        }
+        @if (!string.IsNullOrWhiteSpace(p.FailureReason))
+        {
+            <dt class="col-sm-3">Hata nedeni</dt>
+            <dd class="col-sm-9">@p.FailureReason</dd>
+        }
+        @if (p.InvoiceId is { } invoiceId)
+        {
+            <dt class="col-sm-3">Fatura</dt>
+            <dd class="col-sm-9"><a asp-controller="Invoices" asp-action="Details" asp-route-id="@invoiceId">@p.InvoiceNumber</a></dd>
+        }
+    </dl>
+</div>
+
+<a class="btn btn-outline-secondary" asp-action="Index">Ödemelerime dön</a>
+<a class="btn btn-outline-primary" asp-controller="Appointments" asp-action="Details" asp-route-id="@p.AppointmentId">İlgili randevu</a>

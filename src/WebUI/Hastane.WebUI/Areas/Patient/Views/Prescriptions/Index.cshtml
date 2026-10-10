@@ -1,0 +1,36 @@
+@model List<PrescriptionRowViewModel>
+@{
+    ViewData["Title"] = "Reçetelerim";
+}
+
+<partial name="_PatientNav" />
+
+<h1 class="h4 mb-3">Reçetelerim</h1>
+
+@if (Model.Count == 0)
+{
+    <div class="panel-card p-4 text-muted">Henüz reçeteniz yok.</div>
+}
+else
+{
+    <div class="panel-card">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr><th>Tarih</th><th>Doktor</th><th>İlaç sayısı</th><th></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in Model)
+                    {
+                        <tr>
+                            <td>@DisplayText.DateTimeLocal(row.Prescription.IssuedAt)</td>
+                            <td>@row.DoctorName</td>
+                            <td>@row.Prescription.ItemCount</td>
+                            <td class="text-end"><a class="btn btn-outline-primary btn-sm" asp-action="Details" asp-route-id="@row.Prescription.Id">Ayrıntı</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

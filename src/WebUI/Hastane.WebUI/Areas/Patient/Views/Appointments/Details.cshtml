@@ -1,0 +1,71 @@
+@model AppointmentDetailViewModel
+@{
+    ViewData["Title"] = "Randevu ayrıntısı";
+    var a = Model.Appointment;
+}
+
+<partial name="_PatientNav" />
+
+<div class="panel-card p-4 mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+            <h1 class="h4 mb-1">Randevu ayrıntısı</h1>
+            <div class="text-muted">@Model.DoctorName</div>
+        </div>
+        <span class="badge fs-6 @DisplayText.AppointmentBadge(a.Status)">@DisplayText.AppointmentStatus(a.Status)</span>
+    </div>
+    <dl class="row mt-3 mb-0">
+        <dt class="col-sm-3">Tarih ve saat</dt>
+        <dd class="col-sm-9">@DisplayText.DateTimeLocal(a.AppointmentDate)</dd>
+        <dt class="col-sm-3">Oluşturulma</dt>
+        <dd class="col-sm-9">@DisplayText.DateTimeLocal(a.CreatedAt)</dd>
+        <dt class="col-sm-3">Ödeme</dt>
+        <dd class="col-sm-9">
+            @if (Model.Payment is { } p)
+            {
+                <span class="badge @DisplayText.PaymentBadge(p.Status)">@DisplayText.PaymentStatus(p.Status)</span>
+                <span class="ms-1">@DisplayText.Money(p.Amount, p.Currency)</span>
+                <a class="ms-2 small" asp-controller="Payments" asp-action="Details" asp-route-id="@p.Id">Ayrıntı</a>
+            }
+            else
+            {
+                <span class="text-muted">Ödeme yapılmadı</span>
+            }
+        </dd>
+    </dl>
+</div>
+
+@if (a.Detail is { } visit)
+{
+    <section class="panel-card p-4 mb-4">
+        <h2 class="h5">Muayene notları</h2>
+        <dl class="row mb-0">
+            <dt class="col-sm-3">Şikâyet</dt>
+            <dd class="col-sm-9">@visit.Complaint</dd>
+            @if (!string.IsNullOrWhiteSpace(visit.Diagnosis))
+            {
+                <dt class="col-sm-3">Tanı</dt>
+                <dd class="col-sm-9">@visit.Diagnosis</dd>
+            }
+            @if (!string.IsNullOrWhiteSpace(visit.DoctorNotes))
+            {
+                <dt class="col-sm-3">Doktor notu</dt>
+                <dd class="col-sm-9">@visit.DoctorNotes</dd>
+            }
+        </dl>
+    </section>
+}
+
+<div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" asp-action="Index">Listeye dön</a>
+    @if (Model.CanPay)
+    {
+        <a class="btn btn-primary" asp-controller="Payments" asp-action="Create" asp-route-appointmentId="@a.Id">Ödeme yap</a>
+    }
+    @if (Model.CanCancel)
+    {
+        <form asp-action="Cancel" asp-route-id="@a.Id" method="post">
+            <button type="submit" class="btn btn-outline-danger">Randevuyu iptal et</button>
+        </form>
+    }
+</div>

@@ -1,0 +1,36 @@
+@using Hastane.WebUI.ViewModels.Public
+@model BranchesIndexViewModel
+@{
+    ViewData["Title"] = "Branşlar";
+}
+
+<h1 class="h3 mb-1">Branşlar</h1>
+<p class="text-muted mb-4">Bir branş seçin, o branştaki doktorları görün.</p>
+
+@if (Model.Branches.Count == 0)
+{
+    <div class="panel-card p-4 text-muted">Henüz tanımlı branş yok.</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var branch in Model.Branches)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <a class="text-decoration-none" asp-controller="Doctors" asp-action="Index" asp-route-branchId="@branch.Id">
+                    <div class="card card-branch">
+                        <div class="card-body text-center">
+                            <span class="branch-icon mb-2" aria-hidden="true">@(branch.Name.Length > 0 ? branch.Name[..1].ToUpperInvariant() : "?")</span>
+                            <div class="fw-semibold text-body">@branch.Name</div>
+                            @if (!string.IsNullOrWhiteSpace(branch.Description))
+                            {
+                                <div class="small text-muted">@branch.Description</div>
+                            }
+                            <div class="small mt-2">Doktorları gör</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}

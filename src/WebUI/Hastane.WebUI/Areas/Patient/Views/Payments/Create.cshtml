@@ -1,0 +1,55 @@
+@model CreatePaymentViewModel
+@{
+    ViewData["Title"] = "Ödeme yap";
+}
+
+<partial name="_PatientNav" />
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="panel-card p-4">
+            <h1 class="h4 mb-1">Ödeme yap</h1>
+            <p class="text-muted">
+                @Model.DoctorName · @DisplayText.DateTimeLocal(Model.AppointmentDate)<br />
+                Ödenecek tutar: <strong>@DisplayText.Money(Model.Amount, Model.Currency)</strong>
+            </p>
+            <div class="alert alert-info py-2 small">Bu bir eğitim projesidir, gerçek para çekilmez. Test kartı: 4242 4242 4242 4242 (herhangi bir gelecek tarih ve 3 haneli CVV).</div>
+
+            <form asp-action="Create" asp-controller="Payments" asp-area="Patient" method="post" novalidate autocomplete="off">
+                <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+                <input type="hidden" name="AppointmentId" value="@Model.AppointmentId" />
+                <input type="hidden" name="IdempotencyKey" value="@Model.IdempotencyKey" />
+
+                <div class="mb-3">
+                    <label for="CardNumber" class="form-label">Kart numarası</label>
+                    <input type="text" id="CardNumber" name="CardNumber" class="form-control" inputmode="numeric" autocomplete="off" maxlength="23" />
+                    <span asp-validation-for="CardNumber" class="text-danger small"></span>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-4">
+                        <label for="ExpMonth" class="form-label">Ay</label>
+                        <input type="number" id="ExpMonth" name="ExpMonth" class="form-control" min="1" max="12" autocomplete="off" />
+                        <span asp-validation-for="ExpMonth" class="text-danger small"></span>
+                    </div>
+                    <div class="col-4">
+                        <label for="ExpYear" class="form-label">Yıl</label>
+                        <input type="number" id="ExpYear" name="ExpYear" class="form-control" min="2000" max="2200" autocomplete="off" />
+                        <span asp-validation-for="ExpYear" class="text-danger small"></span>
+                    </div>
+                    <div class="col-4">
+                        <label for="Cvv" class="form-label">CVV</label>
+                        <input type="password" id="Cvv" name="Cvv" class="form-control" inputmode="numeric" maxlength="4" autocomplete="off" />
+                        <span asp-validation-for="Cvv" class="text-danger small"></span>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label asp-for="HolderName" class="form-label"></label>
+                    <input asp-for="HolderName" class="form-control" autocomplete="off" />
+                    <span asp-validation-for="HolderName" class="text-danger small"></span>
+                </div>
+                <button type="submit" class="btn btn-primary">@DisplayText.Money(Model.Amount, Model.Currency) öde</button>
+                <a class="btn btn-outline-secondary" asp-controller="Appointments" asp-action="Details" asp-route-id="@Model.AppointmentId">Vazgeç</a>
+            </form>
+        </div>
+    </div>
+</div>

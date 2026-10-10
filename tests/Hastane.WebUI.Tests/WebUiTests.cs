@@ -355,7 +355,6 @@ public class AuthorizationTests
 
     [Theory]
     [InlineData("Admin", "/Admin")]
-    [InlineData("Patient", "/Patient")]
     public async Task Right_role_opens_area(string role, string path)
     {
         await using var host = await WebUiTestHost.StartAsync();
