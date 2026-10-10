@@ -109,6 +109,11 @@ a:hover { text-decoration: underline; }
 /* ---------- Doktor arama + kart ---------- */
 /* Geniş ekranda kayarken yanda kalır; ekrandan uzunsa kendi içinde kayar (Ara düğmesi her zaman erişilir). Dar ekranda normal akış. */
 @media (min-width: 992px) { .filter-card { position: sticky; top: 5rem; max-height: calc(100vh - 6rem); overflow-y: auto; } }
+.filter-toggle { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--h-line); text-align: left; cursor: pointer; }
+.filter-toggle[aria-expanded="false"] { border-bottom-color: transparent; }
+.filter-toggle .filter-chevron { transition: transform .2s ease; }
+.filter-toggle[aria-expanded="false"] .filter-chevron { transform: rotate(180deg); }
+.filter-toggle:focus-visible { outline: 2px solid var(--h-accent); outline-offset: -2px; }
 .back-link { display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1rem; color: var(--h-navy); font-weight: 600; text-decoration: none; }
 .back-link:hover { color: var(--h-accent); }
 .filter-card .filter-title { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--h-line); font-weight: 650; color: var(--h-navy); }

@@ -4,6 +4,10 @@
     ViewData["Title"] = "Doktorlar";
     var f = Model.Filter;
     var selected = Model.SelectedBranchIds;
+    // Başlıkta "Filtrele (3)": kaç süzgecin dolu olduğu, panel kapalıyken de görünsün.
+    var activeFilters = (string.IsNullOrWhiteSpace(f.Q) ? 0 : 1) + (string.IsNullOrWhiteSpace(f.Date) ? 0 : 1)
+        + (string.IsNullOrEmpty(f.Gender) ? 0 : 1) + selected.Count + (string.IsNullOrWhiteSpace(f.City) ? 0 : 1)
+        + (f.MinFee is null ? 0 : 1) + (f.MaxFee is null ? 0 : 1);
     object PageRoute(int page) => new { q = f.Q, branchId = f.BranchId, gender = f.Gender, city = f.City, minFee = f.MinFee, maxFee = f.MaxFee, date = f.Date, sort = f.Sort, page };
 }
 
@@ -12,8 +16,11 @@
 <div class="row g-4">
     <aside class="col-lg-3">
         <form method="get" id="filterForm" asp-controller="Doctors" asp-action="Index" class="panel-card filter-card">
-            <div class="filter-title"><span><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filtrele</span></div>
-            <div class="filter-body">
+            <button type="button" class="filter-title filter-toggle" data-bs-toggle="collapse" data-bs-target="#filterBody" aria-expanded="true" aria-controls="filterBody">
+                <span><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filtrele@(activeFilters > 0 ? $" ({activeFilters})" : "")</span>
+                <i class="bi bi-chevron-up filter-chevron" aria-hidden="true"></i>
+            </button>
+            <div class="filter-body collapse show" id="filterBody">
                 <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
                 <div class="filter-group">
                     <label for="q" class="form-label">Doktor adı ya da uzmanlık</label>
@@ -117,6 +124,14 @@
 
 @section Scripts {
     <script>
+        // Dar ekranda (telefon) filtre paneli kapalı açılır, sonuçlar hemen görünsün; başlığa dokununca açılır.
+        (function () {
+            if (window.matchMedia('(max-width: 991.98px)').matches) {
+                var body = document.getElementById('filterBody');
+                body.classList.remove('show');
+                document.querySelector('[data-bs-target="#filterBody"]').setAttribute('aria-expanded', 'false');
+            }
+        })();
         // Yazdıkça öneri: /doctor-suggest (Doctor servisi suggest ucu). Hata olursa sessizce vazgeçilir, arama kutusu aynen çalışır.
         (function () {
             var input = document.getElementById('q');
