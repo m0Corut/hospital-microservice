@@ -62,6 +62,11 @@
 
 <div class="d-flex flex-wrap gap-2">
     <a class="btn btn-outline-secondary" asp-action="Index">Listeye dön</a>
+    @* Bu randevunun doktoruna mesaj: randevu olduğundan servis konuşmaya izin verir; hata olursa uyarı bu sayfada görünür. *@
+    <form asp-area="" asp-controller="Messages" asp-action="WithDoctor" asp-route-doctorId="@a.DoctorId" method="post">
+        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        <button type="submit" class="btn btn-outline-primary"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Mesaj gönder</button>
+    </form>
     @if (Model.CanPay)
     {
         <a class="btn btn-primary" asp-controller="Payments" asp-action="Create" asp-route-appointmentId="@a.Id">Ödeme yap</a>

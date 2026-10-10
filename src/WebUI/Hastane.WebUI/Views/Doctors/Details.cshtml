@@ -1,5 +1,6 @@
 @using Hastane.WebUI.ViewModels.Public
 @using System.Globalization
+@using Hastane.WebUI.ViewModels.Social
 @model DoctorProfileViewModel
 @{
     var d = Model.Doctor;
@@ -295,6 +296,14 @@
                 @if (Model.IsPatient)
                 {
                     <a class="btn btn-accent btn-lg w-100" asp-area="Patient" asp-controller="Appointments" asp-action="Create" asp-route-doctorId="@d.Id">Randevu al</a>
+                    <div class="d-grid gap-2 mt-2">
+                        <partial name="_FavoriteButton" model="@(new FavoriteButtonViewModel(d.Id, Model.IsFavorite, true))" />
+                        @* Randevusu olmayan hastaya servis 403 verir; mesaj sayfada uyarı olarak gösterilir. *@
+                        <form asp-area="" asp-controller="Messages" asp-action="WithDoctor" asp-route-doctorId="@d.Id" method="post">
+                            <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                            <button type="submit" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Mesaj gönder</button>
+                        </form>
+                    </div>
                 }
                 else if (!Model.IsSignedIn)
                 {

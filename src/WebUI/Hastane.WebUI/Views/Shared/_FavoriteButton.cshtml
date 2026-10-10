@@ -1,0 +1,17 @@
+@using Hastane.WebUI.ViewModels.Social
+@model FavoriteButtonViewModel
+@* Kalp düğmesi: yalnız Patient rolünde çizilir (çağıran kontrol eder, burada da ikinci kapı). POST antiforgery'li (form etiketi yardımcısı);
+   başarıdan sonra returnUrl'e (yalnız yerel yol, sunucuda RedirectToLocal) döner. *@
+@if (User.IsInRole(HastaneRoles.Patient))
+{
+    <form asp-area="Patient" asp-controller="Favorites" asp-action="@(Model.IsFavorite ? "Remove" : "Add")" method="post" class="d-inline-block @(Model.Block ? "w-100" : "")">
+        <input type="hidden" name="doctorId" value="@Model.DoctorId" />
+        <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+        <button type="submit" class="btn @(Model.IsFavorite ? "btn-outline-danger" : "btn-outline-secondary") btn-sm @(Model.Block ? "w-100" : "")"
+                aria-pressed="@(Model.IsFavorite ? "true" : "false")"
+                title="@(Model.IsFavorite ? "Favorilerden çıkar" : "Favorilere ekle")">
+            <i class="bi @(Model.IsFavorite ? "bi-heart-fill" : "bi-heart")" aria-hidden="true"></i>
+            <span>@(Model.IsFavorite ? "Favorilerden çıkar" : "Favorilere ekle")</span>
+        </button>
+    </form>
+}

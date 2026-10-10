@@ -5,6 +5,28 @@
 
 <h1 class="page-title">Hasta paneli</h1>
 
+<section class="panel-card p-3 mb-3" aria-label="Profil özeti">
+    @if (Model.ProfileUnavailable || Model.Profile is null)
+    {
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="text-muted">Profil bilgileriniz şu anda yüklenemiyor.</span>
+            <a class="btn btn-outline-primary btn-sm" asp-controller="Profile" asp-action="Index">Profil bilgilerim</a>
+        </div>
+    }
+    else
+    {
+        var p = Model.Profile;
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex flex-wrap gap-4">
+                <div><div class="small text-muted">Yaş</div><div class="fw-bold" id="profile-age">@(p.Age?.ToString() ?? "-")</div></div>
+                <div><div class="small text-muted">Kan grubu</div><div class="fw-bold" id="profile-blood">@(string.IsNullOrWhiteSpace(p.BloodTypeDisplay) ? "-" : p.BloodTypeDisplay)</div></div>
+                <div><div class="small text-muted">Şehir</div><div class="fw-bold" id="profile-city">@(string.IsNullOrWhiteSpace(p.City) ? "-" : p.City)</div></div>
+            </div>
+            <a class="btn btn-outline-primary btn-sm" asp-controller="Profile" asp-action="Index"><i class="bi bi-person-vcard me-1" aria-hidden="true"></i>Profil bilgilerim</a>
+        </div>
+    }
+</section>
+
 <div class="row g-3 mb-4">
     <div class="col-sm-6">
         <div class="panel-card stat-tile">

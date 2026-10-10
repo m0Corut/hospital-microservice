@@ -102,7 +102,8 @@ public class DoctorPanelTests
     {
         await using var host = await WebUiTestHost.StartAsync();
         var client = await DoctorClientAsync(host, doctorId: null);
-        var before = host.Gateway.Requests.Count;
+        // Menü zili / mesaj rozeti (kabuk) çağrıları hariç: alan servislerine hiç gidilmez (ApiCallCount, SocialFeaturesTests.cs).
+        var before = host.Gateway.ApiCallCount();
 
         foreach (var path in new[] { "/Doctor", "/Doctor/Appointments", "/Doctor/Prescriptions", "/Doctor/Profile", "/Doctor/Reviews" })
         {
@@ -114,7 +115,7 @@ public class DoctorPanelTests
         // POST da API'ye gitmez.
         var post = await PostAsync(client, "/Doctor/Prescriptions/Delete/" + RxId, []);
         Assert.Contains("henüz bir doktor kaydına bağlanmadı", await post.Content.ReadHtmlAsync());
-        Assert.Equal(before, host.Gateway.Requests.Count);
+        Assert.Equal(before, host.Gateway.ApiCallCount());
     }
 
     // ---------- Ana sayfa ----------

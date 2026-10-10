@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace Hastane.WebUI.Areas.Patient.Controllers;
 
 public class HomeController(
-    IPatientAppointmentClient appointments, IPatientPrescriptionClient prescriptions, IPublicDoctorClient doctors) : PatientAreaController
+    IPatientAppointmentClient appointments, IPatientPrescriptionClient prescriptions, IPublicDoctorClient doctors,
+    IPatientProfileClient profiles) : PatientAreaController
 {
     private const int PanelCount = 5;
 
@@ -16,6 +17,8 @@ public class HomeController(
         // Panel iki bağımsız servise dayanır; biri kapalıysa öbürü yine görünsün (kapalı olan için uyarı).
         var upcomingResult = await appointments.ListAsync(null, DateTime.UtcNow, ApiFailures.Unavailable, ct);
         var prescriptionResult = await prescriptions.ListAsync(ApiFailures.Unavailable, ct);
+        // Profil kartı yardımcı bilgi: Patient servisi kapalıysa panel yine açılır.
+        var profileResult = await profiles.GetMineAsync(ApiFailures.All, ct);
 
         var upcomingAll = (upcomingResult.Value ?? [])
             .Where(a => a.Status is "Pending" or "Confirmed")
@@ -35,6 +38,8 @@ public class HomeController(
             PrescriptionsUnavailable = !prescriptionResult.IsSuccess,
             UpcomingCount = upcomingAll.Count,
             PrescriptionCount = prescriptionAll.Count,
+            Profile = profileResult.Value,
+            ProfileUnavailable = !profileResult.IsSuccess,
         });
     }
 }

@@ -28,6 +28,10 @@
                             <td>@row.AppointmentCount</td>
                             <td>@DoctorPanelFormat.DateTimeText(row.LastDate)</td>
                             <td class="text-end text-nowrap">
+                                <form class="d-inline" asp-area="" asp-controller="Messages" asp-action="WithPatient" asp-route-patientUserId="@row.PatientId" method="post">
+                                    <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                    <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>Mesaj gönder</button>
+                                </form>
                                 <a class="btn btn-primary btn-sm" asp-area="Doctor" asp-controller="Patients" asp-action="Details" asp-route-patientId="@row.PatientId">Profil</a>
                                 <a class="btn btn-outline-primary btn-sm" asp-area="Doctor" asp-controller="Appointments" asp-action="Details" asp-route-id="@row.LastAppointmentId">Son randevu</a>
                             </td>

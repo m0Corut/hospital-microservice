@@ -35,7 +35,7 @@ public class SiteMenuAndPublicPagesTests
     }
 
     [Fact]
-    public async Task Patient_menu_lists_links_and_marks_favorites_and_messages_as_coming_soon_without_links()
+    public async Task Patient_menu_lists_links_including_real_favorites_messages_and_profile_links()
     {
         await using var host = await WebUiTestHost.StartAsync();
         host.Gateway.MapBranches("Kardiyoloji");
@@ -44,17 +44,15 @@ public class SiteMenuAndPublicPagesTests
         var html = await (await client.GetAsync("/")).Content.ReadHtmlAsync();
 
         Assert.Contains(">Hastalar<", html);
-        foreach (var label in new[] { "Panel", "Randevularım", "Reçetelerim", "Ödemelerim", "Faturalarım", "Profil Ayarları", "Şifre Değiştir" })
+        foreach (var label in new[] { "Panel", "Randevularım", "Reçetelerim", "Ödemelerim", "Faturalarım", "Favoriler", "Profil Bilgilerim", "Profil Ayarları", "Şifre Değiştir" })
             Assert.Contains($"</i>{label}</a>", html);
-        foreach (var href in new[] { "/Patient", "/Patient/Appointments", "/Patient/Prescriptions", "/Patient/Payments", "/Patient/Invoices", "/Account/Profile", "/Account/ChangePassword" })
+        foreach (var href in new[] { "/Patient", "/Patient/Appointments", "/Patient/Prescriptions", "/Patient/Payments", "/Patient/Invoices", "/Patient/Favorites", "/Messages", "/Patient/Profile", "/Account/Profile", "/Account/ChangePassword" })
             Assert.Contains($"href=\"{href}\"", html);
 
-        // Favoriler ve Mesajlar: bağlantı DEĞİL, "yakında" rozetli devre dışı öğe.
-        foreach (var label in new[] { "Favoriler", "Mesajlar" })
-        {
-            Assert.Matches(new Regex($"<span class=\"dropdown-item disabled\"[^>]*>.*?{label} <span class=\"badge[^>]*>yakında</span>"), html);
-            Assert.DoesNotContain($"{label}</a>", html);
-        }
+        // Favoriler ve Mesajlar artık gerçek bağlantı: "yakında" rozeti ve devre dışı öğe yok.
+        Assert.Matches(new Regex("<a class=\"dropdown-item\" href=\"/Messages\"><i class=\"bi bi-chat-dots\" aria-hidden=\"true\"></i>Mesajlar"), html);
+        Assert.DoesNotContain("yakında", html);
+        Assert.DoesNotContain("dropdown-item disabled", html);
 
         Assert.DoesNotContain(">Yönetim<", html);
         Assert.DoesNotContain(">Doktor Paneli<", html);

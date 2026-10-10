@@ -3,12 +3,14 @@ using Hastane.WebUI.Infrastructure.Gateway;
 using Hastane.WebUI.Models.Api.Public;
 using Hastane.WebUI.ViewModels.Home;
 using Hastane.WebUI.ViewModels.Public;
+using Hastane.WebUI.ViewModels.Social;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hastane.WebUI.Controllers;
 
-public class HomeController(IBranchClient branches, IPublicDoctorClient doctors, IPublicReviewClient reviews) : AppController
+public class HomeController(
+    IBranchClient branches, IPublicDoctorClient doctors, IPublicReviewClient reviews, IPatientProfileClient patientProfile) : AppController
 {
     private const int FeaturedCount = 6;
 
@@ -29,9 +31,11 @@ public class HomeController(IBranchClient branches, IPublicDoctorClient doctors,
             if (rated.Value is not null)
                 foreach (var s in rated.Value) summaries[s.DoctorId] = s;
 
+            var favoriteIds = await FavoriteLookup.LoadAsync(User, patientProfile, ct);
             featured = page.Items.Select(d => new DoctorCardViewModel
             {
                 Doctor = d,
+                IsFavorite = favoriteIds.Contains(d.Id),
                 Rating = summaries.GetValueOrDefault(d.Id),
                 BranchName = branchList.FirstOrDefault(b => b.Id == d.BranchId)?.Name,
             }).ToList();

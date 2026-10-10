@@ -46,6 +46,8 @@ public sealed class DoctorCardViewModel
     public required DoctorSearchItemApiModel Doctor { get; init; }
     public DoctorRatingSummaryApiModel? Rating { get; init; }
     public string? BranchName { get; init; }
+    // Yalnız Patient rolünde doludur (sayfa başına tek favori çağrısından); kalp düğmesinin dolu/boş halini belirler.
+    public bool IsFavorite { get; init; }
 }
 
 public sealed class DoctorSearchViewModel
@@ -92,6 +94,7 @@ public sealed class DoctorProfileViewModel
     public bool ReviewsUnavailable { get; init; }
     public bool IsPatient { get; init; }
     public bool IsSignedIn { get; init; }
+    public bool IsFavorite { get; init; }
     public ReviewFormModel ReviewForm { get; init; } = new() { Rating = 5 };
 
     public string FullName => DisplayText.DoctorName(Doctor.Title, Doctor.FirstName, Doctor.LastName);

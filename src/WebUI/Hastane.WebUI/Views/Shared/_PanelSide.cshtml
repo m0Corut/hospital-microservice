@@ -20,6 +20,10 @@
             <li>
                 <a class="@(active ? "active" : "")" asp-area="@item.Area" asp-controller="@item.Controller" asp-action="@item.Action">
                     <i class="bi bi-@item.Icon" aria-hidden="true"></i><span>@item.Label</span>
+                    @if (item.WithMessageBadge)
+                    {
+                        @await Component.InvokeAsync("MessageBadge")
+                    }
                 </a>
             </li>
         }

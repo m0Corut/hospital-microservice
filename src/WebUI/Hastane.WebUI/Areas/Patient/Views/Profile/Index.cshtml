@@ -1,0 +1,83 @@
+@using Hastane.WebUI.ViewModels.Social
+@model PatientProfileFormViewModel
+@{
+    ViewData["Title"] = "Profil bilgilerim";
+    // Doğum tarihi bugünden ileri olamaz (sunucu da reddeder); İstanbul takvim günü.
+    var today = AppointmentTime.DateText(AppointmentTime.Today());
+}
+
+<h1 class="page-title">Profil bilgilerim</h1>
+
+<div class="panel-card p-4">
+    <form asp-area="Patient" asp-controller="Profile" asp-action="Index" method="post" novalidate>
+        <div asp-validation-summary="All" class="alert alert-danger py-2 small"></div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label asp-for="DateOfBirth" class="form-label"></label>
+                <input asp-for="DateOfBirth" type="date" class="form-control" min="1900-01-01" max="@today" />
+                <span asp-validation-for="DateOfBirth" class="text-danger small"></span>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label" for="age">Yaş</label>
+                <input id="age" class="form-control" value="@(Model.Age?.ToString() ?? "-")" readonly aria-describedby="ageHelp" />
+                <div id="ageHelp" class="form-text">Doğum tarihinden hesaplanır.</div>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="Gender" class="form-label"></label>
+                <select asp-for="Gender" class="form-select">
+                    <option value="">Belirtmek istemiyorum</option>
+                    @foreach (var (value, label) in PatientProfileOptions.Genders)
+                    {
+                        <option value="@value" selected="@(Model.Gender == value)">@label</option>
+                    }
+                </select>
+                <span asp-validation-for="Gender" class="text-danger small"></span>
+            </div>
+            <div class="col-md-3">
+                <label asp-for="BloodType" class="form-label"></label>
+                <select asp-for="BloodType" class="form-select">
+                    <option value="">Bilmiyorum</option>
+                    @foreach (var (value, label) in PatientProfileOptions.BloodTypes)
+                    {
+                        <option value="@value" selected="@(Model.BloodType == value)">@label</option>
+                    }
+                </select>
+                <span asp-validation-for="BloodType" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="Phone" class="form-label"></label>
+                <input asp-for="Phone" class="form-control" maxlength="20" autocomplete="tel" />
+                <span asp-validation-for="Phone" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="City" class="form-label"></label>
+                <input asp-for="City" class="form-control" maxlength="60" autocomplete="address-level2" />
+                <span asp-validation-for="City" class="text-danger small"></span>
+            </div>
+            <div class="col-12">
+                <label asp-for="Address" class="form-label"></label>
+                <textarea asp-for="Address" class="form-control" rows="2" maxlength="300" autocomplete="street-address"></textarea>
+                <span asp-validation-for="Address" class="text-danger small"></span>
+            </div>
+            <div class="col-12"><h2 class="h6 mb-0 mt-2">Acil durum kişisi</h2></div>
+            <div class="col-md-6">
+                <label asp-for="EmergencyContactName" class="form-label"></label>
+                <input asp-for="EmergencyContactName" class="form-control" maxlength="100" />
+                <span asp-validation-for="EmergencyContactName" class="text-danger small"></span>
+            </div>
+            <div class="col-md-6">
+                <label asp-for="EmergencyContactPhone" class="form-label"></label>
+                <input asp-for="EmergencyContactPhone" class="form-control" maxlength="20" />
+                <span asp-validation-for="EmergencyContactPhone" class="text-danger small"></span>
+            </div>
+        </div>
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-accent">Kaydet</button>
+            <a class="btn btn-outline-secondary" asp-area="Patient" asp-controller="Home" asp-action="Index">Vazgeç</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
